@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__goat-ui-mcp__list-all-documentation",
+      "mcp__goat-ui-mcp__get-documentation",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "mcp__goat-ui-mcp__get-documentation-for-story",
+      "Bash(node -e ' *)",
+      "Bash(xargs cat)",
+      "Bash(sed 's/version-2/version-3/g; s/DocumentPreviewV2/DocumentPreviewV3/g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/document-preview/Version2.tsx)",
+      "Bash(sed 's/version-2/version-4/g; s/DocumentPreviewV2/DocumentPreviewV4/g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/document-preview/Version2.tsx)",
+      "Bash(node *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)",
+      "WebFetch(domain:ant.design)",
+      "WebFetch(domain:github.com)",
+      "Bash(xargs ls)",
+      "Bash(npx mcp__goat-ui-mcp__list-all-documentation)",
+      "Bash(mcp__goat-ui-mcp__list-all-documentation)",
+      "Bash(grep -o '..\\\\{0,40\\\\}tableLayout.\\\\{0,40\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/goat-ui-core.js)",
+      "Bash(grep -o '..\\\\{0,40\\\\}tableLayout.\\\\{0,40\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-Bc7y-KLj.js)",
+      "Bash(grep -o '..\\\\{0,60\\\\}tableLayout.\\\\{0,60\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)",
+      "Bash(grep -o '..\\\\{0,80\\\\}innerLoading.\\\\{0,80\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)"
+    ]
+  }
+}

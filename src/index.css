@@ -1,0 +1,39 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+}
+
+.file-uploader-full-width .ant-upload-wrapper,
+.file-uploader-full-width .ant-upload-select > .ant-upload {
+  display: block;
+}
+
+.goat-upload-wrapper,
+.goat-upload-wrapper .goat-upload,
+.goat-upload-wrapper .goat-upload-btn {
+  display: block;
+  width: 100%;
+}
+
+.upload-zone {
+  background-color: #fff;
+  transition: background-color 0.15s ease;
+}
+
+.upload-zone:hover {
+  background-color: #F5F9FF; /* neutral-lighten5 */
+}
+

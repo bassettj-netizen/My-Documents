@@ -1,0 +1,112 @@
+{
+  "hash": "3f027078",
+  "configHash": "e91dbaa0",
+  "lockfileHash": "e697e007",
+  "browserHash": "4a4a8e8b",
+  "optimized": {
+    "@goat-ui/goat-ui-core": {
+      "src": "../../node_modules/@goat-ui/goat-ui-core/dist/goat-ui-core.js",
+      "file": "@goat-ui_goat-ui-core.js",
+      "fileHash": "e975b95b",
+      "needsInterop": false
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "5529923d",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.js",
+      "file": "react-router-dom.js",
+      "fileHash": "0564a9fc",
+      "needsInterop": false
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "27891193",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "c8372ecf",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "Preview-DIO3145i-BTm6tFc7": {
+      "file": "Preview-DIO3145i-BTm6tFc7.js",
+      "isDynamicEntry": true
+    },
+    "dash.all.min-CpNmK5Fz-C6Z5uE2H": {
+      "file": "dash.all.min-CpNmK5Fz-C6Z5uE2H.js",
+      "isDynamicEntry": true
+    },
+    "dist-DmZ2z1hA": {
+      "file": "dist-DmZ2z1hA.js",
+      "isDynamicEntry": false
+    },
+    "hls-BhaZGLxI-Bf9KoB1E": {
+      "file": "hls-BhaZGLxI-Bf9KoB1E.js",
+      "isDynamicEntry": false
+    },
+    "index-Bc7y-KLj-BiJQ7I8g": {
+      "file": "index-Bc7y-KLj-BiJQ7I8g.js",
+      "isDynamicEntry": false
+    },
+    "index-D7wcEP1d-BBa7rsa-": {
+      "file": "index-D7wcEP1d-BBa7rsa-.js",
+      "isDynamicEntry": true
+    },
+    "index-DOQ4xnKK-CQiNtmKJ": {
+      "file": "index-DOQ4xnKK-CQiNtmKJ.js",
+      "isDynamicEntry": false
+    },
+    "mixin-Db00K8RL-BcVmQUPt": {
+      "file": "mixin-Db00K8RL-BcVmQUPt.js",
+      "isDynamicEntry": false
+    },
+    "react-BTjrUV5R-DYIVEdNH": {
+      "file": "react-BTjrUV5R-DYIVEdNH.js",
+      "isDynamicEntry": true
+    },
+    "react-BmBas5mR-DEq4MWJO": {
+      "file": "react-BmBas5mR-DEq4MWJO.js",
+      "isDynamicEntry": true
+    },
+    "react-BsDccEtb": {
+      "file": "react-BsDccEtb.js",
+      "isDynamicEntry": false
+    },
+    "react-C3be8gkp-Urm-yI0J": {
+      "file": "react-C3be8gkp-Urm-yI0J.js",
+      "isDynamicEntry": true
+    },
+    "react-CcHtfmdL-CPZxgXSJ": {
+      "file": "react-CcHtfmdL-CPZxgXSJ.js",
+      "isDynamicEntry": true
+    },
+    "react-CrUnUcv8-9OLUZtF-": {
+      "file": "react-CrUnUcv8-9OLUZtF-.js",
+      "isDynamicEntry": true
+    },
+    "react-CyAM4uvC-DGk7dOXS": {
+      "file": "react-CyAM4uvC-DGk7dOXS.js",
+      "isDynamicEntry": true
+    },
+    "react-DP3k6mD1-DNURqs-f": {
+      "file": "react-DP3k6mD1-DNURqs-f.js",
+      "isDynamicEntry": true
+    },
+    "react-cwQnl-H9-93FIQeMd": {
+      "file": "react-cwQnl-H9-93FIQeMd.js",
+      "isDynamicEntry": true
+    },
+    "react-dom-B2DSVGgB": {
+      "file": "react-dom-B2DSVGgB.js",
+      "isDynamicEntry": false
+    }
+  }
+}
