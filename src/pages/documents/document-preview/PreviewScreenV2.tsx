@@ -67,9 +67,9 @@ export default function PreviewScreenV2() {
 
   const handleChatSubmit = async (newValue: { value: { type: string; content: string } }) => {
     const userMsg: ChatValue = {
-      ...newValue,
       user: { avatar: { srcPlaceholder: 'AM' }, name: 'You', role: chatRoles.SENDER },
       sentAt: 'Just now',
+      value: newValue.value as { type: (typeof commentTypes)[keyof typeof commentTypes]; content: string },
     }
     setChatValues((prev) => [...prev, userMsg])
     setChatLoading(true)

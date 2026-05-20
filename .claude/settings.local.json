@@ -21,7 +21,15 @@
       "Bash(grep -o '..\\\\{0,40\\\\}tableLayout.\\\\{0,40\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/goat-ui-core.js)",
       "Bash(grep -o '..\\\\{0,40\\\\}tableLayout.\\\\{0,40\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-Bc7y-KLj.js)",
       "Bash(grep -o '..\\\\{0,60\\\\}tableLayout.\\\\{0,60\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)",
-      "Bash(grep -o '..\\\\{0,80\\\\}innerLoading.\\\\{0,80\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)"
+      "Bash(grep -o '..\\\\{0,80\\\\}innerLoading.\\\\{0,80\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)",
+      "Skill(figma:figma-generate-design)",
+      "Skill(figma:figma-use)",
+      "mcp__plugin_figma_figma__get_metadata",
+      "mcp__plugin_figma_figma__generate_figma_design",
+      "mcp__plugin_figma_figma__search_design_system",
+      "mcp__plugin_figma_figma__use_figma",
+      "mcp__plugin_figma_figma__whoami",
+      "Bash(npm run *)"
     ]
   }
 }

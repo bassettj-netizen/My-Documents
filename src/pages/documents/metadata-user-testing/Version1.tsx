@@ -9,6 +9,7 @@ import {
   Chip,
   chipStyles,
   chipVariants,
+  type ChipStyleValue,
   constants,
   Dropdown,
   dropdownPlacement,
@@ -39,7 +40,7 @@ const SELECTOR_MARGIN = 16
 // Approximate height consumed by PopOver chrome (border, padding) + footer button
 const SELECTOR_CHROME = 80
 
-const STATUS_CHIP_STYLE: Record<DocumentStatus, string> = {
+const STATUS_CHIP_STYLE: Record<DocumentStatus, ChipStyleValue> = {
   Approved: chipStyles.SEMANTIC_SUCCESS,
   Draft: chipStyles.ACCENT_BLUE,
   Superseded: chipStyles.ACCENT_NEUTRAL,
@@ -734,7 +735,8 @@ export default function MetadataUserTestingV1() {
             columns={columns as never}
             pagination={false}
             innerLoading={isUploading || isSearching}
-            components={{ body: { cell: EditableCell } } as never}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            {...({ components: { body: { cell: EditableCell } } } as any)}
             onRow={(record: MetadataDocument) => ({
               style: editingKey === record._id ? { backgroundColor: '#F5F9FF' } : undefined,
             })}

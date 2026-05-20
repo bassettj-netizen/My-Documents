@@ -8,6 +8,7 @@ import {
   Chip,
   chipStyles,
   chipVariants,
+  type ChipStyleValue,
   constants,
   Dropdown,
   dropdownPlacement,
@@ -33,7 +34,7 @@ import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type DocumentStatu
 const { colorPalette, spacing } = constants
 const PAGE_SIZE = 10
 
-const STATUS_CHIP_STYLE: Record<DocumentStatus, string> = {
+const STATUS_CHIP_STYLE: Record<DocumentStatus, ChipStyleValue> = {
   Approved: chipStyles.SEMANTIC_SUCCESS,
   Draft: chipStyles.ACCENT_BLUE,
   Superseded: chipStyles.ACCENT_NEUTRAL,
@@ -180,7 +181,7 @@ function TagsCellInner({ tags }: { tags: { text: string; style: string; variant?
   return (
     <div ref={containerRef} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'flex-start' }}>
       {tags.slice(0, visibleCount).map((tag, i) => (
-        <Chip key={i} label={tag.text} chipStyle={tag.style} variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE} />
+        <Chip key={i} label={tag.text} chipStyle={tag.style as ChipStyleValue} variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE} />
       ))}
       {hidden.length > 0 && (
         <Tooltip title={hidden.map(t => t.text).join(', ')}>
@@ -241,7 +242,7 @@ function TagEditCell({ record, onChange }: {
           />
         ))}
         {derivedChips.map((tag, i) => (
-          <Chip key={i} label={tag.text} chipStyle={tag.style} variant={chipVariants.SUBTLE} />
+          <Chip key={i} label={tag.text} chipStyle={tag.style as ChipStyleValue} variant={chipVariants.SUBTLE} />
         ))}
       </div>
       <Input
@@ -820,7 +821,8 @@ export default function MetadataUserTestingV2() {
             columns={columns as never}
             pagination={false}
             innerLoading={isUploading || isSearching}
-            components={{ body: { cell: EditableCell } } as never}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            {...({ components: { body: { cell: EditableCell } } } as any)}
             onRow={(record: MetadataDocument) => ({
               style: {
                 height: 72,

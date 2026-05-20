@@ -8,6 +8,7 @@ import {
   Chip,
   chipStyles,
   chipVariants,
+  type ChipStyleValue,
   constants,
   Dropdown,
   dropdownPlacement,
@@ -26,7 +27,7 @@ import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type DocumentStatu
 const { colorPalette } = constants
 const TOP_BAR_BG = '#1e1f2e'
 
-const STATUS_CHIP_STYLE: Record<DocumentStatus, string> = {
+const STATUS_CHIP_STYLE: Record<DocumentStatus, ChipStyleValue> = {
   Approved: chipStyles.SEMANTIC_SUCCESS,
   Draft: chipStyles.ACCENT_BLUE,
   Superseded: chipStyles.ACCENT_NEUTRAL,
@@ -300,7 +301,7 @@ export default function MetadataPreviewScreen() {
                       <Chip
                         key={i}
                         label={tag.text}
-                        chipStyle={tag.style}
+                        chipStyle={tag.style as ChipStyleValue}
                         variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE}
                       />
                     ))}
@@ -373,7 +374,7 @@ function getDocumentSections(doc: MetadataDocument) {
 
 // ─── Section templates ────────────────────────────────────────────────────────
 
-function HRPolicySections({ doc, title, allowanceLabel, allowanceDesc, scopeDesc }: { doc: MetadataDocument; title: string; allowanceLabel: string; allowanceDesc: string; scopeDesc: string }) {
+function HRPolicySections({ doc, title: _title, allowanceLabel, allowanceDesc, scopeDesc }: { doc: MetadataDocument; title: string; allowanceLabel: string; allowanceDesc: string; scopeDesc: string }) {
   return <>
     <Section number={1} heading="Geltungsbereich">{scopeDesc}</Section>
     <Section number={2} heading="Grundsätze">

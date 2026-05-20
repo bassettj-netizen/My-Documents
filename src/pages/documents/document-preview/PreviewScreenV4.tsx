@@ -19,6 +19,7 @@ import {
   Typography,
   type ChatValue,
   type CollapsibleItem,
+  commentTypes,
 } from '@goat-ui/goat-ui-core'
 import { documents } from './documents'
 import { COPILOT_GREETING, getMockAiResponse, makeChatValue, QUICK_PROMPTS } from './_aiMocks'
@@ -61,9 +62,9 @@ export default function PreviewScreenV4() {
 
   const handleChatSubmit = async (newValue: { value: { type: string; content: string } }) => {
     const userMsg: ChatValue = {
-      ...newValue,
       user: { avatar: { srcPlaceholder: 'AM' }, name: 'You', role: chatRoles.SENDER },
       sentAt: 'Just now',
+      value: newValue.value as { type: (typeof commentTypes)[keyof typeof commentTypes]; content: string },
     }
     setChatValues((prev) => [...prev, userMsg])
     setChatLoading(true)
@@ -86,10 +87,7 @@ export default function PreviewScreenV4() {
                 label={label}
                 chipStyle={chipStyles.ACCENT_BLUE}
                 variant={chipVariants.SUBTLE}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation()
-                  handleQuickPrompt(prompt)
-                }}
+                onClick={() => handleQuickPrompt(prompt)}
               />
             ))}
           </div>
