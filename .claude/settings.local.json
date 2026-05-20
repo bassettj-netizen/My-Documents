@@ -29,7 +29,10 @@
       "mcp__plugin_figma_figma__search_design_system",
       "mcp__plugin_figma_figma__use_figma",
       "mcp__plugin_figma_figma__whoami",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git -C /Users/james.bassett/Desktop/Claude_stuff/my-app status)",
+      "Bash(git -C /Users/james.bassett/Desktop/Claude_stuff/my-app diff)",
+      "Bash(git *)"
     ]
   }
 }

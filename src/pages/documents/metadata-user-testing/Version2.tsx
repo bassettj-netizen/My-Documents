@@ -198,12 +198,14 @@ function TagsCell({ tags }: { tags: { text: string; style: string; variant?: str
 
 type Tag = { text: string; style: string; variant?: string }
 
-function TagEditCell({ record, onChange }: {
+function TagEditCell({ record, onChange, onRemoveDerived }: {
   record: MetadataDocument
   onChange: (tags: Tag[]) => void
+  onRemoveDerived?: (fieldKey: string) => void
 }) {
   const [customTags, setCustomTags] = useState<Tag[]>(() => record.tagList ?? [])
   const [inputVal, setInputVal] = useState('')
+  const [removedDerived, setRemovedDerived] = useState<Set<string>>(new Set())
 
   const update = (next: Tag[]) => {
     setCustomTags(next)
@@ -218,14 +220,20 @@ function TagEditCell({ record, onChange }: {
     setInputVal('')
   }
 
-  const derivedChips: Tag[] = []
-  if (record.namedEntity !== '—') derivedChips.push({ text: record.namedEntity, style: chipStyles.ACCENT_NEUTRAL })
-  if (record.namedEntityId !== '—') derivedChips.push({ text: record.namedEntityId, style: chipStyles.ACCENT_NEUTRAL })
-  if (record.jurisdiction !== '—') derivedChips.push({ text: record.jurisdiction, style: chipStyles.ACCENT_NEUTRAL })
-  if (record.lawType !== '—') derivedChips.push({ text: record.lawType, style: chipStyles.ACCENT_NEUTRAL })
-  if (record.citations !== '—') derivedChips.push({ text: record.citations, style: chipStyles.ACCENT_NEUTRAL })
-  if (record.monetaryAmounts > 0) derivedChips.push({ text: `${record.monetaryAmounts.toLocaleString('de-DE')} ${record.currency}`, style: chipStyles.ACCENT_NEUTRAL })
-  if (record.monetaryTypes !== 'None') derivedChips.push({ text: record.monetaryTypes, style: chipStyles.ACCENT_NEUTRAL })
+  const removeDerived = (fieldKey: string) => {
+    setRemovedDerived(prev => new Set(prev).add(fieldKey))
+    onRemoveDerived?.(fieldKey)
+  }
+
+  type DerivedChip = Tag & { fieldKey: string }
+  const derivedChips: DerivedChip[] = []
+  if (!removedDerived.has('namedEntity') && record.namedEntity !== '—') derivedChips.push({ text: record.namedEntity, style: chipStyles.ACCENT_NEUTRAL, fieldKey: 'namedEntity' })
+  if (!removedDerived.has('namedEntityId') && record.namedEntityId !== '—') derivedChips.push({ text: record.namedEntityId, style: chipStyles.ACCENT_NEUTRAL, fieldKey: 'namedEntityId' })
+  if (!removedDerived.has('jurisdiction') && record.jurisdiction !== '—') derivedChips.push({ text: record.jurisdiction, style: chipStyles.ACCENT_NEUTRAL, fieldKey: 'jurisdiction' })
+  if (!removedDerived.has('lawType') && record.lawType !== '—') derivedChips.push({ text: record.lawType, style: chipStyles.ACCENT_NEUTRAL, fieldKey: 'lawType' })
+  if (!removedDerived.has('citations') && record.citations !== '—') derivedChips.push({ text: record.citations, style: chipStyles.ACCENT_NEUTRAL, fieldKey: 'citations' })
+  if (!removedDerived.has('monetaryAmounts') && record.monetaryAmounts > 0) derivedChips.push({ text: `${record.monetaryAmounts.toLocaleString('de-DE')} ${record.currency}`, style: chipStyles.ACCENT_NEUTRAL, fieldKey: 'monetaryAmounts' })
+  if (!removedDerived.has('monetaryTypes') && record.monetaryTypes !== 'None') derivedChips.push({ text: record.monetaryTypes, style: chipStyles.ACCENT_NEUTRAL, fieldKey: 'monetaryTypes' })
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -241,8 +249,15 @@ function TagEditCell({ record, onChange }: {
             onClose={() => update(customTags.filter((_, j) => j !== i))}
           />
         ))}
-        {derivedChips.map((tag, i) => (
-          <Chip key={i} label={tag.text} chipStyle={tag.style as ChipStyleValue} variant={chipVariants.SUBTLE} />
+        {derivedChips.map((chip) => (
+          <Chip
+            key={chip.fieldKey}
+            label={chip.text}
+            chipStyle={chip.style as ChipStyleValue}
+            variant={chipVariants.SUBTLE}
+            closable
+            onClose={() => removeDerived(chip.fieldKey)}
+          />
         ))}
       </div>
       <Input
