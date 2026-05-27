@@ -23,7 +23,7 @@ import {
   TextArea,
   Typography,
 } from '@goat-ui/goat-ui-core'
-import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type DocumentStatus } from './documents'
+import { documents, DOCUMENT_SNIPPETS, type MetadataDocument } from './documents'
 
 const { colorPalette, spacing } = constants
 const TOP_BAR_BG = '#1e1f2e'
@@ -277,7 +277,7 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
             </div>
           }
           variant={propertyItemVariants.HORIZONTAL}
-          labelProps={{ ...PROP_LABEL, style: { alignSelf: 'flex-start' } }}
+          labelProps={{ ...PROP_LABEL }}
         />
       </PropRow>
     </>

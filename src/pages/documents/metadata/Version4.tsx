@@ -225,7 +225,7 @@ export default function MetadataVersion4() {
   const [isUploading, setIsUploading] = useState(false)
   const [tempDocs, setTempDocs] = useState<MetadataDocument[]>([])
   const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...documents])
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH)
+  const [, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH)
 
   const [modalDoc, setModalDoc] = useState<MetadataDocument | null>(null)
   const [editingDomain, setEditingDomain] = useState('')
@@ -590,9 +590,6 @@ export default function MetadataVersion4() {
               columns={columns as never}
               pagination={false}
               innerLoading={isUploading || isSearching}
-              onRow={() => ({
-                style: { height: 72 },
-              })}
             />
           )}
         </div>

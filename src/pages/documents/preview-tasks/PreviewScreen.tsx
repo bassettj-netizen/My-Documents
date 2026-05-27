@@ -646,9 +646,9 @@ function TasksPanel({ doc, taskStates, expandedTasks, onRun, onToggle }: {
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <Typography size="base-sm" color="neutral-darken2" style={{ marginBottom: 4 }}>
-        Run AI tasks on <strong>{doc.name}</strong>
-      </Typography>
+      <div style={{ marginBottom: 4 }}>
+        <Typography size="base-sm" color="neutral-darken2">Run AI tasks on <strong>{doc.name}</strong></Typography>
+      </div>
       {TASK_DEFS.map(task => {
         const state = taskStates[task.id]
         const isRunning = state?.status === 'running'
@@ -728,7 +728,7 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
           label="Tags"
           value={<div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{tags.map((tag, i) => <Chip key={i} label={tag.text} chipStyle={tag.style as ChipStyleValue} variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE} />)}</div>}
           variant={propertyItemVariants.HORIZONTAL}
-          labelProps={{ ...PROP_LABEL, style: { alignSelf: 'flex-start' } }}
+          labelProps={{ ...PROP_LABEL }}
         />
       </PropRow>
     </>

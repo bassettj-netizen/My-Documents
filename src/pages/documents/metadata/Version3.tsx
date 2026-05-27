@@ -511,7 +511,7 @@ export default function MetadataUserTestingV2() {
     for (const fieldKey of pendingRemovedDerivedRef.current) {
       if (fieldKey === 'monetaryAmounts') updated.monetaryAmounts = 0
       else if (fieldKey === 'monetaryTypes') updated.monetaryTypes = 'None'
-      else (updated as Record<string, unknown>)[fieldKey] = '—'
+      else (updated as unknown as Record<string, unknown>)[fieldKey] = '—'
     }
     handleSave(updated)
     setEditingKey(null)

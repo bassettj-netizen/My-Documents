@@ -335,8 +335,6 @@ export default function PreviewTasksPreviewScreenV2() {
         title: 'Document details updated successfully',
         placement: toastPlacements.BOTTOM_LEFT,
         duration: 4,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        style: { minWidth: 360 } as any,
       })
     }, 1000)
   }
@@ -410,8 +408,6 @@ export default function PreviewTasksPreviewScreenV2() {
       title: 'Text updated successfully',
       placement: toastPlacements.BOTTOM_LEFT,
       duration: 3,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      style: { minWidth: 300 } as any,
     })
     setInlineEditState(null)
     setInlineEditText('')
@@ -446,7 +442,7 @@ export default function PreviewTasksPreviewScreenV2() {
       label: 'Tasks',
       content: (
         <div style={{ paddingTop: 16 }}>
-          <TasksPanel doc={displayDoc} taskStates={taskStates} onRun={runTask} />
+          <TasksPanel taskStates={taskStates} onRun={runTask} />
         </div>
       ),
     },
@@ -570,8 +566,7 @@ export default function PreviewTasksPreviewScreenV2() {
 
 // ─── Tasks panel ──────────────────────────────────────────────────────────────
 
-function TasksPanel({ doc, taskStates, onRun }: {
-  doc: MetadataDocument
+function TasksPanel({ taskStates, onRun }: {
   taskStates: Record<string, TaskState>
   onRun: (taskId: string) => void
 }) {
@@ -672,7 +667,7 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
           label="Tags"
           value={<div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{tags.map((tag, i) => <Chip key={i} label={tag.text} chipStyle={tag.style as ChipStyleValue} variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE} />)}</div>}
           variant={propertyItemVariants.HORIZONTAL}
-          labelProps={{ ...PROP_LABEL, style: { alignSelf: 'flex-start' } }}
+          labelProps={{ ...PROP_LABEL }}
         />
       </PropRow>
     </>
@@ -680,12 +675,12 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
 }
 
 function EditPanel({
-  displayDoc, editingName, setEditingName, editingDomain, setEditingDomain,
+  displayDoc, editingName, setEditingName: _setEditingName, editingDomain, setEditingDomain,
   editingCustomTags, setEditingCustomTags, editingRemovedFields, setEditingRemovedFields,
   editingSummary, setEditingSummary, tagInputVal, setTagInputVal, addTag, onSave, onCancel,
 }: {
   displayDoc: MetadataDocument
-  editingName: string; setEditingName: (v: string) => void
+  editingName: string; setEditingName: (_v: string) => void
   editingDomain: string; setEditingDomain: (v: string) => void
   editingCustomTags: Tag[]; setEditingCustomTags: React.Dispatch<React.SetStateAction<Tag[]>>
   editingRemovedFields: Set<string>; setEditingRemovedFields: React.Dispatch<React.SetStateAction<Set<string>>>
