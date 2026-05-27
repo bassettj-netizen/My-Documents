@@ -32,7 +32,25 @@
       "Bash(npm run *)",
       "Bash(git -C /Users/james.bassett/Desktop/Claude_stuff/my-app status)",
       "Bash(git -C /Users/james.bassett/Desktop/Claude_stuff/my-app diff)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(cp /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata-user-testing/documents.ts /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/documents.ts)",
+      "Bash(cp /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata-user-testing/Version1.tsx /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/Version2.tsx)",
+      "Bash(cp /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata-user-testing/Version2.tsx /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/Version3.tsx)",
+      "Bash(cp /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata-user-testing/Version3.tsx /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/Version4.tsx)",
+      "Bash(cp /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata-user-testing/PreviewScreen.tsx /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/PreviewScreenV2.tsx)",
+      "Bash(sed -i '' 's|/my-documents/mockup/version-1|/my-documents/metadata/version-2|g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/Version2.tsx)",
+      "Bash(sed -i '' 's|/my-documents/mockup/version-2|/my-documents/metadata/version-3|g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/Version3.tsx)",
+      "Bash(sed -i '' 's|/my-documents/mockup/version-3|/my-documents/metadata/version-4|g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/Version4.tsx)",
+      "Bash(sed -i '' 's|/my-documents/mockup/version-1|/my-documents/metadata/version-2|g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/PreviewScreenV2.tsx)",
+      "Bash(sed -i '' 's|/my-documents/mockup/version-3|/my-documents/metadata/version-4|g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/metadata/PreviewScreenV4.tsx)",
+      "Bash(sed -i '' 's|/my-documents/metadata/version-4|/my-documents/bulk-edit/version-1|g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/bulk-edit/Version1.tsx)",
+      "Bash(sed -i '' 's|/my-documents/metadata/version-4|/my-documents/bulk-edit/version-1|g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/bulk-edit/PreviewScreen.tsx)",
+      "Bash(curl -s http://localhost:5174/)",
+      "Bash(npx chromium-cli *)",
+      "Bash(npx playwright *)",
+      "Bash(pkill -f \"vite --port 5174\")",
+      "Bash(grep -iE \"Outlined$\")",
+      "Bash(grep -o \"spacing.*function\\\\|spacing=function\\\\|spacing:function\\\\|spacing\\(.\\\\{1,30\\\\}\\)\" /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/constants/index.d.ts)"
     ]
   }
 }

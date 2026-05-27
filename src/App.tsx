@@ -18,9 +18,16 @@ import DocumentsV3 from './pages/documents/V3'
 import SearchDocumentsVersion1 from './pages/documents/search-documents/Version1'
 import SearchDocumentsVersion2 from './pages/documents/search-documents/Version2'
 import MetadataVersion1 from './pages/documents/metadata/Version1'
-import MetadataUserTestingV1 from './pages/documents/metadata-user-testing/Version1'
-import MetadataUserTestingV2 from './pages/documents/metadata-user-testing/Version2'
-import MetadataUserTestingPreview from './pages/documents/metadata-user-testing/PreviewScreen'
+import MetadataVersion2 from './pages/documents/metadata/Version2'
+import MetadataVersion3 from './pages/documents/metadata/Version3'
+import MetadataVersion4 from './pages/documents/metadata/Version4'
+import MetadataPreviewScreenV2 from './pages/documents/metadata/PreviewScreenV2'
+import BulkEditV1 from './pages/documents/bulk-edit/Version1'
+import BulkEditPreview from './pages/documents/bulk-edit/PreviewScreen'
+import PreviewTasksV1 from './pages/documents/preview-tasks/Version1'
+import PreviewTasksPreviewScreen from './pages/documents/preview-tasks/PreviewScreen'
+import PreviewTasksV2 from './pages/documents/preview-tasks/Version2'
+import PreviewTasksPreviewScreenV2 from './pages/documents/preview-tasks/PreviewScreenV2'
 import DocumentPreviewV1 from './pages/documents/document-preview/Version1'
 import DocumentPreviewV2 from './pages/documents/document-preview/Version2'
 import DocumentPreviewV3 from './pages/documents/document-preview/Version3'
@@ -88,8 +95,12 @@ function App() {
           <Route path="/my-documents/search-documents/version-1" element={<SearchDocumentsVersion1 />} />
           <Route path="/my-documents/search-documents/version-2" element={<SearchDocumentsVersion2 />} />
           <Route path="/my-documents/metadata/version-1" element={<MetadataVersion1 />} />
-          <Route path="/my-documents/mockup/version-1" element={<MetadataUserTestingV1 />} />
-          <Route path="/my-documents/mockup/version-2" element={<MetadataUserTestingV2 />} />
+          <Route path="/my-documents/metadata/version-2" element={<MetadataVersion2 />} />
+          <Route path="/my-documents/metadata/version-3" element={<MetadataVersion3 />} />
+          <Route path="/my-documents/metadata/version-4" element={<MetadataVersion4 />} />
+          <Route path="/my-documents/bulk-edit/version-1" element={<BulkEditV1 />} />
+          <Route path="/my-documents/preview-tasks/version-1" element={<PreviewTasksV1 />} />
+          <Route path="/my-documents/preview-tasks/version-2" element={<PreviewTasksV2 />} />
           <Route path="/my-documents/document-preview/version-1" element={<DocumentPreviewV1 />} />
           <Route path="/my-documents/document-preview/version-2" element={<DocumentPreviewV2 />} />
           <Route path="/my-documents/document-preview/version-3" element={<DocumentPreviewV3 />} />
@@ -103,8 +114,12 @@ function App() {
         <Route path="/my-documents/document-preview/version-2/:id" element={<PreviewScreenV2 />} />
         <Route path="/my-documents/document-preview/version-3/:id" element={<PreviewScreenV3 />} />
         <Route path="/my-documents/document-preview/version-4/:id" element={<PreviewScreenV4 />} />
-        <Route path="/my-documents/mockup/version-1/:id" element={<MetadataUserTestingPreview />} />
-        <Route path="/my-documents/mockup/version-2/:id" element={<MetadataUserTestingPreview />} />
+        <Route path="/my-documents/metadata/version-2/:id" element={<MetadataPreviewScreenV2 />} />
+        <Route path="/my-documents/metadata/version-3/:id" element={<MetadataPreviewScreenV2 />} />
+        <Route path="/my-documents/metadata/version-4/:id" element={<BulkEditPreview />} />
+        <Route path="/my-documents/bulk-edit/version-1/:id" element={<BulkEditPreview />} />
+        <Route path="/my-documents/preview-tasks/version-1/:id" element={<PreviewTasksPreviewScreen />} />
+        <Route path="/my-documents/preview-tasks/version-2/:id" element={<PreviewTasksPreviewScreenV2 />} />
       </Routes>
     </ThemeProvider>
   )

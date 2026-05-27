@@ -116,7 +116,7 @@ export default function MetadataPreviewScreen() {
     setRemovedFields(new Set())
   }, [id])
 
-  if (!foundDoc) return <Navigate to="/my-documents/mockup/version-1" replace />
+  if (!foundDoc) return <Navigate to="/my-documents/metadata/version-2" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const filename = `${displayDoc.name}.${displayDoc.fileFormat.toLowerCase()}`

@@ -37,3 +37,9 @@ body {
   background-color: #F5F9FF; /* neutral-lighten5 */
 }
 
+/* Bottom-left notifications: spacing-4 (16px) margin from bottom and left edges */
+.ant-notification-bottomLeft {
+  bottom: 16px !important;
+  left: 16px !important;
+}
+

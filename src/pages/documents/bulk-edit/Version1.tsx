@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  ButtonDanger,
   ButtonGhost,
   buttonShapes,
   ButtonPrimary,
   ButtonTertiary,
+  Checkbox,
   Chip,
   chipStyles,
   chipVariants,
@@ -17,9 +19,11 @@ import {
   Icon,
   iconType,
   Input,
+  LAYOUT_SIDEBAR_ID,
   Pagination,
   Select,
   SearchBar,
+  SIDEBAR_COLLAPSED_WIDTH,
   Skeleton,
   skeletonVariants,
   Spinner,
@@ -29,20 +33,14 @@ import {
   Typography,
   useNotifications,
 } from '@goat-ui/goat-ui-core'
-import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type DocumentStatus, type FileFormat } from './documents'
+import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type FileFormat } from './documents'
 
 const { colorPalette, spacing } = constants
 const PAGE_SIZE = 10
 
-const STATUS_CHIP_STYLE: Record<DocumentStatus, ChipStyleValue> = {
-  Approved: chipStyles.SEMANTIC_SUCCESS,
-  Draft: chipStyles.ACCENT_BLUE,
-  Superseded: chipStyles.ACCENT_NEUTRAL,
-}
-
 const UPLOAD_FORMATS = new Set<string>(['PDF', 'DOCX', 'XLSX', 'PPTX'])
 const UPLOAD_KEY = 'upload-in-progress'
-const NON_EDITABLE_KEYS = new Set(['fileFormat', 'fileSize', 'uploadedDate'])
+const NON_EDITABLE_KEYS = new Set(['fileFormat', 'fileSize', 'uploadedDate', 'name'])
 
 const DOMAIN_OPTIONS = [
   { label: 'HR', value: 'HR' },
@@ -50,18 +48,10 @@ const DOMAIN_OPTIONS = [
   { label: 'Tax', value: 'Tax' },
 ]
 
-const STATUS_OPTIONS = [
-  { label: 'Approved', value: 'Approved' },
-  { label: 'Draft', value: 'Draft' },
-  { label: 'Superseded', value: 'Superseded' },
-]
-
 const FIXED_COLS = [
   { key: 'name',         label: 'Document Name' },
-  { key: 'year',         label: 'Year'          },
-  { key: 'documentType', label: 'Document Type' },
+  { key: 'documentType', label: 'Type'          },
   { key: 'tags',         label: 'Tags'          },
-  { key: 'status',       label: 'Status'        },
   { key: 'uploadedDate', label: 'Uploaded'      },
   { key: 'fileSize',     label: 'Size'          },
   { key: 'fileFormat',   label: 'Format'        },
@@ -237,6 +227,14 @@ function TagEditCell({ record, onChange, onRemoveDerived }: {
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Input
+        value={inputVal}
+        placeholder="Add tag…"
+        onChange={e => setInputVal(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.stopPropagation(); addTag() }
+        }}
+      />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'flex-start' }}>
         <Chip label={record.domain} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />
         {customTags.map((tag, i) => (
@@ -260,14 +258,6 @@ function TagEditCell({ record, onChange, onRemoveDerived }: {
           />
         ))}
       </div>
-      <Input
-        value={inputVal}
-        placeholder="Add tag…"
-        onChange={e => setInputVal(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') { e.stopPropagation(); addTag() }
-        }}
-      />
     </div>
   )
 }
@@ -282,7 +272,7 @@ function EditableCell({ editable, isEditing, dataIndex, initialValue, onValueCha
 
   if (!editable) return <td {...restProps}>{children}</td>
 
-  const isSelectField = dataIndex === 'domain' || dataIndex === 'status'
+  const isSelectField = dataIndex === 'domain'
 
   return (
     <td {...restProps}>
@@ -292,10 +282,7 @@ function EditableCell({ editable, isEditing, dataIndex, initialValue, onValueCha
             <Select
               name={dataIndex}
               value={fieldValue}
-              options={dataIndex === 'domain' ? DOMAIN_OPTIONS : STATUS_OPTIONS}
-              optionRender={dataIndex === 'status' ? option => (
-                <Chip label={String(option.label)} chipStyle={STATUS_CHIP_STYLE[option.value as DocumentStatus]} variant={chipVariants.SUBTLE} />
-              ) : undefined}
+              options={DOMAIN_OPTIONS}
               onChange={v => {
                 const val = String(v)
                 setFieldValue(val)
@@ -353,7 +340,16 @@ function simulateExtraction(nameWithoutExt: string): { domain: string; documentT
   return { domain, documentType, year, jurisdiction }
 }
 
-export default function MetadataUserTestingV2() {
+function CompareIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="2" width="6" height="12" rx="1" stroke="currentColor" strokeWidth="1" />
+      <rect x="9" y="2" width="6" height="12" rx="1" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  )
+}
+
+export default function MetadataUserTestingV3() {
   const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -366,13 +362,27 @@ export default function MetadataUserTestingV2() {
   const [tempDocs, setTempDocs] = useState<MetadataDocument[]>([])
   const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...documents])
   const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH)
   const pendingEditsRef = useRef<Record<string, string>>({})
   const pendingTagsRef = useRef<Tag[] | null>(null)
+  const pendingRemovedDerivedRef = useRef<Set<string>>(new Set())
   const searchBarWrapperRef = useRef<HTMLDivElement>(null)
   const pendingFilesRef = useRef<File[]>([])
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAppliedQueryRef = useRef('')
   const { notification } = useNotifications()
+
+  useEffect(() => {
+    const sidebar = document.getElementById(LAYOUT_SIDEBAR_ID)
+    if (!sidebar) return
+    setSidebarWidth(sidebar.getBoundingClientRect().width)
+    const observer = new ResizeObserver(entries => {
+      setSidebarWidth(entries[0].contentRect.width)
+    })
+    observer.observe(sidebar)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => setIsInitialLoading(false), 800)
@@ -457,7 +467,7 @@ export default function MetadataUserTestingV2() {
             name: f.name.replace(/\.[^/.]+$/, ''),
             domain: extracted.domain,
             documentType: extracted.documentType,
-            status: 'Draft' as DocumentStatus,
+            status: 'Draft' as const,
             namedEntity: '—',
             namedEntityId: '—',
             year: extracted.year,
@@ -500,28 +510,106 @@ export default function MetadataUserTestingV2() {
   const startEdit = useCallback((record: MetadataDocument) => {
     pendingEditsRef.current = {}
     pendingTagsRef.current = null
+    pendingRemovedDerivedRef.current = new Set()
     setEditingKey(record._id)
   }, [])
 
   const saveEdit = useCallback((record: MetadataDocument) => {
     const updated = { ...record, ...pendingEditsRef.current } as MetadataDocument
     if (pendingTagsRef.current !== null) updated.tagList = pendingTagsRef.current
+    for (const fieldKey of pendingRemovedDerivedRef.current) {
+      if (fieldKey === 'monetaryAmounts') updated.monetaryAmounts = 0
+      else if (fieldKey === 'monetaryTypes') updated.monetaryTypes = 'None'
+      else (updated as Record<string, unknown>)[fieldKey] = '—'
+    }
     handleSave(updated)
     setEditingKey(null)
     pendingEditsRef.current = {}
     pendingTagsRef.current = null
+    pendingRemovedDerivedRef.current = new Set()
   }, [handleSave])
 
   const cancelEdit = useCallback(() => {
     setEditingKey(null)
     pendingEditsRef.current = {}
     pendingTagsRef.current = null
+    pendingRemovedDerivedRef.current = new Set()
   }, [])
 
+  const handleBulkDelete = useCallback(() => {
+    setTempDocs(prev => prev.filter(d => !selectedKeys.has(d._id)))
+    setLocalDocs(prev => prev.filter(d => !selectedKeys.has(d._id)))
+    setSelectedKeys(new Set())
+  }, [selectedKeys])
+
+  const allDocs = useMemo(() => [...tempDocs, ...localDocs], [tempDocs, localDocs])
+
+  const filteredDocs = useMemo(
+    () =>
+      allDocs.filter((doc) => {
+        const q = appliedQuery.toLowerCase()
+        return (
+          doc.name.toLowerCase().includes(q) ||
+          doc.namedEntity.toLowerCase().includes(q) ||
+          doc.domain.toLowerCase().includes(q) ||
+          doc.jurisdiction.toLowerCase().includes(q) ||
+          doc.documentType.toLowerCase().includes(q)
+        )
+      }),
+    [allDocs, appliedQuery],
+  )
+
+  const pagedDocs = useMemo(
+    () => filteredDocs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredDocs, currentPage],
+  )
+
+  const allSelected = filteredDocs.length > 0 && filteredDocs.every(d => selectedKeys.has(d._id))
+  const someSelected = filteredDocs.some(d => selectedKeys.has(d._id))
+
   const columns = useMemo(() => {
+    const checkboxCol = {
+      title: () => (
+        <Checkbox
+          checked={allSelected}
+          indeterminate={someSelected && !allSelected}
+          onChange={e => {
+            setSelectedKeys(prev => {
+              const next = new Set(prev)
+              filteredDocs.forEach(d => {
+                if (e.target.checked) next.add(d._id)
+                else next.delete(d._id)
+              })
+              return next
+            })
+          }}
+        />
+      ),
+      key: 'checkbox',
+      width: 48,
+      onCell: (record: MetadataDocument) => ({
+        style: { verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
+        onClick: (e: React.MouseEvent) => e.stopPropagation(),
+      }),
+      render: (_: unknown, record: MetadataDocument) => (
+        <Checkbox
+          checked={selectedKeys.has(record._id)}
+          onChange={e => {
+            setSelectedKeys(prev => {
+              const next = new Set(prev)
+              if (e.target.checked) next.add(record._id)
+              else next.delete(record._id)
+              return next
+            })
+          }}
+          onClick={e => e.stopPropagation()}
+        />
+      ),
+    }
+
     const visible: object[] = FIXED_COLS.map(({ key, label }) => {
       const isNonEditable = NON_EDITABLE_KEYS.has(key) || key === 'tags'
-      const needsEllipsis = key !== 'tags' && key !== 'documentType' && key !== 'status'
+      const needsEllipsis = key !== 'tags' && key !== 'documentType'
       const col: Record<string, unknown> = {
         title: label,
         key,
@@ -529,8 +617,8 @@ export default function MetadataUserTestingV2() {
         ellipsis: needsEllipsis,
         sorter: key !== 'tags' ? makeSorter(key) : undefined,
         onCell: (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/mockup/version-2/${record._id}`),
-          style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : undefined },
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/bulk-edit/version-1/${record._id}`),
+          style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           ...(isNonEditable ? {} : {
             editable: true,
             isEditing: editingKey === record._id,
@@ -541,8 +629,10 @@ export default function MetadataUserTestingV2() {
         }),
       }
 
-      if (key === 'year') col.width = 70
-      if (key === 'uploadedDate') col.width = 110
+      if (key === 'uploadedDate') {
+        col.width = 110
+        col.render = (val: string) => formatDate(val)
+      }
       if (key === 'fileSize') col.width = 80
       if (key === 'fileFormat') col.width = 90
 
@@ -561,35 +651,22 @@ export default function MetadataUserTestingV2() {
           </div>
         )
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/mockup/version-2/${record._id}`),
-          style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : undefined },
-          editable: true,
-          isEditing: editingKey === record._id,
-          dataIndex: key,
-          initialValue: record[key as keyof MetadataDocument],
-          onValueChange: handleCellChange,
-          docLabel: record.label,
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/bulk-edit/version-1/${record._id}`),
+          style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
         })
       }
 
       if (key === 'documentType') {
         col.width = 160
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/mockup/version-2/${record._id}`),
-          style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : undefined },
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/bulk-edit/version-1/${record._id}`),
+          style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           editable: true,
           isEditing: editingKey === record._id,
           dataIndex: key,
           initialValue: record[key as keyof MetadataDocument],
           onValueChange: handleCellChange,
         })
-      }
-
-      if (key === 'status') {
-        col.width = 130
-        col.render = (_: unknown, record: MetadataDocument) => (
-          <Chip label={record.status} chipStyle={STATUS_CHIP_STYLE[record.status]} variant={chipVariants.SUBTLE} />
-        )
       }
 
       if (key === 'tags') {
@@ -599,6 +676,7 @@ export default function MetadataUserTestingV2() {
               <TagEditCell
                 record={record}
                 onChange={tags => { pendingTagsRef.current = tags }}
+                onRemoveDerived={fieldKey => { pendingRemovedDerivedRef.current.add(fieldKey) }}
               />
             )
           }
@@ -613,7 +691,7 @@ export default function MetadataUserTestingV2() {
       title: '',
       key: 'actions',
       width: editingKey ? 160 : 56,
-      onCell: (record: MetadataDocument) => ({ style: { verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : undefined } }),
+      onCell: (record: MetadataDocument) => ({ style: { verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined } }),
       render: (_: unknown, record: MetadataDocument) => {
         if (editingKey === record._id) {
           return (
@@ -640,10 +718,8 @@ export default function MetadataUserTestingV2() {
       },
     })
 
-    return visible
-  }, [navigate, editingKey, handleCellChange, startEdit, saveEdit, cancelEdit])
-
-  const allDocs = useMemo(() => [...tempDocs, ...localDocs], [tempDocs, localDocs])
+    return [checkboxCol, ...visible]
+  }, [navigate, editingKey, selectedKeys, handleCellChange, startEdit, saveEdit, cancelEdit, filteredDocs, allSelected, someSelected])
 
   const searchResults = useMemo((): SearchResult[] => {
     const q = searchInput.trim()
@@ -674,26 +750,6 @@ export default function MetadataUserTestingV2() {
     results.sort((a, b) => (b.nameMatch ? 1 : 0) - (a.nameMatch ? 1 : 0))
     return results.slice(0, 5)
   }, [searchInput, allDocs])
-
-  const filteredDocs = useMemo(
-    () =>
-      allDocs.filter((doc) => {
-        const q = appliedQuery.toLowerCase()
-        return (
-          doc.name.toLowerCase().includes(q) ||
-          doc.namedEntity.toLowerCase().includes(q) ||
-          doc.domain.toLowerCase().includes(q) ||
-          doc.jurisdiction.toLowerCase().includes(q) ||
-          doc.documentType.toLowerCase().includes(q)
-        )
-      }),
-    [allDocs, appliedQuery],
-  )
-
-  const pagedDocs = useMemo(
-    () => filteredDocs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [filteredDocs, currentPage],
-  )
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, backgroundColor: colorPalette.white, height: '100%', overflow: 'hidden' }}>
@@ -761,7 +817,7 @@ export default function MetadataUserTestingV2() {
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       onClick={() => {
-                        navigate(`/my-documents/mockup/version-2/${doc._id}`)
+                        navigate(`/my-documents/bulk-edit/version-1/${doc._id}`)
                         setShowDropdown(false)
                       }}
                     >
@@ -823,39 +879,78 @@ export default function MetadataUserTestingV2() {
         </FileUploader>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        {isInitialLoading ? (
-          <Skeleton
-            variant={skeletonVariants.TEXT}
-            title
-            paragraph={{ rows: PAGE_SIZE }}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {isInitialLoading ? (
+            <Skeleton
+              variant={skeletonVariants.TEXT}
+              title
+              paragraph={{ rows: PAGE_SIZE }}
+            />
+          ) : (
+            <Table
+              dataSource={pagedDocs}
+              columns={columns as never}
+              pagination={false}
+              innerLoading={isUploading || isSearching}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              {...({ components: { body: { cell: EditableCell } } } as any)}
+              onRow={(record: MetadataDocument) => ({
+                style: {
+                  height: 72,
+                  ...(editingKey === record._id ? { backgroundColor: '#F5F9FF' } : selectedKeys.has(record._id) ? { backgroundColor: '#EEF4FF' } : {}),
+                },
+              })}
+            />
+          )}
+        </div>
+
+        <div style={{ flexShrink: 0 }}>
+          <Pagination
+            current={currentPage}
+            total={filteredDocs.length}
+            pageSize={PAGE_SIZE}
+            onChange={(page) => setCurrentPage(page)}
           />
-        ) : (
-          <Table
-            dataSource={pagedDocs}
-            columns={columns as never}
-            pagination={false}
-            innerLoading={isUploading || isSearching}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            {...({ components: { body: { cell: EditableCell } } } as any)}
-            onRow={(record: MetadataDocument) => ({
-              style: {
-                height: 72,
-                ...(editingKey === record._id ? { backgroundColor: '#F5F9FF' } : {}),
-              },
-            })}
-          />
-        )}
+        </div>
       </div>
 
-      <div style={{ flexShrink: 0 }}>
-        <Pagination
-          current={currentPage}
-          total={filteredDocs.length}
-          pageSize={PAGE_SIZE}
-          onChange={(page) => setCurrentPage(page)}
-        />
-      </div>
+      {selectedKeys.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: spacing(2),
+          left: sidebarWidth + spacing(2),
+          right: spacing(2),
+          height: 56,
+          backgroundColor: colorPalette.neutral.lighten1,
+          borderRadius: 8,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: `0 ${spacing(6)}px`,
+          zIndex: 500,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+              <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.CrossOutlined} onClick={() => setSelectedKeys(new Set())} />
+              <Typography color="neutral-darken5">{selectedKeys.size} selected</Typography>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2), marginLeft: spacing(4) }}>
+              <ButtonTertiary rightIcon={iconType.ExternalLinkOutlined} onClick={() => console.log('Ask CoPilot')}>Ask CoPilot</ButtonTertiary>
+              {selectedKeys.size > 1 && (
+                <ButtonTertiary onClick={() => console.log('Compare')}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <CompareIcon />
+                    Compare
+                  </span>
+                </ButtonTertiary>
+              )}
+              <ButtonTertiary leftIcon={iconType.DownloadOutlined} onClick={() => console.log('Download')}>Download</ButtonTertiary>
+            </div>
+          </div>
+          <ButtonDanger leftIcon={iconType.TrashOutlined} onClick={handleBulkDelete}>Delete</ButtonDanger>
+        </div>
+      )}
 
       <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: spacing(2), paddingTop: spacing(2), paddingBottom: spacing(2) }}>
         <Icon type={iconType.ShieldCheckFilled} color="primary-base" size={16} />
