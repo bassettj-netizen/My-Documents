@@ -32,11 +32,6 @@ const { colorPalette, spacing } = constants
 const TOP_BAR_BG = '#1e1f2e'
 const SUMMARY_MAX = 500
 
-const DOMAIN_OPTIONS = [
-  { label: 'HR', value: 'HR' },
-  { label: 'HR/Tax', value: 'HR/Tax' },
-  { label: 'Tax', value: 'Tax' },
-]
 
 const DOCUMENT_TYPE_OPTIONS = [
   'Compliance Guide', 'Combined Policy', 'Expense Policy', 'HR Guide', 'HR Policy',
@@ -166,7 +161,7 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
               style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
             >
               <Typography size="base" color="primary-base">{r.name}</Typography>
-              <Icon type={iconType.ExternalLinkOutlined} size={14} color="primary-base" />
+              <Icon type={iconType.ExternalLinkOutlined} size={12} color="primary-base" />
             </div>
           ))}
         </div>
@@ -672,7 +667,7 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
 }
 
 function EditPanel({
-  displayDoc, editingName, setEditingName: _setEditingName, editingDomain, setEditingDomain,
+  displayDoc, editingName, setEditingName: _setEditingName, editingDomain: _editingDomain, setEditingDomain: _setEditingDomain,
   editingDocumentType, setEditingDocumentType,
   editingCustomTags, setEditingCustomTags, editingRemovedFields, setEditingRemovedFields,
   editingSummary, setEditingSummary, tagInputVal, setTagInputVal, addTag, onSave, onCancel,

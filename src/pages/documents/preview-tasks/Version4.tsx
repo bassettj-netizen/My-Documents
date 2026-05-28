@@ -91,7 +91,6 @@ function makeSorter(key: string) {
   }
 }
 
-const NEUTRAL_LIGHTEN3 = '#E5E9F6'
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
