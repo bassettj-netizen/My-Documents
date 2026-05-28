@@ -20,7 +20,6 @@ import {
   Select,
   Skeleton,
   skeletonVariants,
-  Tabs,
   TextArea,
   Toolbar,
   Typography,
@@ -249,7 +248,6 @@ export default function PreviewTasksPreviewScreenV5() {
   const [editingRemovedFields, setEditingRemovedFields] = useState<Set<string>>(new Set())
   const [editingSummary, setEditingSummary] = useState('')
   const [tagInputVal, setTagInputVal] = useState('')
-  const [activeTab, setActiveTab] = useState('details')
   const [textSelection, setTextSelection] = useState<SelectionPos | null>(null)
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
 
@@ -432,11 +430,6 @@ export default function PreviewTasksPreviewScreenV5() {
     setTagInputVal('')
   }
 
-  const handleTabChange = (key: string) => {
-    setActiveTab(key)
-    if (isEditing) cancelEdit()
-  }
-
   const runTask = (taskId: string) => {
     setTaskStates(prev => ({ ...prev, [taskId]: { status: 'running', result: null } }))
     setTimeout(() => {
@@ -483,42 +476,6 @@ export default function PreviewTasksPreviewScreenV5() {
     setHasDocChanges(false)
     setIsDocEditing(false)
   }
-
-  const tabs = [
-    {
-      key: 'details',
-      label: 'Details',
-      content: (
-        <div style={{ paddingTop: 16 }}>
-          {isSaving
-            ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '55%' }} paragraph={{ rows: 8 }} />
-            : isEditing
-            ? <EditPanel
-                displayDoc={displayDoc}
-                editingName={editingName} setEditingName={setEditingName}
-                editingDomain={editingDomain} setEditingDomain={setEditingDomain}
-                editingDocumentType={editingDocumentType} setEditingDocumentType={setEditingDocumentType}
-                editingCustomTags={editingCustomTags} setEditingCustomTags={setEditingCustomTags}
-                editingRemovedFields={editingRemovedFields} setEditingRemovedFields={setEditingRemovedFields}
-                editingSummary={editingSummary} setEditingSummary={setEditingSummary}
-                tagInputVal={tagInputVal} setTagInputVal={setTagInputVal}
-                addTag={addTag} onSave={saveEdit} onCancel={cancelEdit}
-              />
-            : <ViewPanel displayDoc={displayDoc} displaySummary={displaySummary} onEdit={startEdit} />
-          }
-        </div>
-      ),
-    },
-    {
-      key: 'tasks',
-      label: 'Tasks',
-      content: (
-        <div style={{ paddingTop: 16 }}>
-          <TasksPanel taskStates={taskStates} onRun={runTask} />
-        </div>
-      ),
-    },
-  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F5F9FF' }}>
@@ -590,11 +547,39 @@ export default function PreviewTasksPreviewScreenV5() {
         </div>
 
         {/* Right panel */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="preview-right-panel" style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: `${spacing(2)}px ${spacing(4)}px ${spacing(4)}px` }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Document Details */}
+          <div style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: `${spacing(4)}px` }}>
             {isLoading
-              ? <div style={{ padding: '24px 0' }}><Skeleton variant={skeletonVariants.TEXT} title={{ width: '50%' }} paragraph={{ rows: 10 }} /></div>
-              : <Tabs options={tabs} activeKey={activeTab} onChange={handleTabChange} />
+              ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '50%' }} paragraph={{ rows: 10 }} />
+              : isSaving
+              ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '55%' }} paragraph={{ rows: 8 }} />
+              : isEditing
+              ? <EditPanel
+                  displayDoc={displayDoc}
+                  editingName={editingName} setEditingName={setEditingName}
+                  editingDomain={editingDomain} setEditingDomain={setEditingDomain}
+                  editingDocumentType={editingDocumentType} setEditingDocumentType={setEditingDocumentType}
+                  editingCustomTags={editingCustomTags} setEditingCustomTags={setEditingCustomTags}
+                  editingRemovedFields={editingRemovedFields} setEditingRemovedFields={setEditingRemovedFields}
+                  editingSummary={editingSummary} setEditingSummary={setEditingSummary}
+                  tagInputVal={tagInputVal} setTagInputVal={setTagInputVal}
+                  addTag={addTag} onSave={saveEdit} onCancel={cancelEdit}
+                />
+              : <ViewPanel displayDoc={displayDoc} displaySummary={displaySummary} onEdit={startEdit} />
+            }
+          </div>
+
+          {/* Suggested Tasks */}
+          <div style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: `${spacing(4)}px` }}>
+            {isLoading
+              ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '40%' }} paragraph={{ rows: 6 }} />
+              : <>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: spacing(3) }}>
+                    <Typography size="base" weight="semibold" color="neutral-darken5">Suggested Tasks</Typography>
+                  </div>
+                  <TasksPanel taskStates={taskStates} onRun={runTask} />
+                </>
             }
           </div>
         </div>
@@ -644,15 +629,7 @@ export default function PreviewTasksPreviewScreenV5() {
         </div>
       )}
 
-      <style>{`
-        .preview-right-panel .ant-tabs-nav {
-          border-bottom: 1px solid ${colorPalette.neutral.lighten3} !important;
-          margin-bottom: 0 !important;
-        }
-        .preview-right-panel .ant-tabs-nav::before {
-          border-bottom-color: ${colorPalette.neutral.lighten3} !important;
-        }
-      `}</style>
+
     </div>
   )
 }
