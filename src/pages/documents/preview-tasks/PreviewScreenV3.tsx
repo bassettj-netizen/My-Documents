@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, type ReactNode } from 'react'
+// V3: replaces inline-edit textarea popup with direct contentEditable editing in the document body
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { theme as antTheme } from 'antd'
 import {
   ButtonGhost,
   ButtonPrimary,
@@ -17,9 +17,9 @@ import {
   Icon,
   iconType,
   Input,
+  PropertyItem,
+  propertyItemVariants,
   Select,
-  buttonVariants,
-  Modal,
   Skeleton,
   skeletonVariants,
   Tabs,
@@ -40,18 +40,14 @@ const DOMAIN_OPTIONS = [
   { label: 'Tax', value: 'Tax' },
 ]
 
-const DOCUMENT_TYPE_OPTIONS = [
-  'Compliance Guide', 'Combined Policy', 'Expense Policy', 'HR Guide', 'HR Policy',
-  'Legal Definition Guide', 'Payroll Tax Guidance', 'Salary Policy', 'Tax Compliance Guide',
-  'Tax Guidance', 'Tax Regulation Guide', 'Tax Rule Explanation', 'Tax Treaty Guide',
-].map(t => ({ label: t, value: t }))
-
 type Tag = { text: string; style: string; variant?: string }
 type TaskId = 'extract' | 'compliance' | 'related' | 'actions'
 type TaskStatus = 'idle' | 'running' | 'done'
 interface TaskState { status: TaskStatus; result: ReactNode | null }
 interface SelectionPos { text: string; x: number; y: number; bottom: number }
 
+const PROP_LABEL = { size: 'base' as const, color: 'neutral-darken2' as const, width: '130px' }
+const PROP_VALUE = { size: 'base' as const, color: 'neutral-darken5' as const }
 
 function getDocumentTags(doc: MetadataDocument): Tag[] {
   const tags: Tag[] = []
@@ -78,19 +74,8 @@ function toRoman(n: number): string {
   return result
 }
 
-function DataRow({ label, value }: { label: ReactNode; value: ReactNode }) {
-  return (
-    <div style={{ padding: '6px 0', display: 'flex', alignItems: 'flex-start' }}>
-      <div style={{ flexShrink: 0, width: '130px' }}>
-        <Typography size="base" color="neutral-darken2">{label}</Typography>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {typeof value === 'string'
-          ? <Typography size="base" color="neutral-darken5">{value}</Typography>
-          : value}
-      </div>
-    </div>
-  )
+function PropRow({ children }: { children: ReactNode }) {
+  return <div style={{ padding: '6px 0' }}>{children}</div>
 }
 
 // ─── Task definitions ─────────────────────────────────────────────────────────
@@ -161,17 +146,15 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
       const related = documents.filter(d => d._id !== doc._id && d.domain === doc.domain).slice(0, 3)
       return (
         <div style={gap8}>
-          {related.length === 0 && <Typography size="base" color="neutral-darken2">No closely related documents found.</Typography>}
-          {related.map(r => (
-            <div
-              key={r._id}
-              onClick={() => window.open(`/my-documents/preview-tasks/version-2/${r._id}`, '_blank', 'noopener,noreferrer')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-            >
-              <Typography size="base" color="primary-base">{r.name}</Typography>
-              <Icon type={iconType.ExternalLinkOutlined} size={14} color="primary-base" />
-            </div>
-          ))}
+          <Typography size="base" color="neutral-darken2">RELATED DOCUMENTS ({related.length} found)</Typography>
+          {related.length === 0
+            ? <Typography size="base" color="neutral-darken2">No closely related documents found.</Typography>
+            : related.map(r => (
+              <div key={r._id} style={{ padding: '8px 12px', backgroundColor: '#f8f9fd', borderRadius: 6 }}>
+                <Typography size="base" weight="semibold" color="neutral-darken5">{r.name}</Typography>
+                <Typography size="base" color="neutral-darken2">{r.documentType} · {r.namedEntity}</Typography>
+              </div>
+            ))}
         </div>
       )
     }
@@ -207,7 +190,9 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
         <div style={gap8}>
           {actions.map((action, i) => (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <Typography size="base" color="neutral-darken5">{i + 1}.</Typography>
+              <div style={{ flexShrink: 0, width: 20, height: 20, borderRadius: '50%', backgroundColor: '#EEF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+                <Typography size="base-sm" color="neutral-darken5">{i + 1}</Typography>
+              </div>
               <Typography size="base" color="neutral-darken5">{action}</Typography>
             </div>
           ))}
@@ -220,17 +205,9 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
   }
 }
 
-function CopilotIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M8.00078 10.687C6.5133 10.687 5.31067 9.48436 5.31067 7.99687C5.31067 6.50939 6.5133 5.30677 8.00078 5.30677C9.48826 5.30677 10.6909 6.50939 10.6909 7.99687C10.6909 9.48436 9.48826 10.687 8.00078 10.687ZM8.00078 6.09797C6.9564 6.09797 6.10188 6.9525 6.10188 7.99687C6.10188 9.04125 6.9564 9.89578 8.00078 9.89578C9.04516 9.89578 9.89969 9.04125 9.89969 7.99687C9.89969 6.9525 9.04516 6.09797 8.00078 6.09797ZM8.01662 15.181C6.38673 15.181 5.24739 13.9151 5.24739 12.1111C5.19991 11.0035 4.47199 10.7661 3.87067 10.7661C2.92122 10.7661 2.08254 10.4496 1.51287 9.86414C1.03814 9.37359 0.800781 8.72479 0.800781 7.99687C0.83243 5.9872 2.41485 5.24348 3.8865 5.22764C4.55111 5.22764 5.24739 4.8637 5.24739 3.88259C5.23155 2.03116 6.35505 0.796875 8.00078 0.796875C9.64651 0.796875 10.6909 1.99951 10.77 3.86677C10.8175 5.03775 11.6403 5.22764 12.1151 5.22764C13.5076 5.22764 15.1533 5.97136 15.2008 7.99687C15.2008 8.72479 14.9634 9.37359 14.4729 9.86414C13.9032 10.4338 13.0487 10.7661 12.1151 10.7661C11.5296 10.7661 10.8175 11.0035 10.7859 12.1111C10.7067 13.9784 9.63067 15.181 8.01662 15.181ZM6.02275 3.88259C6.02275 4.94282 5.37396 6.00304 3.8865 6.01885C3.20605 6.01885 1.62364 6.22458 1.59199 7.99687C1.59199 8.50326 1.75023 8.96217 2.08254 9.29447C2.49397 9.72173 3.14276 9.95906 3.87067 9.95906C5.15242 9.95906 5.97527 10.7819 6.03859 12.0637C6.03859 13.2188 6.65571 14.374 8.01662 14.374C9.3775 14.374 9.93133 13.5037 9.99461 12.0637C10.0421 10.7661 10.8649 9.95906 12.1151 9.94326C12.843 9.94326 13.4918 9.70589 13.919 9.27863C14.2513 8.93049 14.4254 8.48742 14.4096 7.98103C14.3779 6.16125 12.6373 6.00304 12.1151 6.00304C11.1182 6.00304 10.0421 5.43337 9.97881 3.88259C9.91549 2.44259 9.18761 1.57226 8.00078 1.57226C6.81396 1.57226 6.02275 2.47424 6.02275 3.86677V3.88259Z" fill="currentColor" stroke="currentColor" strokeWidth="0.2"/>
-    </svg>
-  )
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function PreviewTasksPreviewScreenV2() {
+export default function PreviewTasksPreviewScreenV3() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { notification } = useNotifications()
@@ -242,26 +219,22 @@ export default function PreviewTasksPreviewScreenV2() {
   const [isEditing, setIsEditing] = useState(false)
   const [editingName, setEditingName] = useState('')
   const [editingDomain, setEditingDomain] = useState('')
-  const [editingDocumentType, setEditingDocumentType] = useState('')
   const [editingCustomTags, setEditingCustomTags] = useState<Tag[]>([])
   const [editingRemovedFields, setEditingRemovedFields] = useState<Set<string>>(new Set())
   const [editingSummary, setEditingSummary] = useState('')
   const [tagInputVal, setTagInputVal] = useState('')
   const [activeTab, setActiveTab] = useState('details')
   const [textSelection, setTextSelection] = useState<SelectionPos | null>(null)
-  const [inlineEditOpen, setInlineEditOpen] = useState(false)
-  const [inlineEditHtml, setInlineEditHtml] = useState('')
+  const [isDocEditing, setIsDocEditing] = useState(false)
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
 
   const [docHtmlOverride, setDocHtmlOverride] = useState<string | null>(null)
-  const [editFocused, setEditFocused] = useState(false)
-
-  const { token } = antTheme.useToken()
 
   const docBodyRef = useRef<HTMLDivElement>(null)
   const docContentRef = useRef<HTMLDivElement>(null)
+  const docEditRef = useRef<HTMLDivElement>(null)
+  const editingHtmlRef = useRef<string>('')
   const selToolbarRef = useRef<HTMLDivElement>(null)
-  const dialogEditRef = useRef<HTMLDivElement>(null)
   const savedRangeRef = useRef<Range | null>(null)
 
   const foundDoc = documents.find(d => d._id === id)
@@ -276,13 +249,13 @@ export default function PreviewTasksPreviewScreenV2() {
     setLocalDoc(null); setLocalSummary(null); setIsEditing(false); setIsSaving(false)
     setEditingName(''); setEditingDomain(''); setEditingCustomTags([])
     setEditingRemovedFields(new Set()); setEditingSummary(''); setTagInputVal('')
-    setTextSelection(null); setInlineEditOpen(false); setInlineEditHtml('')
+    setTextSelection(null); setIsDocEditing(false)
     setTaskStates({}); setDocHtmlOverride(null); savedRangeRef.current = null
   }, [id])
 
   useEffect(() => {
     const onMouseUp = () => {
-      if (inlineEditOpen) return
+      if (isDocEditing) return
       const sel = window.getSelection()
       if (!sel || sel.isCollapsed || !sel.toString().trim()) return
       if (!docBodyRef.current?.contains(sel.anchorNode)) { setTextSelection(null); return }
@@ -310,14 +283,42 @@ export default function PreviewTasksPreviewScreenV2() {
     }
     const onMouseDown = (e: MouseEvent) => {
       if (selToolbarRef.current?.contains(e.target as Node)) return
-      if (!docBodyRef.current?.contains(e.target as Node)) setTextSelection(null)
+      if (!docBodyRef.current?.contains(e.target as Node) && !isDocEditing) {
+        setTextSelection(null)
+      }
     }
     document.addEventListener('mouseup', onMouseUp)
     document.addEventListener('mousedown', onMouseDown)
     return () => { document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('mousedown', onMouseDown) }
-  }, [inlineEditOpen])
+  }, [isDocEditing])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-2" replace />
+  // Populate contentEditable with document HTML when edit mode activates
+  useEffect(() => {
+    if (isDocEditing && docEditRef.current) {
+      docEditRef.current.innerHTML = editingHtmlRef.current
+      docEditRef.current.focus()
+      if (savedRangeRef.current) {
+        try {
+          const sel = window.getSelection()
+          if (sel) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current) }
+        } catch (_) { /* range may be stale */ }
+        savedRangeRef.current = null
+      }
+    }
+  }, [isDocEditing])
+
+  // Keyboard shortcuts in edit mode
+  useEffect(() => {
+    if (!isDocEditing) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancelDocEdit()
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); saveDocEdit() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isDocEditing])
+
+  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-3" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`
@@ -326,7 +327,6 @@ export default function PreviewTasksPreviewScreenV2() {
   const startEdit = () => {
     setEditingName(displayDoc.name)
     setEditingDomain(displayDoc.domain)
-    setEditingDocumentType(displayDoc.documentType)
     setEditingCustomTags(displayDoc.tagList ?? [])
     setEditingRemovedFields(new Set())
     setEditingSummary(displaySummary)
@@ -339,7 +339,6 @@ export default function PreviewTasksPreviewScreenV2() {
       ...displayDoc,
       name: editingName,
       domain: editingDomain,
-      documentType: editingDocumentType,
       tagList: editingCustomTags,
       ...(editingRemovedFields.has('namedEntity')     && { namedEntity: '—' }),
       ...(editingRemovedFields.has('namedEntityId')   && { namedEntityId: '—' }),
@@ -365,7 +364,7 @@ export default function PreviewTasksPreviewScreenV2() {
   }
 
   const cancelEdit = () => {
-    setIsEditing(false); setEditingName(''); setEditingDomain(''); setEditingDocumentType(''); setEditingCustomTags([])
+    setIsEditing(false); setEditingName(''); setEditingDomain(''); setEditingCustomTags([])
     setEditingRemovedFields(new Set()); setEditingSummary(''); setTagInputVal('')
   }
 
@@ -394,58 +393,33 @@ export default function PreviewTasksPreviewScreenV2() {
   const toolbarY = showToolbarBelow ? (textSelection?.bottom ?? 0) + 10 : toolbarAboveY
   const toolbarX = Math.max(200, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 200, textSelection?.x ?? 0))
 
-  // Populate the dialog's contentEditable with the selected HTML when the modal opens
-  useEffect(() => {
-    if (inlineEditOpen && dialogEditRef.current) {
-      dialogEditRef.current.innerHTML = inlineEditHtml
-      dialogEditRef.current.focus()
-      const sel = window.getSelection()
-      const r = document.createRange()
-      r.selectNodeContents(dialogEditRef.current)
-      sel?.removeAllRanges()
-      sel?.addRange(r)
-    }
-  }, [inlineEditOpen])
-
-  const openInlineEdit = () => {
-    if (!savedRangeRef.current) return
-    const frag = savedRangeRef.current.cloneContents()
-    const temp = document.createElement('div')
-    temp.appendChild(frag)
-    setInlineEditHtml(temp.innerHTML)
+  const startDocEdit = () => {
+    editingHtmlRef.current = docHtmlOverride ?? docContentRef.current?.innerHTML ?? ''
     setTextSelection(null)
-    setInlineEditOpen(true)
+    setIsDocEditing(true)
   }
 
-  const closeInlineEdit = () => {
-    setInlineEditOpen(false)
-    setEditFocused(false)
-    savedRangeRef.current = null
-  }
-
-  const saveInlineEdit = () => {
-    if (savedRangeRef.current && docContentRef.current && dialogEditRef.current) {
-      const range = savedRangeRef.current
-      range.deleteContents()
-      const temp = document.createElement('div')
-      temp.innerHTML = dialogEditRef.current.innerHTML
-      const frag = document.createDocumentFragment()
-      while (temp.firstChild) frag.appendChild(temp.firstChild)
-      range.insertNode(frag)
-      window.getSelection()?.removeAllRanges()
-      savedRangeRef.current = null
-      setDocHtmlOverride(docContentRef.current.innerHTML)
+  const saveDocEdit = () => {
+    if (docEditRef.current) {
+      setDocHtmlOverride(docEditRef.current.innerHTML)
     }
+    setIsDocEditing(false)
     notification.success({
-      title: 'Text updated successfully',
+      title: 'Document content saved',
       placement: toastPlacements.BOTTOM_LEFT,
       duration: 3,
     })
-    setInlineEditOpen(false)
+  }
+
+  const cancelDocEdit = () => {
+    setIsDocEditing(false)
   }
 
   const selectionAction = (action: string) => {
-    if (action === 'edit') { openInlineEdit(); return }
+    if (action === 'edit') {
+      startDocEdit()
+      return
+    }
     const labels: Record<string, string> = {
       crossref: 'Cross-referencing…',
       copilot: 'Sent to CoPilot',
@@ -473,7 +447,6 @@ export default function PreviewTasksPreviewScreenV2() {
                 displayDoc={displayDoc}
                 editingName={editingName} setEditingName={setEditingName}
                 editingDomain={editingDomain} setEditingDomain={setEditingDomain}
-                editingDocumentType={editingDocumentType} setEditingDocumentType={setEditingDocumentType}
                 editingCustomTags={editingCustomTags} setEditingCustomTags={setEditingCustomTags}
                 editingRemovedFields={editingRemovedFields} setEditingRemovedFields={setEditingRemovedFields}
                 editingSummary={editingSummary} setEditingSummary={setEditingSummary}
@@ -503,13 +476,12 @@ export default function PreviewTasksPreviewScreenV2() {
         <ButtonGhost mode="contrast" leftIcon={iconType.ChevronLeftOutlined} onClick={() => navigate(-1)}>Back</ButtonGhost>
         <Typography weight="bold" color="white">{filename}</Typography>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ButtonTertiary mode="contrast">
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot<Icon type={iconType.ExternalLinkOutlined} size={16} /></span>
-            </ButtonTertiary>
+          <ButtonTertiary mode="contrast" leftIcon={iconType.SparksOutlined} rightIcon={iconType.ExternalLinkOutlined}>Ask CoPilot</ButtonTertiary>
           <Dropdown
             items={[
-              { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => {} },
-              { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: () => {} },
+              { key: 'edit', label: 'Edit document info', onClick: startEdit },
+              { key: 'download', label: 'Download', onClick: () => {} },
+              { key: 'delete', label: 'Delete', onClick: () => {} },
             ]}
             trigger={dropdownTriggers.CLICK}
             placement={dropdownPlacement.BOTTOM_RIGHT}
@@ -524,19 +496,67 @@ export default function PreviewTasksPreviewScreenV2() {
         {/* Document body */}
         <div
           ref={docBodyRef}
-          style={{ flex: '0 0 62%', backgroundColor: colorPalette.white, borderRadius: 8, padding: '32px 40px', minHeight: 640 }}
+          style={{
+            flex: '0 0 62%',
+            backgroundColor: colorPalette.white,
+            borderRadius: 8,
+            padding: '32px 40px',
+            minHeight: 640,
+            position: 'relative',
+            boxShadow: isDocEditing ? '0 0 0 2px #3342FF' : undefined,
+            transition: 'box-shadow 0.15s',
+          }}
         >
-          {isLoading
-            ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '60%' }} paragraph={{ rows: 16 }} />
-            : docHtmlOverride !== null
-            ? <div ref={docContentRef} dangerouslySetInnerHTML={{ __html: docHtmlOverride }} />
-            : <div ref={docContentRef}><DocumentBody doc={displayDoc} /></div>
-          }
+          {!isLoading && !isDocEditing && (
+            <div style={{ position: 'absolute', top: 8, right: 8 }}>
+              <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.EditOutlined} onClick={startDocEdit} />
+            </div>
+          )}
+
+          {isLoading ? (
+            <Skeleton variant={skeletonVariants.TEXT} title={{ width: '60%' }} paragraph={{ rows: 16 }} />
+          ) : isDocEditing ? (
+            <div
+              ref={docEditRef}
+              contentEditable
+              suppressContentEditableWarning
+              style={{
+                outline: 'none',
+                minHeight: 560,
+                cursor: 'text',
+                fontFamily: "'Open Sans', sans-serif",
+                lineHeight: 1.8,
+                color: '#1a1a1a',
+                fontSize: 14,
+              }}
+            />
+          ) : docHtmlOverride !== null ? (
+            <div ref={docContentRef} dangerouslySetInnerHTML={{ __html: docHtmlOverride }} />
+          ) : (
+            <div ref={docContentRef}><DocumentBody doc={displayDoc} /></div>
+          )}
+
+          {isDocEditing && (
+            <div style={{
+              marginTop: spacing(4),
+              paddingTop: spacing(3),
+              borderTop: `1px solid ${colorPalette.neutral.lighten3}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <Typography size="base-sm" color="neutral-darken2">Esc to cancel · ⌘↵ to save</Typography>
+              <div style={{ display: 'flex', gap: spacing(2) }}>
+                <ButtonTertiary onClick={cancelDocEdit}>Cancel</ButtonTertiary>
+                <ButtonPrimary onClick={saveDocEdit}>Save changes</ButtonPrimary>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right panel */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="preview-right-panel" style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: `${spacing(2)}px ${spacing(4)}px ${spacing(4)}px` }}>
+          <div style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: '0 24px 24px' }}>
             {isLoading
               ? <div style={{ padding: '24px 0' }}><Skeleton variant={skeletonVariants.TEXT} title={{ width: '50%' }} paragraph={{ rows: 10 }} /></div>
               : <Tabs options={tabs} activeKey={activeTab} onChange={handleTabChange} />
@@ -546,7 +566,7 @@ export default function PreviewTasksPreviewScreenV2() {
       </div>
 
       {/* Text selection toolbar */}
-      {textSelection && !inlineEditOpen && (
+      {textSelection && !isDocEditing && (
         <div
           ref={selToolbarRef}
           style={{
@@ -568,62 +588,10 @@ export default function PreviewTasksPreviewScreenV2() {
         >
           <ButtonGhost leftIcon={iconType.EditOutlined} onClick={() => selectionAction('edit')}>Edit</ButtonGhost>
           <ButtonGhost leftIcon={iconType.ArrowSwapOutlined} onClick={() => selectionAction('crossref')}>Cross-reference</ButtonGhost>
-          <ButtonGhost onClick={() => selectionAction('copilot')}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot<Icon type={iconType.ExternalLinkOutlined} size={16} /></span>
-          </ButtonGhost>
+          <ButtonGhost leftIcon={iconType.SparksOutlined} rightIcon={iconType.ExternalLinkOutlined} onClick={() => selectionAction('copilot')}>Ask CoPilot</ButtonGhost>
         </div>
       )}
 
-      {/* Inline edit modal */}
-      <style>{`
-        .ant-modal.goat-edit-selection-modal {
-          margin-top: ${spacing(6)}px !important;
-          margin-bottom: ${spacing(6)}px !important;
-        }
-        .preview-right-panel .ant-tabs-nav {
-          border-bottom: 1px solid ${colorPalette.neutral.lighten3} !important;
-          margin-bottom: 0 !important;
-        }
-        .preview-right-panel .ant-tabs-nav::before {
-          border-bottom-color: ${colorPalette.neutral.lighten3} !important;
-        }
-      `}</style>
-      <Modal
-        visible={inlineEditOpen}
-        title="Edit Selection"
-        onClose={closeInlineEdit}
-        withIcon={false}
-        minWidth={520}
-        className="goat-edit-selection-modal"
-        footer={{
-          buttons: [
-            { variant: buttonVariants.TERTIARY, props: { children: 'Cancel', onClick: closeInlineEdit } },
-            { variant: buttonVariants.PRIMARY, props: { children: 'Save', onClick: saveInlineEdit } },
-          ],
-        }}
-      >
-        <div
-          ref={dialogEditRef}
-          contentEditable
-          suppressContentEditableWarning
-          onFocus={() => setEditFocused(true)}
-          onBlur={() => setEditFocused(false)}
-          style={{
-            minHeight: 80,
-            padding: `${spacing(2)}px ${spacing(3)}px`,
-            border: `1px solid ${editFocused ? token.colorPrimary : colorPalette.neutral.lighten2}`,
-            borderRadius: 6,
-            outline: 'none',
-            fontFamily: "'Open Sans', sans-serif",
-            lineHeight: 1.8,
-            fontSize: 14,
-            color: colorPalette.neutral.darken5,
-            cursor: 'text',
-            boxShadow: editFocused ? `0 0 0 ${token.controlOutlineWidth}px ${token.controlOutline}` : 'none',
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-          }}
-        />
-      </Modal>
     </div>
   )
 }
@@ -655,12 +623,12 @@ function TaskCard({ task, state, onRun }: {
   return (
     <div
       style={{
-        border: `1px solid ${isDone ? colorPalette.neutral.lighten1 : '#e5e7eb'}`,
+        border: `1px solid ${isDone ? '#c7d2fe' : '#e5e7eb'}`,
         borderRadius: 8,
         overflow: 'hidden',
         cursor: isIdle ? 'pointer' : 'default',
         transition: 'border-color 0.15s',
-        backgroundColor: colorPalette.white,
+        backgroundColor: isDone ? colorPalette.neutral.lighten5 : colorPalette.white,
       }}
       onClick={isIdle ? () => onRun(task.id) : undefined}
       onMouseEnter={isIdle ? e => { e.currentTarget.style.borderColor = '#a5b4fc' } : undefined}
@@ -712,33 +680,40 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
   const tags = getDocumentTags(displayDoc)
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing(3) }}>
-        <Typography size="base" weight="semibold" color="neutral-darken5">Document Details</Typography>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing(2) }}>
+        <Typography size="base" color="neutral-darken2">Document Details</Typography>
         <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.EditOutlined} onClick={onEdit} />
       </div>
-      <DataRow label="Name" value={displayDoc.name} />
-      <DataRow label="Summary" value={displaySummary} />
-      <DataRow label="Type" value={displayDoc.documentType} />
+      <div style={{ marginBottom: spacing(4) }}>
+        <Typography size="base" color="neutral-darken5">{displaySummary}</Typography>
+      </div>
+      <PropRow><PropertyItem label="Document name" value={displayDoc.name} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} /></PropRow>
+      <PropRow><PropertyItem label="Domain" value={displayDoc.domain} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} /></PropRow>
       {displayDoc.label && (
-        <DataRow label="Label" value={<Chip label={displayDoc.label} chipStyle={chipStyles.SEMANTIC_WARNING} variant={chipVariants.SUBTLE} />} />
+        <PropRow><PropertyItem label="Label" value={<Chip label={displayDoc.label} chipStyle={chipStyles.SEMANTIC_WARNING} variant={chipVariants.SUBTLE} />} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} /></PropRow>
       )}
-      <DataRow label="Uploaded" value={formatDate(displayDoc.uploadedDate)} />
-      <DataRow label="Format" value={displayDoc.fileFormat} />
-      <DataRow label="Tags" value={<div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{tags.map((tag, i) => <Chip key={i} label={tag.text} chipStyle={tag.style as ChipStyleValue} variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE} />)}</div>} />
+      <PropRow><PropertyItem label="Uploaded" value={formatDate(displayDoc.uploadedDate)} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} /></PropRow>
+      <PropRow><PropertyItem label="Format" value={displayDoc.fileFormat} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} /></PropRow>
+      <PropRow>
+        <PropertyItem
+          label="Tags"
+          value={<div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{tags.map((tag, i) => <Chip key={i} label={tag.text} chipStyle={tag.style as ChipStyleValue} variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE} />)}</div>}
+          variant={propertyItemVariants.HORIZONTAL}
+          labelProps={{ ...PROP_LABEL }}
+        />
+      </PropRow>
     </>
   )
 }
 
 function EditPanel({
   displayDoc, editingName, setEditingName: _setEditingName, editingDomain, setEditingDomain,
-  editingDocumentType, setEditingDocumentType,
   editingCustomTags, setEditingCustomTags, editingRemovedFields, setEditingRemovedFields,
   editingSummary, setEditingSummary, tagInputVal, setTagInputVal, addTag, onSave, onCancel,
 }: {
   displayDoc: MetadataDocument
   editingName: string; setEditingName: (_v: string) => void
   editingDomain: string; setEditingDomain: (v: string) => void
-  editingDocumentType: string; setEditingDocumentType: (v: string) => void
   editingCustomTags: Tag[]; setEditingCustomTags: React.Dispatch<React.SetStateAction<Tag[]>>
   editingRemovedFields: Set<string>; setEditingRemovedFields: React.Dispatch<React.SetStateAction<Set<string>>>
   editingSummary: string; setEditingSummary: (v: string) => void
@@ -748,8 +723,8 @@ function EditPanel({
   const removeField = (key: string) => setEditingRemovedFields(prev => new Set(prev).add(key))
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing(3) }}>
-        <Typography size="base" weight="semibold" color="neutral-darken5">Document Details</Typography>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <Typography size="base" color="neutral-darken2">Document Details</Typography>
         <div style={{ display: 'flex', gap: 8 }}>
           <ButtonTertiary onClick={onCancel}>Cancel</ButtonTertiary>
           <ButtonPrimary onClick={onSave}>Save</ButtonPrimary>
@@ -757,9 +732,9 @@ function EditPanel({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        <Input label="Name" name="name" value={editingName} disabled />
         <TextArea label="Summary" value={editingSummary} maxLength={SUMMARY_MAX} hasCounter autoSize={{ minRows: 4, maxRows: 8 }} onChange={e => setEditingSummary(e.target.value)} />
-        <Select label="Type" name="documentType" value={editingDocumentType} options={DOCUMENT_TYPE_OPTIONS} onChange={v => setEditingDocumentType(String(v))} />
+        <Input label="Document Name" name="name" value={editingName} disabled />
+        <Select label="Domain" name="domain" value={editingDomain} options={DOMAIN_OPTIONS} onChange={v => setEditingDomain(String(v))} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Typography size="base" weight="semibold" color="neutral-darken5">Tags</Typography>
@@ -782,7 +757,6 @@ function EditPanel({
             {displayDoc.monetaryTypes !== 'None' && !editingRemovedFields.has('monetaryTypes') && <Chip label={displayDoc.monetaryTypes} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} closable onClose={() => removeField('monetaryTypes')} />}
           </div>
         </div>
-
 
       </div>
     </>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { theme as antTheme } from 'antd'
 import {
@@ -18,8 +18,6 @@ import {
   iconType,
   Input,
   Select,
-  buttonVariants,
-  Modal,
   Skeleton,
   skeletonVariants,
   Tabs,
@@ -51,7 +49,6 @@ type TaskId = 'extract' | 'compliance' | 'related' | 'actions'
 type TaskStatus = 'idle' | 'running' | 'done'
 interface TaskState { status: TaskStatus; result: ReactNode | null }
 interface SelectionPos { text: string; x: number; y: number; bottom: number }
-
 
 function getDocumentTags(doc: MetadataDocument): Tag[] {
   const tags: Tag[] = []
@@ -165,7 +162,7 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
           {related.map(r => (
             <div
               key={r._id}
-              onClick={() => window.open(`/my-documents/preview-tasks/version-2/${r._id}`, '_blank', 'noopener,noreferrer')}
+              onClick={() => window.open(`/my-documents/preview-tasks/version-4/${r._id}`, '_blank', 'noopener,noreferrer')}
               style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
             >
               <Typography size="base" color="primary-base">{r.name}</Typography>
@@ -230,7 +227,7 @@ function CopilotIcon() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function PreviewTasksPreviewScreenV2() {
+export default function PreviewTasksPreviewScreenV4() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { notification } = useNotifications()
@@ -249,20 +246,19 @@ export default function PreviewTasksPreviewScreenV2() {
   const [tagInputVal, setTagInputVal] = useState('')
   const [activeTab, setActiveTab] = useState('details')
   const [textSelection, setTextSelection] = useState<SelectionPos | null>(null)
-  const [inlineEditOpen, setInlineEditOpen] = useState(false)
-  const [inlineEditHtml, setInlineEditHtml] = useState('')
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
 
-  const [docHtmlOverride, setDocHtmlOverride] = useState<string | null>(null)
-  const [editFocused, setEditFocused] = useState(false)
+  // Document body editable state
+  const [docHtml, setDocHtml] = useState<string | null>(null)
+  const [isBodyHovered, setIsBodyHovered] = useState(false)
+  const [isBodyFocused, setIsBodyFocused] = useState(false)
+  const docHtmlInitialized = useRef(false)
 
   const { token } = antTheme.useToken()
 
   const docBodyRef = useRef<HTMLDivElement>(null)
   const docContentRef = useRef<HTMLDivElement>(null)
   const selToolbarRef = useRef<HTMLDivElement>(null)
-  const dialogEditRef = useRef<HTMLDivElement>(null)
-  const savedRangeRef = useRef<Range | null>(null)
 
   const foundDoc = documents.find(d => d._id === id)
 
@@ -276,18 +272,27 @@ export default function PreviewTasksPreviewScreenV2() {
     setLocalDoc(null); setLocalSummary(null); setIsEditing(false); setIsSaving(false)
     setEditingName(''); setEditingDomain(''); setEditingCustomTags([])
     setEditingRemovedFields(new Set()); setEditingSummary(''); setTagInputVal('')
-    setTextSelection(null); setInlineEditOpen(false); setInlineEditHtml('')
-    setTaskStates({}); setDocHtmlOverride(null); savedRangeRef.current = null
+    setTextSelection(null); setTaskStates({})
+    setDocHtml(null); setIsBodyHovered(false); setIsBodyFocused(false)
+    docHtmlInitialized.current = false
   }, [id])
+
+  // After the skeleton disappears, capture the statically-rendered HTML into state.
+  // From that point on we always use dangerouslySetInnerHTML so React never overwrites
+  // content the user has typed into the contentEditable area.
+  useLayoutEffect(() => {
+    if (!isLoading && docContentRef.current && !docHtmlInitialized.current) {
+      setDocHtml(docContentRef.current.innerHTML)
+      docHtmlInitialized.current = true
+    }
+  }, [isLoading])
 
   useEffect(() => {
     const onMouseUp = () => {
-      if (inlineEditOpen) return
       const sel = window.getSelection()
       if (!sel || sel.isCollapsed || !sel.toString().trim()) return
       if (!docBodyRef.current?.contains(sel.anchorNode)) { setTextSelection(null); return }
       const range = sel.getRangeAt(0)
-      savedRangeRef.current = range.cloneRange()
       const rect = range.getBoundingClientRect()
       const frag = range.cloneContents()
       let selectedText = ''
@@ -315,9 +320,9 @@ export default function PreviewTasksPreviewScreenV2() {
     document.addEventListener('mouseup', onMouseUp)
     document.addEventListener('mousedown', onMouseDown)
     return () => { document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('mousedown', onMouseDown) }
-  }, [inlineEditOpen])
+  }, [])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-2" replace />
+  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-4" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`
@@ -394,58 +399,7 @@ export default function PreviewTasksPreviewScreenV2() {
   const toolbarY = showToolbarBelow ? (textSelection?.bottom ?? 0) + 10 : toolbarAboveY
   const toolbarX = Math.max(200, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 200, textSelection?.x ?? 0))
 
-  // Populate the dialog's contentEditable with the selected HTML when the modal opens
-  useEffect(() => {
-    if (inlineEditOpen && dialogEditRef.current) {
-      dialogEditRef.current.innerHTML = inlineEditHtml
-      dialogEditRef.current.focus()
-      const sel = window.getSelection()
-      const r = document.createRange()
-      r.selectNodeContents(dialogEditRef.current)
-      sel?.removeAllRanges()
-      sel?.addRange(r)
-    }
-  }, [inlineEditOpen])
-
-  const openInlineEdit = () => {
-    if (!savedRangeRef.current) return
-    const frag = savedRangeRef.current.cloneContents()
-    const temp = document.createElement('div')
-    temp.appendChild(frag)
-    setInlineEditHtml(temp.innerHTML)
-    setTextSelection(null)
-    setInlineEditOpen(true)
-  }
-
-  const closeInlineEdit = () => {
-    setInlineEditOpen(false)
-    setEditFocused(false)
-    savedRangeRef.current = null
-  }
-
-  const saveInlineEdit = () => {
-    if (savedRangeRef.current && docContentRef.current && dialogEditRef.current) {
-      const range = savedRangeRef.current
-      range.deleteContents()
-      const temp = document.createElement('div')
-      temp.innerHTML = dialogEditRef.current.innerHTML
-      const frag = document.createDocumentFragment()
-      while (temp.firstChild) frag.appendChild(temp.firstChild)
-      range.insertNode(frag)
-      window.getSelection()?.removeAllRanges()
-      savedRangeRef.current = null
-      setDocHtmlOverride(docContentRef.current.innerHTML)
-    }
-    notification.success({
-      title: 'Text updated successfully',
-      placement: toastPlacements.BOTTOM_LEFT,
-      duration: 3,
-    })
-    setInlineEditOpen(false)
-  }
-
   const selectionAction = (action: string) => {
-    if (action === 'edit') { openInlineEdit(); return }
     const labels: Record<string, string> = {
       crossref: 'Cross-referencing…',
       copilot: 'Sent to CoPilot',
@@ -496,6 +450,12 @@ export default function PreviewTasksPreviewScreenV2() {
     },
   ]
 
+  const bodyBorder = isBodyFocused
+    ? `1px solid ${token.colorPrimary}`
+    : isBodyHovered
+    ? `1px solid ${token.colorPrimaryHover}`
+    : '1px solid transparent'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F5F9FF' }}>
       {/* Header */}
@@ -504,8 +464,8 @@ export default function PreviewTasksPreviewScreenV2() {
         <Typography weight="bold" color="white">{filename}</Typography>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ButtonTertiary mode="contrast">
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot<Icon type={iconType.ExternalLinkOutlined} size={16} /></span>
-            </ButtonTertiary>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot<Icon type={iconType.ExternalLinkOutlined} size={16} /></span>
+          </ButtonTertiary>
           <Dropdown
             items={[
               { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => {} },
@@ -521,16 +481,44 @@ export default function PreviewTasksPreviewScreenV2() {
 
       {/* Content */}
       <div style={{ flex: 1, padding: 24, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        {/* Document body */}
+        {/* Document body — hover shows input hover border, focus shows input focus border + shadow */}
         <div
           ref={docBodyRef}
-          style={{ flex: '0 0 62%', backgroundColor: colorPalette.white, borderRadius: 8, padding: '32px 40px', minHeight: 640 }}
+          style={{
+            flex: '0 0 62%',
+            backgroundColor: colorPalette.white,
+            borderRadius: 8,
+            padding: '32px 40px',
+            minHeight: 640,
+            border: bodyBorder,
+            boxShadow: isBodyFocused ? `0 0 0 ${token.controlOutlineWidth}px ${token.controlOutline}` : 'none',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+          }}
+          onMouseEnter={() => !isLoading && setIsBodyHovered(true)}
+          onMouseLeave={() => setIsBodyHovered(false)}
+          onFocus={() => setIsBodyFocused(true)}
+          onBlur={(e) => {
+            if (!docBodyRef.current?.contains(e.relatedTarget as Node)) {
+              setIsBodyFocused(false)
+              if (docContentRef.current) setDocHtml(docContentRef.current.innerHTML)
+            }
+          }}
         >
           {isLoading
             ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '60%' }} paragraph={{ rows: 16 }} />
-            : docHtmlOverride !== null
-            ? <div ref={docContentRef} dangerouslySetInnerHTML={{ __html: docHtmlOverride }} />
-            : <div ref={docContentRef}><DocumentBody doc={displayDoc} /></div>
+            : docHtml !== null
+            // Once initialized, always use dangerouslySetInnerHTML so React never
+            // reconciles user-typed content away during hover/focus re-renders.
+            ? <div
+                ref={docContentRef}
+                contentEditable
+                suppressContentEditableWarning
+                dangerouslySetInnerHTML={{ __html: docHtml }}
+                style={{ outline: 'none' }}
+              />
+            : <div ref={docContentRef}>
+                <DocumentBody doc={displayDoc} />
+              </div>
           }
         </div>
 
@@ -545,8 +533,8 @@ export default function PreviewTasksPreviewScreenV2() {
         </div>
       </div>
 
-      {/* Text selection toolbar */}
-      {textSelection && !inlineEditOpen && (
+      {/* Text selection toolbar — Edit removed since document is directly editable */}
+      {textSelection && (
         <div
           ref={selToolbarRef}
           style={{
@@ -566,7 +554,6 @@ export default function PreviewTasksPreviewScreenV2() {
             userSelect: 'none',
           }}
         >
-          <ButtonGhost leftIcon={iconType.EditOutlined} onClick={() => selectionAction('edit')}>Edit</ButtonGhost>
           <ButtonGhost leftIcon={iconType.ArrowSwapOutlined} onClick={() => selectionAction('crossref')}>Cross-reference</ButtonGhost>
           <ButtonGhost onClick={() => selectionAction('copilot')}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot<Icon type={iconType.ExternalLinkOutlined} size={16} /></span>
@@ -574,12 +561,7 @@ export default function PreviewTasksPreviewScreenV2() {
         </div>
       )}
 
-      {/* Inline edit modal */}
       <style>{`
-        .ant-modal.goat-edit-selection-modal {
-          margin-top: ${spacing(6)}px !important;
-          margin-bottom: ${spacing(6)}px !important;
-        }
         .preview-right-panel .ant-tabs-nav {
           border-bottom: 1px solid ${colorPalette.neutral.lighten3} !important;
           margin-bottom: 0 !important;
@@ -588,42 +570,6 @@ export default function PreviewTasksPreviewScreenV2() {
           border-bottom-color: ${colorPalette.neutral.lighten3} !important;
         }
       `}</style>
-      <Modal
-        visible={inlineEditOpen}
-        title="Edit Selection"
-        onClose={closeInlineEdit}
-        withIcon={false}
-        minWidth={520}
-        className="goat-edit-selection-modal"
-        footer={{
-          buttons: [
-            { variant: buttonVariants.TERTIARY, props: { children: 'Cancel', onClick: closeInlineEdit } },
-            { variant: buttonVariants.PRIMARY, props: { children: 'Save', onClick: saveInlineEdit } },
-          ],
-        }}
-      >
-        <div
-          ref={dialogEditRef}
-          contentEditable
-          suppressContentEditableWarning
-          onFocus={() => setEditFocused(true)}
-          onBlur={() => setEditFocused(false)}
-          style={{
-            minHeight: 80,
-            padding: `${spacing(2)}px ${spacing(3)}px`,
-            border: `1px solid ${editFocused ? token.colorPrimary : colorPalette.neutral.lighten2}`,
-            borderRadius: 6,
-            outline: 'none',
-            fontFamily: "'Open Sans', sans-serif",
-            lineHeight: 1.8,
-            fontSize: 14,
-            color: colorPalette.neutral.darken5,
-            cursor: 'text',
-            boxShadow: editFocused ? `0 0 0 ${token.controlOutlineWidth}px ${token.controlOutline}` : 'none',
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-          }}
-        />
-      </Modal>
     </div>
   )
 }
@@ -668,11 +614,7 @@ function TaskCard({ task, state, onRun }: {
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px' }}>
         <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex', transform: task.iconRotation ? `rotate(${task.iconRotation})` : undefined }}>
-          <Icon
-            type={task.icon}
-            size={16}
-            color="neutral-darken4"
-          />
+          <Icon type={task.icon} size={16} color="neutral-darken4" />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <Typography size="base" weight="semibold" color="neutral-darken5">{task.label}</Typography>
@@ -782,7 +724,6 @@ function EditPanel({
             {displayDoc.monetaryTypes !== 'None' && !editingRemovedFields.has('monetaryTypes') && <Chip label={displayDoc.monetaryTypes} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} closable onClose={() => removeField('monetaryTypes')} />}
           </div>
         </div>
-
 
       </div>
     </>
