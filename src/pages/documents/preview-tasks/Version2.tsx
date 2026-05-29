@@ -6,6 +6,7 @@ import {
   buttonShapes,
   ButtonPrimary,
   ButtonTertiary,
+  buttonVariants,
   Checkbox,
   Chip,
   chipStyles,
@@ -20,6 +21,8 @@ import {
   iconType,
   Input,
   LAYOUT_SIDEBAR_ID,
+  Modal,
+  modalVariants,
   Pagination,
   Select,
   SearchBar,
@@ -370,6 +373,7 @@ export default function PreviewTasksV2() {
   const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...documents])
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH)
   const pendingEditsRef = useRef<Record<string, string>>({})
   const pendingTagsRef = useRef<Tag[] | null>(null)
@@ -550,6 +554,21 @@ export default function PreviewTasksV2() {
   }, [selectedKeys])
 
   const allDocs = useMemo(() => [...tempDocs, ...localDocs], [tempDocs, localDocs])
+
+  const confirmDelete = useCallback(() => {
+    const count = selectedKeys.size
+    const doc = count === 1 ? allDocs.find(d => selectedKeys.has(d._id)) : undefined
+    const name = doc ? `${stripYear(doc.name)}.${doc.fileFormat.toLowerCase()}` : ''
+    handleBulkDelete()
+    setDeleteModalOpen(false)
+    notification.default({
+      title: count === 1 ? 'Document deleted' : 'Documents deleted',
+      icon: iconType.TrashFilled,
+      content: <Typography size="base" color="neutral-darken5">{count === 1 ? name : `${count} documents`}</Typography>,
+      placement: toastPlacements.BOTTOM_LEFT,
+      duration: 4,
+    })
+  }, [selectedKeys, allDocs, handleBulkDelete, notification])
 
   const filteredDocs = useMemo(
     () =>
@@ -960,7 +979,7 @@ export default function PreviewTasksV2() {
               <ButtonTertiary leftIcon={iconType.DownloadOutlined} onClick={() => console.log('Download')}>Download</ButtonTertiary>
             </div>
           </div>
-          <ButtonDanger leftIcon={iconType.TrashOutlined} onClick={handleBulkDelete}>Delete</ButtonDanger>
+          <ButtonDanger leftIcon={iconType.TrashOutlined} onClick={() => setDeleteModalOpen(true)}>Delete</ButtonDanger>
         </div>
       )}
 
@@ -968,6 +987,43 @@ export default function PreviewTasksV2() {
         <Icon type={iconType.ShieldCheckFilled} color="primary-base" size={16} />
         <Typography size="base" color="neutral-darken2">All files are securely uploaded and scanned for viruses.</Typography>
       </div>
+
+      <Modal
+        visible={deleteModalOpen}
+        variant={modalVariants.DANGER}
+        title={selectedKeys.size === 1 ? 'Delete Document' : 'Delete Documents'}
+        onClose={() => setDeleteModalOpen(false)}
+        footer={{
+          buttons: [
+            {
+              variant: buttonVariants.GHOST,
+              props: { children: 'Cancel', onClick: () => setDeleteModalOpen(false) },
+            },
+            {
+              variant: buttonVariants.DANGER,
+              props: {
+                children: 'Delete',
+                onClick: confirmDelete,
+              },
+            },
+          ],
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
+          <Typography size="base" color="neutral-darken5">
+            You are about to{' '}
+            <span style={{ color: colorPalette.danger.darken2, fontWeight: 700 }}>DELETE</span>{' '}
+            {selectedKeys.size === 1
+              ? `"${stripYear(allDocs.find(d => selectedKeys.has(d._id))?.name ?? '')}"`
+              : `${selectedKeys.size} documents`
+            }
+          </Typography>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+            <Icon type={iconType.InfoCircleOutlined} size={16} color="neutral-darken2" />
+            <Typography size="base-sm" color="neutral-darken2">{selectedKeys.size === 1 ? 'This document' : 'These documents'} will no longer be available</Typography>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
