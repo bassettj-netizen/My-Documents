@@ -50,7 +50,11 @@
       "Bash(npx playwright *)",
       "Bash(pkill -f \"vite --port 5174\")",
       "Bash(grep -iE \"Outlined$\")",
-      "Bash(grep -o \"spacing.*function\\\\|spacing=function\\\\|spacing:function\\\\|spacing\\(.\\\\{1,30\\\\}\\)\" /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/constants/index.d.ts)"
+      "Bash(grep -o \"spacing.*function\\\\|spacing=function\\\\|spacing:function\\\\|spacing\\(.\\\\{1,30\\\\}\\)\" /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/constants/index.d.ts)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(open -a \"Google Chrome\" \"http://localhost:5179/my-documents/preview-tasks/version-7\")",
+      "Bash(open \"http://localhost:5179/my-documents/preview-tasks/version-7\")"
     ]
   }
 }

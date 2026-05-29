@@ -37,6 +37,8 @@ const groups = [
       { label: 'Version 3', path: '/my-documents/preview-tasks/version-3' },
       { label: 'Version 4', path: '/my-documents/preview-tasks/version-4' },
       { label: 'Version 5', path: '/my-documents/preview-tasks/version-5' },
+      { label: 'Version 6', path: '/my-documents/preview-tasks/version-6' },
+      { label: 'Version 7', path: '/my-documents/preview-tasks/version-7' },
     ],
   },
   {
