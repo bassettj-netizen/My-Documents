@@ -218,6 +218,20 @@ function CopilotIcon() {
   )
 }
 
+function applyFontSizePx(px: string) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+  const range = sel.getRangeAt(0)
+  const span = document.createElement('span')
+  span.style.fontSize = px
+  span.appendChild(range.extractContents())
+  range.insertNode(span)
+  const newRange = document.createRange()
+  newRange.selectNodeContents(span)
+  sel.removeAllRanges()
+  sel.addRange(newRange)
+}
+
 function getFirstTextNode(el: Node): Text | null {
   if (el.nodeType === Node.TEXT_NODE && (el.textContent ?? '').trim().length > 0) return el as Text
   for (let i = 0; i < el.childNodes.length; i++) {
@@ -289,6 +303,7 @@ export default function PreviewTasksPreviewScreenV6() {
   const docBodyRef = useRef<HTMLDivElement>(null)
   const docContentRef = useRef<HTMLDivElement>(null)
   const selToolbarRef = useRef<HTMLDivElement>(null)
+  const editToolbarRef = useRef<HTMLDivElement>(null)
 
   const allDocs = [...extraDocs, ...documents]
   const foundDoc = allDocs.find(d => d._id === id)
@@ -347,7 +362,8 @@ export default function PreviewTasksPreviewScreenV6() {
     const cancel = (e: MouseEvent) => {
       if (
         !docBodyRef.current?.contains(e.target as Node) &&
-        !selToolbarRef.current?.contains(e.target as Node)
+        !selToolbarRef.current?.contains(e.target as Node) &&
+        !editToolbarRef.current?.contains(e.target as Node)
       ) {
         setIsDocEditing(false)
       }
@@ -465,17 +481,17 @@ export default function PreviewTasksPreviewScreenV6() {
     switch (type) {
       case 'h1':
         document.execCommand('fontSize', false, '5')
-        document.execCommand('bold')
+        if (!document.queryCommandState('bold')) document.execCommand('bold')
         break
       case 'h2':
-        document.execCommand('fontSize', false, '4')
-        document.execCommand('bold')
+        applyFontSizePx('15px')
+        if (!document.queryCommandState('bold')) document.execCommand('bold')
         break
       case 'p':
         document.execCommand('removeFormat')
         break
       case 'pb':
-        document.execCommand('bold')
+        if (!document.queryCommandState('bold')) document.execCommand('bold')
         break
     }
 
@@ -522,24 +538,24 @@ export default function PreviewTasksPreviewScreenV6() {
   }
 
   const saveAsCopy = () => {
-    const html = docContentRef.current?.innerHTML ?? docHtml ?? ''
+    const html = (isDocEditing && docContentRef.current)
+      ? docContentRef.current.innerHTML
+      : (docHtml ?? docContentRef.current?.innerHTML ?? '')
     const copyId = `copy-${displayDoc._id}-${Date.now()}`
     const copyDoc: MetadataDocument = {
       ...displayDoc,
       _id: copyId,
       name: `${displayDoc.name} (Copy)`,
       uploadedDate: new Date().toISOString().slice(0, 10),
-      label: 'Copy',
     }
     addCopiedDoc(copyDoc, html)
-    setIsDocEditing(false)
-    setHasDocChanges(false)
     notification.success({
-      title: 'Copy saved to document list',
+      title: 'Copy saved',
       content: <Typography size="base" color="neutral-darken5">{copyDoc.name}</Typography>,
       placement: toastPlacements.BOTTOM_LEFT,
-      duration: 5,
+      duration: 4,
     })
+    navigate(`/my-documents/preview-tasks/version-6/${copyId}`, { replace: true })
   }
 
   return (
@@ -554,7 +570,6 @@ export default function PreviewTasksPreviewScreenV6() {
           </ButtonTertiary>
           <Dropdown
             items={[
-              { key: 'copy', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.CopyOutlined} size={16} />Save as copy</span>, onClick: saveAsCopy },
               { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => {} },
               { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: () => {} },
             ]}
@@ -700,7 +715,7 @@ export default function PreviewTasksPreviewScreenV6() {
 
       {/* Document editing toolbar — always visible when editing */}
       {isDocEditing && docToolbarStyle && (
-        <div style={{ position: 'fixed', bottom: spacing(2), left: docToolbarStyle.left + spacing(2), width: docToolbarStyle.width - spacing(2) * 2, zIndex: 200 }}>
+        <div ref={editToolbarRef} style={{ position: 'fixed', bottom: spacing(2), left: docToolbarStyle.left + spacing(2), width: docToolbarStyle.width - spacing(2) * 2, zIndex: 200 }}>
           <Toolbar
             visible
             leftItems={[
@@ -711,7 +726,7 @@ export default function PreviewTasksPreviewScreenV6() {
             rightItems={[
               <div key="actions" style={{ display: 'flex', gap: spacing(2) }}>
                 <ButtonTertiary onClick={discardDocEdit}>Discard</ButtonTertiary>
-                <ButtonTertiary onClick={saveAsCopy} leftIcon={iconType.CopyOutlined}>Save as copy</ButtonTertiary>
+                {hasDocChanges && <ButtonTertiary onClick={saveAsCopy} leftIcon={iconType.CopyOutlined}>Save as copy</ButtonTertiary>}
                 {hasDocChanges && <ButtonPrimary onClick={saveDocEdit}>Save</ButtonPrimary>}
               </div>,
             ]}
