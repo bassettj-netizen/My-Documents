@@ -874,7 +874,7 @@ function AiEditPanel({
               alignItems: 'flex-start',
               gap: spacing(2),
             }}>
-              <Icon type={iconType.InfoCircleOutlined} size={14} color="primary-base" />
+              <Icon type={iconType.InfoCircleOutlined} size={16} color="primary-base" />
               <Typography size="base-sm" color="neutral-darken3">
                 Select text in the document to define a section, or use "Edit with AI" from the text selection toolbar.
               </Typography>
@@ -1007,12 +1007,10 @@ function AiEditPanel({
           </div>
 
           <div style={{ display: 'flex', gap: spacing(2) }}>
-            <ButtonTertiary leftIcon={iconType.CrossOutlined} onClick={onDiscard} style={{ flex: 1 }}>
-              Discard
-            </ButtonTertiary>
-            <ButtonPrimary leftIcon={iconType.EditRecOutlined} onClick={onApply} style={{ flex: 1 }}>
-              Apply
-            </ButtonPrimary>
+            <div style={{ flex: 1 }}>
+              <ButtonTertiary leftIcon={iconType.CrossOutlined} onClick={onDiscard}>Discard</ButtonTertiary>
+            </div>
+            <ButtonPrimary leftIcon={iconType.EditRecOutlined} onClick={onApply}>Apply</ButtonPrimary>
           </div>
         </div>
       )}

@@ -673,9 +673,9 @@ export default function PreviewTasksPreviewScreenV10() {
             {isLoading
               ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '40%' }} paragraph={{ rows: 6 }} />
               : <>
-                  <Typography size="base" weight="semibold" color="neutral-darken5" style={{ display: 'block', marginBottom: spacing(3) }}>
-                    What would you like to do?
-                  </Typography>
+                  <div style={{ marginBottom: spacing(3) }}>
+                    <Typography size="base" weight="semibold" color="neutral-darken5">What would you like to do?</Typography>
+                  </div>
                   <TasksPanel taskStates={taskStates} onRun={runTask} onAiEdit={openAiPopupFromTask} />
                 </>
             }

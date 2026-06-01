@@ -1043,9 +1043,9 @@ export default function PreviewTasksV10() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
           <Typography size="base" color="neutral-darken5">The highest data protection standards are essential for the professional use of our solution. The following information provides an overview of our security architecture.</Typography>
           {[
-            { icon: iconType.LayersHorOutlined, title: 'Secure data storage in Germany', body: 'All data is stored securely on European servers. Our data centre is certified to ISO 27001, 27017, 27018, SOC 2 and CS, making it one of the most secure data centres in the world.' },
+            { icon: iconType.ShieldCheckOutlined, title: 'Secure data storage in Germany', body: 'All data is stored securely on European servers. Our data centre is certified to ISO 27001, 27017, 27018, SOC 2 and CS, making it one of the most secure data centres in the world.' },
             { icon: iconType.LockOutlined, title: 'Data encryption', body: 'All data is stored in encrypted form in the data centre (AES 256) and transmitted to the data centre in encrypted form (TLS 1.3).' },
-            { icon: iconType.LayersVerOutlined, title: 'Backups', body: 'Regular backups and a disaster recovery strategy protect against data loss.' },
+            { icon: iconType.LayersHorOutlined, title: 'Backups', body: 'Regular backups and a disaster recovery strategy protect against data loss.' },
             { icon: iconType.MinusCircleOutlined, title: 'No training with your data', body: 'The uploaded files are not used to train language models.' },
           ].map(({ icon, title, body }) => (
             <div key={title} style={{ display: 'flex', gap: spacing(3), alignItems: 'flex-start' }}>
