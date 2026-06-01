@@ -31,13 +31,13 @@ import {
   skeletonVariants,
   Spinner,
   Table,
+  TextArea,
   toastPlacements,
   Tooltip,
   Typography,
   useNotifications,
 } from '@goat-ui/goat-ui-core'
 import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type FileFormat } from '../bulk-edit/documents'
-import { extraDocs } from './docStore'
 
 const { colorPalette, spacing, fontWeight } = constants
 const PAGE_SIZE = 10
@@ -60,6 +60,71 @@ const FIXED_COLS = [
   { key: 'fileSize',     label: 'Size'          },
   { key: 'fileFormat',   label: 'Format'        },
 ]
+
+const QUICK_ACTIONS = [
+  { label: 'Summarize',          instruction: 'Summarize this content into a concise overview' },
+  { label: 'Simplify language',  instruction: 'Rewrite in plain, easy-to-understand language' },
+  { label: 'Fix grammar',        instruction: 'Fix any grammar, spelling and punctuation issues' },
+  { label: 'Translate to English', instruction: 'Translate this content to English' },
+]
+
+function getDocumentContent(doc: MetadataDocument): string {
+  const snippet = DOCUMENT_SNIPPETS[doc._id]
+  const base = snippet ?? `${doc.documentType} – ${doc.namedEntity}`
+  return (
+    base +
+    '\n\nThis document applies to all employees and contractors engaged in cross-border activities. ' +
+    'Compliance with these provisions is mandatory and applies in conjunction with applicable local ' +
+    'legislation, collective agreements, and internal guidelines.\n\n' +
+    'For questions regarding interpretation or application, please contact the HR Legal Department ' +
+    'or the Global Mobility team. Violations may result in disciplinary action and/or legal liability.\n\n' +
+    `Document Type: ${doc.documentType} · Jurisdiction: ${doc.jurisdiction} · Domain: ${doc.domain} · ` +
+    `Last Updated: ${new Date(doc.uploadedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+  )
+}
+
+function simulateGptEdit(content: string, instruction: string): string {
+  const lower = instruction.toLowerCase()
+
+  if (lower.includes('summar')) {
+    const sentences = content.split(/(?<=[.!?])\s+/)
+    const keep = sentences.slice(0, Math.max(2, Math.ceil(sentences.length / 3)))
+    return keep.join(' ') + '\n\n[AI Summary: Content condensed to key points only]'
+  }
+
+  if (lower.includes('simpl') || lower.includes('plain') || lower.includes('easy')) {
+    return content
+      .replace(/gemäß/g, 'according to')
+      .replace(/nach Maßgabe des?/g, 'as specified by')
+      .replace(/im Rahmen des?/g, 'within the scope of')
+      .replace(/Mitarbeiterversetzung/g, 'employee relocation')
+      .replace(/Auslandsentsendung/g, 'international assignment')
+      .replace(/steuerlich(e|en|er)/g, 'tax-related')
+      + '\n\n[AI: Language simplified — technical terms replaced with plain equivalents]'
+  }
+
+  if (lower.includes('translat') || lower.includes('english')) {
+    return content
+      .replace(/\b(die|der|das|den|dem|des|ein|eine|einen)\b/g, 'the')
+      .replace(/\bund\b/g, 'and')
+      .replace(/\bfür\b/g, 'for')
+      .replace(/\bmit\b/g, 'with')
+      .replace(/\bvon\b/g, 'of')
+      .replace(/\bnach\b/g, 'to')
+      .replace(/\bauf\b/g, 'on')
+      .replace(/\bbei\b/g, 'at')
+      + '\n\n[AI: Auto-translated to English — professional review recommended]'
+  }
+
+  if (lower.includes('grammar') || lower.includes('fix') || lower.includes('spelling')) {
+    return (
+      content.replace(/\. ([a-z])/g, (_: string, c: string) => `. ${c.toUpperCase()}`).replace(/\s{2,}/g, ' ') +
+      '\n\n[AI: Grammar and punctuation reviewed — corrections applied]'
+    )
+  }
+
+  return content + `\n\n[AI applied: "${instruction}" — please review and apply if appropriate]`
+}
 
 function getDocumentTags(doc: MetadataDocument): Tag[] {
   const tags: Tag[] = []
@@ -94,7 +159,6 @@ function makeSorter(key: string) {
     return String(av ?? '').localeCompare(String(bv ?? ''), 'de')
   }
 }
-
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -360,7 +424,20 @@ function CompareIcon() {
   )
 }
 
-export default function PreviewTasksV7() {
+function SparkleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 2L9.2 5.8H13.2L10 8.1L11.2 11.9L8 9.6L4.8 11.9L6 8.1L2.8 5.8H6.8L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+      <circle cx="13" cy="3" r="1" fill="currentColor" opacity="0.6"/>
+      <circle cx="3" cy="13" r="0.8" fill="currentColor" opacity="0.4"/>
+    </svg>
+  )
+}
+
+type AiEditMode = 'entire' | 'section'
+type AiEditResult = { original: string; suggested: string }
+
+export default function PreviewTasksV8() {
   const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -371,12 +448,22 @@ export default function PreviewTasksV7() {
   const [isSearching, setIsSearching] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [tempDocs, setTempDocs] = useState<MetadataDocument[]>([])
-  const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...extraDocs, ...documents])
+  const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...documents])
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [securityModalOpen, setSecurityModalOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH)
+
+  // AI edit state
+  const [aiEditDoc, setAiEditDoc] = useState<MetadataDocument | null>(null)
+  const [aiEditMode, setAiEditMode] = useState<AiEditMode>('entire')
+  const [aiEditInstruction, setAiEditInstruction] = useState('')
+  const [aiEditSelectedText, setAiEditSelectedText] = useState('')
+  const [aiEditIsGenerating, setAiEditIsGenerating] = useState(false)
+  const [aiEditResult, setAiEditResult] = useState<AiEditResult | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+
   const pendingEditsRef = useRef<Record<string, string>>({})
   const pendingTagsRef = useRef<Tag[] | null>(null)
   const pendingRemovedDerivedRef = useRef<Set<string>>(new Set())
@@ -429,6 +516,65 @@ export default function PreviewTasksV7() {
       document.removeEventListener('keydown', handleEscape)
     }
   }, [])
+
+  const openAiEdit = useCallback((record: MetadataDocument) => {
+    setAiEditDoc(record)
+    setAiEditMode('entire')
+    setAiEditInstruction('')
+    setAiEditSelectedText('')
+    setAiEditResult(null)
+    setAiEditIsGenerating(false)
+  }, [])
+
+  const closeAiEdit = useCallback(() => {
+    setAiEditDoc(null)
+    setAiEditInstruction('')
+    setAiEditSelectedText('')
+    setAiEditResult(null)
+    setAiEditIsGenerating(false)
+  }, [])
+
+  const handleTextSelection = useCallback(() => {
+    if (aiEditMode !== 'section') return
+    const sel = window.getSelection()?.toString().trim()
+    if (sel) {
+      setAiEditSelectedText(sel)
+      setAiEditResult(null)
+    }
+  }, [aiEditMode])
+
+  const handleGenerate = useCallback(() => {
+    if (!aiEditDoc || !aiEditInstruction.trim()) return
+    if (aiEditMode === 'section' && !aiEditSelectedText) return
+
+    const original = aiEditMode === 'section'
+      ? aiEditSelectedText
+      : getDocumentContent(aiEditDoc)
+
+    setAiEditIsGenerating(true)
+    setAiEditResult(null)
+
+    setTimeout(() => {
+      const suggested = simulateGptEdit(original, aiEditInstruction)
+      setAiEditResult({ original, suggested })
+      setAiEditIsGenerating(false)
+    }, 1600)
+  }, [aiEditDoc, aiEditInstruction, aiEditMode, aiEditSelectedText])
+
+  const handleApplyChanges = useCallback(() => {
+    if (!aiEditDoc || !aiEditResult) return
+    closeAiEdit()
+    notification.success({
+      title: 'Changes applied',
+      placement: toastPlacements.BOTTOM_LEFT,
+      duration: 4,
+      content: (
+        <Typography size="base" color="neutral-darken5">
+          AI edits applied to "{stripYear(aiEditDoc.name)}"
+        </Typography>
+      ),
+    })
+  }, [aiEditDoc, aiEditResult, closeAiEdit, notification])
 
   const handleUpload = useCallback((file: File | Blob) => {
     if (!(file instanceof File)) return
@@ -645,7 +791,7 @@ export default function PreviewTasksV7() {
         ellipsis: needsEllipsis,
         sorter: key !== 'tags' ? makeSorter(key) : undefined,
         onCell: (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-7/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-8/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           ...(isNonEditable ? {} : {
             editable: true,
@@ -679,7 +825,7 @@ export default function PreviewTasksV7() {
           </div>
         )
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-7/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-8/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
         })
       }
@@ -687,7 +833,7 @@ export default function PreviewTasksV7() {
       if (key === 'documentType') {
         col.width = 160
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-7/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-8/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           editable: true,
           isEditing: editingKey === record._id,
@@ -733,6 +879,7 @@ export default function PreviewTasksV7() {
           <Dropdown
             items={[
               { key: 'copilot', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot</span>, onClick: () => console.log('Ask CoPilot', record.name) },
+              { key: 'ai-edit', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><SparkleIcon />Edit content with AI</span>, onClick: () => openAiEdit(record) },
               { key: 'edit', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.EditRecOutlined} size={16} />Edit document info</span>, onClick: () => startEdit(record) },
               { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => console.log('Download', record.name) },
               { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: () => console.log('Delete', record.name) },
@@ -747,7 +894,7 @@ export default function PreviewTasksV7() {
     })
 
     return [checkboxCol, ...visible]
-  }, [navigate, editingKey, selectedKeys, handleCellChange, startEdit, saveEdit, cancelEdit, filteredDocs, allSelected, someSelected])
+  }, [navigate, editingKey, selectedKeys, handleCellChange, startEdit, saveEdit, cancelEdit, filteredDocs, allSelected, someSelected, openAiEdit])
 
   const searchResults = useMemo((): SearchResult[] => {
     const q = searchInput.trim()
@@ -778,6 +925,8 @@ export default function PreviewTasksV7() {
     results.sort((a, b) => (b.nameMatch ? 1 : 0) - (a.nameMatch ? 1 : 0))
     return results.slice(0, 5)
   }, [searchInput, allDocs])
+
+  const canGenerate = !!aiEditInstruction.trim() && (aiEditMode === 'entire' || !!aiEditSelectedText) && !aiEditIsGenerating
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, backgroundColor: colorPalette.white, height: '100%', overflow: 'hidden' }}>
@@ -845,7 +994,7 @@ export default function PreviewTasksV7() {
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       onClick={() => {
-                        navigate(`/my-documents/preview-tasks/version-7/${doc._id}`)
+                        navigate(`/my-documents/preview-tasks/version-8/${doc._id}`)
                         setShowDropdown(false)
                       }}
                     >
@@ -990,6 +1139,7 @@ export default function PreviewTasksV7() {
         <Typography size="base" color="neutral-darken2">All files are securely uploaded and scanned for viruses. <span style={{ color: colorPalette.blue.base, cursor: 'pointer' }} onClick={() => setSecurityModalOpen(true)}>Learn more</span></Typography>
       </div>
 
+      {/* Delete modal */}
       <Modal
         visible={deleteModalOpen}
         variant={modalVariants.DANGER}
@@ -1003,10 +1153,7 @@ export default function PreviewTasksV7() {
             },
             {
               variant: buttonVariants.DANGER,
-              props: {
-                children: 'Delete',
-                onClick: confirmDelete,
-              },
+              props: { children: 'Delete', onClick: confirmDelete },
             },
           ],
         }}
@@ -1027,6 +1174,7 @@ export default function PreviewTasksV7() {
         </div>
       </Modal>
 
+      {/* Security modal */}
       <Modal
         visible={securityModalOpen}
         title="Your data is private and secure"
@@ -1060,6 +1208,292 @@ export default function PreviewTasksV7() {
           ))}
         </div>
       </Modal>
+
+      {/* AI Edit modal */}
+      <Modal
+        visible={!!aiEditDoc}
+        title="Edit content with AI"
+        maxWidth={880}
+        onClose={closeAiEdit}
+      >
+        {aiEditDoc && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+
+            {/* Document name */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+              <Icon type={iconType.EditRecOutlined} size={14} color="neutral-darken3" />
+              <Typography size="base-sm" color="neutral-darken3">{stripYear(aiEditDoc.name)}</Typography>
+            </div>
+
+            {/* Two-column layout: document | AI panel */}
+            <div style={{ display: 'flex', gap: spacing(5), alignItems: 'flex-start' }}>
+
+              {/* Left: document content */}
+              <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Document content</Typography>
+                  {aiEditMode === 'section' && (
+                    <Typography size="base-sm" color="primary-base">
+                      Select text to define a section
+                    </Typography>
+                  )}
+                </div>
+
+                <div
+                  ref={contentRef}
+                  onMouseUp={handleTextSelection}
+                  style={{
+                    border: `1.5px solid ${aiEditMode === 'section' ? colorPalette.blue.base : '#e5e7eb'}`,
+                    borderRadius: 6,
+                    padding: spacing(3),
+                    maxHeight: 260,
+                    overflowY: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    userSelect: aiEditMode === 'section' ? 'text' : 'none',
+                    cursor: aiEditMode === 'section' ? 'text' : 'default',
+                    fontSize: 13,
+                    lineHeight: '1.65',
+                    color: colorPalette.neutral.darken5,
+                    backgroundColor: aiEditMode === 'section' ? '#FAFBFF' : colorPalette.white,
+                    transition: 'border-color 0.2s ease, background-color 0.2s ease',
+                  }}
+                >
+                  {getDocumentContent(aiEditDoc)}
+                </div>
+
+                {aiEditMode === 'section' && aiEditSelectedText && (
+                  <div style={{
+                    border: '1.5px solid #3B82F6',
+                    borderRadius: 6,
+                    padding: spacing(3),
+                    backgroundColor: '#EFF6FF',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: spacing(2),
+                  }}>
+                    <Typography size="base-sm" weight={fontWeight.BOLD} color="neutral-darken5">Selected section</Typography>
+                    <Typography size="base-sm" color="neutral-darken5" maxLines={3}>
+                      "{aiEditSelectedText}"
+                    </Typography>
+                    <div>
+                      <ButtonGhost
+                        size="small"
+                        leftIcon={iconType.CrossOutlined}
+                        onClick={() => { setAiEditSelectedText(''); setAiEditResult(null) }}
+                      >
+                        Clear selection
+                      </ButtonGhost>
+                    </div>
+                  </div>
+                )}
+
+                {aiEditMode === 'section' && !aiEditSelectedText && (
+                  <div style={{
+                    border: '1px dashed #d0d0d0',
+                    borderRadius: 6,
+                    padding: spacing(3),
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: spacing(2),
+                  }}>
+                    <Icon type={iconType.InfoCircleOutlined} size={14} color="neutral-darken2" />
+                    <Typography size="base-sm" color="neutral-darken2">
+                      Highlight a portion of the text above to edit only that section with AI.
+                    </Typography>
+                  </div>
+                )}
+              </div>
+
+              {/* Vertical divider */}
+              <div style={{ width: 1, alignSelf: 'stretch', backgroundColor: '#e5e7eb', flexShrink: 0 }} />
+
+              {/* Right: AI panel */}
+              <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+
+                {/* Scope toggle */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                  <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Scope</Typography>
+                  <div style={{ display: 'flex', gap: spacing(2) }}>
+                    {(['entire', 'section'] as AiEditMode[]).map(mode => (
+                      <div
+                        key={mode}
+                        onClick={() => {
+                          setAiEditMode(mode)
+                          setAiEditSelectedText('')
+                          setAiEditResult(null)
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: `${spacing(2)}px ${spacing(3)}px`,
+                          border: `1.5px solid ${aiEditMode === mode ? colorPalette.blue.base : '#e5e7eb'}`,
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          backgroundColor: aiEditMode === mode ? '#EFF6FF' : colorPalette.white,
+                          textAlign: 'center',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <Typography
+                          size="base-sm"
+                          color={aiEditMode === mode ? 'primary-base' : 'neutral-darken3'}
+                          weight={aiEditMode === mode ? fontWeight.BOLD : fontWeight.REGULAR}
+                        >
+                          {mode === 'entire' ? 'Entire document' : 'Selected section'}
+                        </Typography>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick actions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                  <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Quick actions</Typography>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(1) }}>
+                    {QUICK_ACTIONS.map(action => {
+                      const active = aiEditInstruction === action.instruction
+                      return (
+                        <div
+                          key={action.label}
+                          onClick={() => {
+                            setAiEditInstruction(action.instruction)
+                            setAiEditResult(null)
+                          }}
+                          style={{
+                            padding: `${spacing(1)}px ${spacing(2)}px`,
+                            border: `1.5px solid ${active ? colorPalette.blue.base : '#e5e7eb'}`,
+                            borderRadius: 16,
+                            cursor: 'pointer',
+                            backgroundColor: active ? '#EFF6FF' : colorPalette.white,
+                            fontSize: 12,
+                            lineHeight: '20px',
+                            color: active ? colorPalette.blue.base : colorPalette.neutral.darken3,
+                            fontWeight: active ? 600 : 400,
+                            transition: 'all 0.15s ease',
+                            userSelect: 'none',
+                          }}
+                        >
+                          {action.label}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Instruction input */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                  <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Instructions</Typography>
+                  <TextArea
+                    name="ai-instruction"
+                    value={aiEditInstruction}
+                    onChange={e => { setAiEditInstruction(e.target.value); setAiEditResult(null) }}
+                    placeholder="Describe what you'd like to change or improve…"
+                    rows={3}
+                  />
+                </div>
+
+                {/* Generate button */}
+                <ButtonPrimary
+                  disabled={!canGenerate}
+                  onClick={handleGenerate}
+                >
+                  {aiEditIsGenerating ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <Spinner size="small" />
+                      Generating…
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <SparkleIcon />
+                      Generate with AI
+                    </span>
+                  )}
+                </ButtonPrimary>
+
+              </div>
+            </div>
+
+            {/* Diff result */}
+            {aiEditResult && (
+              <div style={{
+                borderTop: '1px solid #e5e7eb',
+                paddingTop: spacing(4),
+                display: 'flex',
+                flexDirection: 'column',
+                gap: spacing(3),
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+                  <CopilotIcon />
+                  <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Suggested changes</Typography>
+                  {aiEditMode === 'section' && (
+                    <Typography size="base-sm" color="neutral-darken2">— selected section only</Typography>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: spacing(3) }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
+                      <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#FCA5A5' }} />
+                      <Typography size="base-sm" weight={fontWeight.BOLD} color="neutral-darken3">Before</Typography>
+                    </div>
+                    <div style={{
+                      backgroundColor: '#FEF2F2',
+                      border: '1px solid #FECACA',
+                      borderRadius: 6,
+                      padding: spacing(3),
+                      maxHeight: 180,
+                      overflowY: 'auto',
+                      fontSize: 13,
+                      lineHeight: '1.65',
+                      color: colorPalette.neutral.darken5,
+                      whiteSpace: 'pre-wrap',
+                    }}>
+                      {aiEditResult.original}
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
+                      <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: '#86EFAC' }} />
+                      <Typography size="base-sm" weight={fontWeight.BOLD} color="neutral-darken3">After</Typography>
+                    </div>
+                    <div style={{
+                      backgroundColor: '#F0FDF4',
+                      border: '1px solid #BBF7D0',
+                      borderRadius: 6,
+                      padding: spacing(3),
+                      maxHeight: 180,
+                      overflowY: 'auto',
+                      fontSize: 13,
+                      lineHeight: '1.65',
+                      color: colorPalette.neutral.darken5,
+                      whiteSpace: 'pre-wrap',
+                    }}>
+                      {aiEditResult.suggested}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: spacing(2), justifyContent: 'flex-end' }}>
+                  <ButtonTertiary
+                    leftIcon={iconType.CrossOutlined}
+                    onClick={() => setAiEditResult(null)}
+                  >
+                    Discard
+                  </ButtonTertiary>
+                  <ButtonPrimary
+                    leftIcon={iconType.EditRecOutlined}
+                    onClick={handleApplyChanges}
+                  >
+                    Apply changes
+                  </ButtonPrimary>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+      </Modal>
+
     </div>
   )
 }

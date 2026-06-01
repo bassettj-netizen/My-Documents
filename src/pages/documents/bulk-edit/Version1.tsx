@@ -38,7 +38,7 @@ import {
 } from '@goat-ui/goat-ui-core'
 import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type FileFormat } from './documents'
 
-const { colorPalette, spacing } = constants
+const { colorPalette, spacing, fontWeight } = constants
 const PAGE_SIZE = 10
 
 const UPLOAD_FORMATS = new Set<string>(['PDF', 'DOCX', 'XLSX', 'PPTX'])
@@ -374,6 +374,7 @@ export default function MetadataUserTestingV3() {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [securityModalOpen, setSecurityModalOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH)
   const pendingEditsRef = useRef<Record<string, string>>({})
   const pendingTagsRef = useRef<Tag[] | null>(null)
@@ -985,7 +986,7 @@ export default function MetadataUserTestingV3() {
 
       <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: spacing(2), paddingTop: spacing(2), paddingBottom: spacing(2) }}>
         <Icon type={iconType.ShieldCheckFilled} color="primary-base" size={16} />
-        <Typography size="base" color="neutral-darken2">All files are securely uploaded and scanned for viruses.</Typography>
+        <Typography size="base" color="neutral-darken2">All files are securely uploaded and scanned for viruses. <span style={{ color: colorPalette.blue.base, cursor: 'pointer' }} onClick={() => setSecurityModalOpen(true)}>Learn more</span></Typography>
       </div>
 
       <Modal
@@ -1022,6 +1023,40 @@ export default function MetadataUserTestingV3() {
             <Icon type={iconType.InfoCircleOutlined} size={16} color="neutral-darken2" />
             <Typography size="base-sm" color="neutral-darken2">{selectedKeys.size === 1 ? 'This document' : 'These documents'} will no longer be available</Typography>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        visible={securityModalOpen}
+        title="Your data is private and secure"
+        onClose={() => setSecurityModalOpen(false)}
+        footer={{
+          buttons: [
+            {
+              variant: buttonVariants.PRIMARY,
+              props: { children: 'Close', onClick: () => setSecurityModalOpen(false) },
+            },
+          ],
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+          <Typography size="base" color="neutral-darken5">The highest data protection standards are essential for the professional use of our solution. The following information provides an overview of our security architecture.</Typography>
+          {[
+            { icon: iconType.LayersHorOutlined, title: 'Secure data storage in Germany', body: 'All data is stored securely on European servers. Our data centre is certified to ISO 27001, 27017, 27018, SOC 2 and CS, making it one of the most secure data centres in the world.' },
+            { icon: iconType.LockOutlined, title: 'Data encryption', body: 'All data is stored in encrypted form in the data centre (AES 256) and transmitted to the data centre in encrypted form (TLS 1.3).' },
+            { icon: iconType.LayersVerOutlined, title: 'Backups', body: 'Regular backups and a disaster recovery strategy protect against data loss.' },
+            { icon: iconType.MinusCircleOutlined, title: 'No training with your data', body: 'The uploaded files are not used to train language models.' },
+          ].map(({ icon, title, body }) => (
+            <div key={title} style={{ display: 'flex', gap: spacing(3), alignItems: 'flex-start' }}>
+              <div style={{ flexShrink: 0, marginTop: 2 }}>
+                <Icon type={icon} color="neutral-darken5" size={20} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+                <Typography size="base" color="neutral-darken5" weight={fontWeight.BOLD}>{title}</Typography>
+                <Typography size="base" color="neutral-darken5">{body}</Typography>
+              </div>
+            </div>
+          ))}
         </div>
       </Modal>
     </div>

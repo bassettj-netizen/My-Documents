@@ -54,7 +54,21 @@
       "Bash(echo \"PID: $!\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
       "Bash(open -a \"Google Chrome\" \"http://localhost:5179/my-documents/preview-tasks/version-7\")",
-      "Bash(open \"http://localhost:5179/my-documents/preview-tasks/version-7\")"
+      "Bash(open \"http://localhost:5179/my-documents/preview-tasks/version-7\")",
+      "Bash(xargs ls -la)",
+      "Bash(lsof -ti:5173 -ti:5174 -ti:3000)",
+      "Bash(lsof -i:5173 -i:5174 -i:3000)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(chromium-cli screenshot *)",
+      "Bash(\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless=new --screenshot=/tmp/bulk-edit-v1.png --window-size=1280,900 \"http://localhost:5173/my-documents/bulk-edit/version-1\")",
+      "Bash(npm list *)",
+      "Bash(\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless=new --screenshot=/tmp/bulk-edit-v1.png --window-size=1280,900 --virtual-time-budget=5000 \"http://localhost:5173/my-documents/bulk-edit/version-1\")",
+      "Bash(curl -s http://localhost:5173/my-documents/bulk-edit/version-1)",
+      "Bash(npm root *)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(curl -s http://localhost:5173/src/pages/documents/preview-tasks/Version8.tsx)"
     ]
   }
 }

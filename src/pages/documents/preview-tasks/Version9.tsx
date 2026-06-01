@@ -37,7 +37,6 @@ import {
   useNotifications,
 } from '@goat-ui/goat-ui-core'
 import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type FileFormat } from '../bulk-edit/documents'
-import { extraDocs } from './docStore'
 
 const { colorPalette, spacing, fontWeight } = constants
 const PAGE_SIZE = 10
@@ -360,7 +359,7 @@ function CompareIcon() {
   )
 }
 
-export default function PreviewTasksV7() {
+export default function PreviewTasksV9() {
   const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -371,7 +370,7 @@ export default function PreviewTasksV7() {
   const [isSearching, setIsSearching] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [tempDocs, setTempDocs] = useState<MetadataDocument[]>([])
-  const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...extraDocs, ...documents])
+  const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...documents])
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -645,7 +644,7 @@ export default function PreviewTasksV7() {
         ellipsis: needsEllipsis,
         sorter: key !== 'tags' ? makeSorter(key) : undefined,
         onCell: (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-7/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-9/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           ...(isNonEditable ? {} : {
             editable: true,
@@ -679,7 +678,7 @@ export default function PreviewTasksV7() {
           </div>
         )
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-7/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-9/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
         })
       }
@@ -687,7 +686,7 @@ export default function PreviewTasksV7() {
       if (key === 'documentType') {
         col.width = 160
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-7/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-9/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           editable: true,
           isEditing: editingKey === record._id,
@@ -845,7 +844,7 @@ export default function PreviewTasksV7() {
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       onClick={() => {
-                        navigate(`/my-documents/preview-tasks/version-7/${doc._id}`)
+                        navigate(`/my-documents/preview-tasks/version-9/${doc._id}`)
                         setShowDropdown(false)
                       }}
                     >

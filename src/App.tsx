@@ -38,6 +38,11 @@ import PreviewTasksV6 from './pages/documents/preview-tasks/Version6'
 import PreviewTasksPreviewScreenV6 from './pages/documents/preview-tasks/PreviewScreenV6'
 import PreviewTasksV7 from './pages/documents/preview-tasks/Version7'
 import PreviewTasksPreviewScreenV7 from './pages/documents/preview-tasks/PreviewScreenV7'
+import PreviewTasksV8 from './pages/documents/preview-tasks/Version8'
+import PreviewTasksV9 from './pages/documents/preview-tasks/Version9'
+import PreviewTasksPreviewScreenV9 from './pages/documents/preview-tasks/PreviewScreenV9'
+import PreviewTasksV10 from './pages/documents/preview-tasks/Version10'
+import PreviewTasksPreviewScreenV10 from './pages/documents/preview-tasks/PreviewScreenV10'
 import DocumentPreviewV1 from './pages/documents/document-preview/Version1'
 import DocumentPreviewV2 from './pages/documents/document-preview/Version2'
 import DocumentPreviewV3 from './pages/documents/document-preview/Version3'
@@ -116,6 +121,9 @@ function App() {
           <Route path="/my-documents/preview-tasks/version-5" element={<PreviewTasksV5 />} />
           <Route path="/my-documents/preview-tasks/version-6" element={<PreviewTasksV6 />} />
           <Route path="/my-documents/preview-tasks/version-7" element={<PreviewTasksV7 />} />
+          <Route path="/my-documents/preview-tasks/version-8" element={<PreviewTasksV8 />} />
+          <Route path="/my-documents/preview-tasks/version-9" element={<PreviewTasksV9 />} />
+          <Route path="/my-documents/preview-tasks/version-10" element={<PreviewTasksV10 />} />
           <Route path="/my-documents/document-preview/version-1" element={<DocumentPreviewV1 />} />
           <Route path="/my-documents/document-preview/version-2" element={<DocumentPreviewV2 />} />
           <Route path="/my-documents/document-preview/version-3" element={<DocumentPreviewV3 />} />
@@ -140,6 +148,9 @@ function App() {
         <Route path="/my-documents/preview-tasks/version-5/:id" element={<PreviewTasksPreviewScreenV5 />} />
         <Route path="/my-documents/preview-tasks/version-6/:id" element={<PreviewTasksPreviewScreenV6 />} />
         <Route path="/my-documents/preview-tasks/version-7/:id" element={<PreviewTasksPreviewScreenV7 />} />
+        <Route path="/my-documents/preview-tasks/version-8/:id" element={<PreviewTasksPreviewScreenV7 />} />
+        <Route path="/my-documents/preview-tasks/version-9/:id" element={<PreviewTasksPreviewScreenV9 />} />
+        <Route path="/my-documents/preview-tasks/version-10/:id" element={<PreviewTasksPreviewScreenV10 />} />
       </Routes>
     </ThemeProvider>
   )
