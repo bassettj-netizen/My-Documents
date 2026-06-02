@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { theme as antTheme } from 'antd'
 import {
@@ -18,22 +18,23 @@ import {
   iconType,
   Input,
   Select,
-  buttonVariants,
-  Modal,
   Skeleton,
   skeletonVariants,
+  Spinner,
   Tabs,
   TextArea,
+  Toolbar,
   Typography,
   useNotifications,
   toastPlacements,
-  Spinner,
 } from '@goat-ui/goat-ui-core'
 import { documents, DOCUMENT_SNIPPETS, type MetadataDocument } from '../bulk-edit/documents'
+import { addCopiedDoc, customHtmlMap, extraDocs } from './docStore'
 
-const { colorPalette, spacing, fontWeight } = constants
+const { colorPalette, spacing } = constants
 const TOP_BAR_BG = '#1e1f2e'
 const SUMMARY_MAX = 500
+const POPUP_W = 400
 
 const DOCUMENT_TYPE_OPTIONS = [
   'Compliance Guide', 'Combined Policy', 'Expense Policy', 'HR Guide', 'HR Policy',
@@ -51,10 +52,11 @@ const QUICK_ACTIONS = [
 type Tag = { text: string; style: string; variant?: string }
 type TaskId = 'extract' | 'compliance' | 'related' | 'actions'
 type TaskStatus = 'idle' | 'running' | 'done'
-type AiEditMode = 'entire' | 'section'
-type AiEditResult = { original: string; suggested: string }
+type AiPopupPhase = 'instructions' | 'generating' | 'result' | 'summary' | 'crossref'
+type AiPopupSource = 'selection' | 'document'
+interface AiEditResult { original: string; originalHtml: string; suggested: string; suggestedHtml: string }
 interface TaskState { status: TaskStatus; result: ReactNode | null }
-interface SelectionPos { text: string; x: number; y: number; bottom: number }
+type MarkupType = 'h1' | 'h2' | 'p' | 'pb'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,25 +85,11 @@ function toRoman(n: number): string {
   return result
 }
 
-function getDocumentContentFallback(doc: MetadataDocument): string {
-  const snippet = DOCUMENT_SNIPPETS[doc._id]
-  const base = snippet ?? `${doc.documentType} – ${doc.namedEntity}`
-  return (
-    base +
-    '\n\nThis document applies to all employees and contractors engaged in cross-border activities. ' +
-    'Compliance with these provisions is mandatory and applies in conjunction with applicable local ' +
-    'legislation, collective agreements, and internal guidelines.\n\n' +
-    `Document Type: ${doc.documentType} · Jurisdiction: ${doc.jurisdiction} · Domain: ${doc.domain} · ` +
-    `Last Updated: ${new Date(doc.uploadedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-  )
-}
-
 function simulateGptEdit(content: string, instruction: string): string {
   const lower = instruction.toLowerCase()
   if (lower.includes('summar')) {
     const sentences = content.split(/(?<=[.!?])\s+/)
-    return sentences.slice(0, Math.max(2, Math.ceil(sentences.length / 3))).join(' ') +
-      '\n\n[AI Summary: Content condensed to key points only]'
+    return sentences.slice(0, Math.max(2, Math.ceil(sentences.length / 3))).join(' ')
   }
   if (lower.includes('simpl') || lower.includes('plain') || lower.includes('easy')) {
     return content
@@ -111,20 +99,59 @@ function simulateGptEdit(content: string, instruction: string): string {
       .replace(/Mitarbeiterversetzung/g, 'employee relocation')
       .replace(/Auslandsentsendung/g, 'international assignment')
       .replace(/steuerlich(e|en|er)/g, 'tax-related')
-      + '\n\n[AI: Language simplified — technical terms replaced with plain equivalents]'
   }
   if (lower.includes('translat') || lower.includes('english')) {
     return content
       .replace(/\b(die|der|das|den|dem|des|ein|eine|einen)\b/g, 'the')
       .replace(/\bund\b/g, 'and').replace(/\bfür\b/g, 'for').replace(/\bmit\b/g, 'with')
       .replace(/\bvon\b/g, 'of').replace(/\bnach\b/g, 'to').replace(/\bauf\b/g, 'on').replace(/\bbei\b/g, 'at')
-      + '\n\n[AI: Auto-translated to English — professional review recommended]'
   }
   if (lower.includes('grammar') || lower.includes('fix') || lower.includes('spelling')) {
-    return content.replace(/\. ([a-z])/g, (_: string, c: string) => `. ${c.toUpperCase()}`).replace(/\s{2,}/g, ' ') +
-      '\n\n[AI: Grammar and punctuation reviewed — corrections applied]'
+    return content.replace(/\. ([a-z])/g, (_: string, c: string) => `. ${c.toUpperCase()}`).replace(/\s{2,}/g, ' ')
   }
-  return content + `\n\n[AI applied: "${instruction}" — please review and apply if appropriate]`
+  return content
+}
+
+function applyTransformToHtml(html: string, transform: (text: string) => string): string {
+  const div = document.createElement('div')
+  div.innerHTML = html
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent) {
+      node.textContent = transform(node.textContent)
+    } else {
+      node.childNodes.forEach(walk)
+    }
+  }
+  walk(div)
+  return div.innerHTML
+}
+
+function simulateGptEditHtml(html: string, instruction: string): string {
+  const lower = instruction.toLowerCase()
+  if (lower.includes('summar')) return ''
+  if (lower.includes('simpl') || lower.includes('plain') || lower.includes('easy')) {
+    return applyTransformToHtml(html, t => t
+      .replace(/gemäß/g, 'according to')
+      .replace(/nach Maßgabe des?/g, 'as specified by')
+      .replace(/im Rahmen des?/g, 'within the scope of')
+      .replace(/Mitarbeiterversetzung/g, 'employee relocation')
+      .replace(/Auslandsentsendung/g, 'international assignment')
+      .replace(/steuerlich(e|en|er)/g, 'tax-related')
+    )
+  }
+  if (lower.includes('translat') || lower.includes('english')) {
+    return applyTransformToHtml(html, t => t
+      .replace(/\b(die|der|das|den|dem|des|ein|eine|einen)\b/g, 'the')
+      .replace(/\bund\b/g, 'and').replace(/\bfür\b/g, 'for').replace(/\bmit\b/g, 'with')
+      .replace(/\bvon\b/g, 'of').replace(/\bnach\b/g, 'to').replace(/\bauf\b/g, 'on').replace(/\bbei\b/g, 'at')
+    )
+  }
+  if (lower.includes('grammar') || lower.includes('fix') || lower.includes('spelling')) {
+    return applyTransformToHtml(html, t =>
+      t.replace(/\. ([a-z])/g, (_: string, c: string) => `. ${c.toUpperCase()}`).replace(/\s{2,}/g, ' ')
+    )
+  }
+  return ''
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -137,12 +164,12 @@ function CopilotIcon() {
   )
 }
 
-function SparkleIcon({ size = 14 }: { size?: number }) {
+function SparkleIcon({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M8 2L9.2 5.8H13.2L10 8.1L11.2 11.9L8 9.6L4.8 11.9L6 8.1L2.8 5.8H6.8L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      <circle cx="13" cy="3" r="1" fill="currentColor" opacity="0.6"/>
-      <circle cx="3" cy="13" r="0.8" fill="currentColor" opacity="0.4"/>
+      <circle cx="13" cy="3" r="0.9" fill="currentColor" opacity="0.6"/>
+      <circle cx="3" cy="13" r="0.75" fill="currentColor" opacity="0.4"/>
     </svg>
   )
 }
@@ -178,15 +205,11 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
   switch (taskId) {
     case 'extract': {
       const rows: [string, string][] = [
-        ['Entity', doc.namedEntity],
-        ['Entity ID', doc.namedEntityId !== '—' ? doc.namedEntityId : '—'],
-        ['Type', doc.documentType],
-        ['Jurisdiction', doc.jurisdiction !== '—' ? doc.jurisdiction : '—'],
-        ['Citations', doc.citations !== '—' ? doc.citations : '—'],
-        ['Law type', doc.lawType !== '—' ? doc.lawType : '—'],
+        ['Entity', doc.namedEntity], ['Entity ID', doc.namedEntityId !== '—' ? doc.namedEntityId : '—'],
+        ['Type', doc.documentType], ['Jurisdiction', doc.jurisdiction !== '—' ? doc.jurisdiction : '—'],
+        ['Citations', doc.citations !== '—' ? doc.citations : '—'], ['Law type', doc.lawType !== '—' ? doc.lawType : '—'],
         ...(doc.monetaryAmounts > 0 ? [['Amount', `${doc.monetaryAmounts.toLocaleString('de-DE')} ${doc.currency}`] as [string, string]] : []),
-        ['Year', String(doc.year)],
-        ['Uploaded', formatDate(doc.uploadedDate)],
+        ['Year', String(doc.year)], ['Uploaded', formatDate(doc.uploadedDate)],
       ]
       return (
         <div style={gap8}>
@@ -200,13 +223,10 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
       )
     }
     case 'compliance': {
-      const isOk = doc.status === 'Approved'
-      const isWarn = doc.status === 'Draft'
+      const isOk = doc.status === 'Approved'; const isWarn = doc.status === 'Draft'
       const color = isOk ? '#16a34a' : isWarn ? '#ea580c' : '#dc2626'
-      const message = isOk
-        ? 'Document is approved and current. No compliance issues identified.'
-        : isWarn
-        ? 'Document is in draft status and requires review and approval before operational use.'
+      const message = isOk ? 'Document is approved and current. No compliance issues identified.'
+        : isWarn ? 'Document is in draft status and requires review and approval before operational use.'
         : 'This document has been superseded. A newer version may be available — do not rely on this version.'
       return (
         <div style={gap8}>
@@ -225,7 +245,7 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
         <div style={gap8}>
           {related.length === 0 && <Typography size="base" color="neutral-darken2">No closely related documents found.</Typography>}
           {related.map(r => (
-            <div key={r._id} onClick={() => window.open(`/my-documents/preview-tasks/version-9/${r._id}`, '_blank', 'noopener,noreferrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <div key={r._id} onClick={() => window.open(`/my-documents/preview-tasks/version-11/${r._id}`, '_blank', 'noopener,noreferrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <Typography size="base" color="primary-base">{r.name}</Typography>
               <Icon type={iconType.ExternalLinkOutlined} size={12} color="primary-base" />
             </div>
@@ -235,31 +255,11 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
     }
     case 'actions': {
       const actionMap: Partial<Record<string, string[]>> = {
-        'HR Policy': [
-          'Review policy with HR team and obtain sign-off from HR Director.',
-          'Distribute to all affected employees and collect acknowledgment forms.',
-          `Update employee records to reflect compliance with ${doc.citations}.`,
-          `Schedule annual review for ${doc.year + 1}.`,
-        ],
-        'Tax Guidance': [
-          'Share guidance with payroll team to ensure correct tax withholding.',
-          `Review affected assignments against thresholds defined in ${doc.citations}.`,
-          'File required notifications with the relevant tax authority by year-end.',
-          `Consult advisor for cases approaching the ${doc.monetaryAmounts > 0 ? `${doc.monetaryAmounts.toLocaleString('de-DE')} ${doc.currency}` : 'applicable'} threshold.`,
-        ],
-        'Compliance Guide': [
-          'Conduct an internal audit against the compliance requirements listed.',
-          'Identify employees at risk of creating a permanent establishment.',
-          'Update A1 certificate tracking for all EU cross-border assignments.',
-          'Report findings to compliance officer by end of quarter.',
-        ],
+        'HR Policy': ['Review policy with HR team and obtain sign-off from HR Director.', 'Distribute to all affected employees and collect acknowledgment forms.', `Update employee records to reflect compliance with ${doc.citations}.`, `Schedule annual review for ${doc.year + 1}.`],
+        'Tax Guidance': ['Share guidance with payroll team to ensure correct tax withholding.', `Review affected assignments against thresholds defined in ${doc.citations}.`, 'File required notifications with the relevant tax authority by year-end.', `Consult advisor for cases approaching the ${doc.monetaryAmounts > 0 ? `${doc.monetaryAmounts.toLocaleString('de-DE')} ${doc.currency}` : 'applicable'} threshold.`],
+        'Compliance Guide': ['Conduct an internal audit against the compliance requirements listed.', 'Identify employees at risk of creating a permanent establishment.', 'Update A1 certificate tracking for all EU cross-border assignments.', 'Report findings to compliance officer by end of quarter.'],
       }
-      const actions = actionMap[doc.documentType] ?? [
-        `Review ${doc.name} with the relevant stakeholders.`,
-        `Ensure all requirements under ${doc.citations !== '—' ? doc.citations : 'applicable law'} are met.`,
-        `File documentation with appropriate authorities in ${doc.jurisdiction !== '—' ? doc.jurisdiction : 'applicable jurisdiction'}.`,
-        `Schedule follow-up review for Q2 ${doc.year}.`,
-      ]
+      const actions = actionMap[doc.documentType] ?? [`Review ${doc.name} with the relevant stakeholders.`, `Ensure all requirements under ${doc.citations !== '—' ? doc.citations : 'applicable law'} are met.`, `File documentation with appropriate authorities in ${doc.jurisdiction !== '—' ? doc.jurisdiction : 'applicable jurisdiction'}.`, `Schedule follow-up review for Q2 ${doc.year}.`]
       return (
         <div style={gap8}>
           {actions.map((action, i) => (
@@ -275,9 +275,49 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
   }
 }
 
+// ─── Markup helpers ───────────────────────────────────────────────────────────
+
+function applyFontSizePx(px: string) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+  const range = sel.getRangeAt(0)
+  const span = document.createElement('span')
+  span.style.fontSize = px
+  span.appendChild(range.extractContents())
+  range.insertNode(span)
+  const newRange = document.createRange()
+  newRange.selectNodeContents(span)
+  sel.removeAllRanges()
+  sel.addRange(newRange)
+}
+
+function getFirstTextNode(el: Node): Text | null {
+  if (el.nodeType === Node.TEXT_NODE && (el.textContent ?? '').trim().length > 0) return el as Text
+  for (let i = 0; i < el.childNodes.length; i++) {
+    const found = getFirstTextNode(el.childNodes[i])
+    if (found) return found
+  }
+  return null
+}
+
+const MARKUP_BUTTONS: Array<{ type: MarkupType; label: string }> = [
+  { type: 'h1', label: 'Heading' }, { type: 'h2', label: 'Sub-heading' },
+  { type: 'p', label: 'Paragraph' }, { type: 'pb', label: 'Bold' },
+]
+
+function MarkupButtons({ onApply }: { onApply: (type: MarkupType) => void }) {
+  return (
+    <>
+      {MARKUP_BUTTONS.map(({ type, label }) => (
+        <ButtonGhost key={type} onMouseDown={e => { e.preventDefault(); onApply(type) }}>{label}</ButtonGhost>
+      ))}
+    </>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function PreviewTasksPreviewScreenV9() {
+export default function PreviewTasksPreviewScreenV11() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { notification } = useNotifications()
@@ -295,35 +335,52 @@ export default function PreviewTasksPreviewScreenV9() {
   const [editingSummary, setEditingSummary] = useState('')
   const [tagInputVal, setTagInputVal] = useState('')
   const [activeTab, setActiveTab] = useState('details')
-  const [textSelection, setTextSelection] = useState<SelectionPos | null>(null)
-  const [inlineEditOpen, setInlineEditOpen] = useState(false)
-  const [inlineEditHtml, setInlineEditHtml] = useState('')
   const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
-  const [docHtmlOverride, setDocHtmlOverride] = useState<string | null>(null)
-  const [editFocused, setEditFocused] = useState(false)
+  const [docHtml, setDocHtml] = useState<string | null>(() => (id ? customHtmlMap.get(id) ?? null : null))
+  const [isDocEditing, setIsDocEditing] = useState(false)
+  const [hasDocChanges, setHasDocChanges] = useState(false)
+  const [docToolbarStyle, setDocToolbarStyle] = useState<{ left: number; width: number } | null>(null)
+  const [hasAiChanges, setHasAiChanges] = useState(false)
+  const [isApplyingChanges, setIsApplyingChanges] = useState(false)
 
-  // AI edit state
-  const [aiEditMode, setAiEditMode] = useState<AiEditMode>('entire')
-  const [aiEditInstruction, setAiEditInstruction] = useState('')
-  const [aiEditSelectedText, setAiEditSelectedText] = useState('')
-  const [aiEditIsGenerating, setAiEditIsGenerating] = useState(false)
-  const [aiEditResult, setAiEditResult] = useState<AiEditResult | null>(null)
+  // AI popup state
+  const [aiPopupOpen, setAiPopupOpen] = useState(false)
+  const [aiPopupPhase, setAiPopupPhase] = useState<AiPopupPhase>('instructions')
+  const [aiPopupSource, setAiPopupSource] = useState<AiPopupSource>('selection')
+  const [aiPopupSelectedText, setAiPopupSelectedText] = useState('')
+  const [aiPopupInstruction, setAiPopupInstruction] = useState('')
+  const [aiPopupPos, setAiPopupPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const [aiPopupResult, setAiPopupResult] = useState<AiEditResult | null>(null)
+  const [aiPopupSelectedHtml, setAiPopupSelectedHtml] = useState('')
 
   const { token } = antTheme.useToken()
 
   const docBodyRef = useRef<HTMLDivElement>(null)
   const docContentRef = useRef<HTMLDivElement>(null)
-  const selToolbarRef = useRef<HTMLDivElement>(null)
-  const dialogEditRef = useRef<HTMLDivElement>(null)
-  const savedRangeRef = useRef<Range | null>(null)
+  const editToolbarRef = useRef<HTMLDivElement>(null)
+  const isDocEditingRef = useRef(false)
+  const aiPopupOpenRef = useRef(false)
+  const preAiDocHtmlRef = useRef<string | null>(null)
+  const aiPopupRef = useRef<HTMLDivElement>(null)
+  const aiHighlightRef = useRef<unknown>(null)
+  const docHtmlInitialized = useRef(id ? customHtmlMap.has(id) : false)
+  const savedDocHtmlRef = useRef<string>(id ? customHtmlMap.get(id) ?? '' : '')
+  const savedSelRangeRef = useRef<Range | null>(null)
 
-  // Refs to read current tab/mode inside stable event listener
-  const activeTabRef = useRef(activeTab)
-  const aiEditModeRef = useRef(aiEditMode)
-  useEffect(() => { activeTabRef.current = activeTab }, [activeTab])
-  useEffect(() => { aiEditModeRef.current = aiEditMode }, [aiEditMode])
+  const allDocs = [...extraDocs, ...documents]
+  const foundDoc = allDocs.find(d => d._id === id)
 
-  const foundDoc = documents.find(d => d._id === id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clearAiHighlight = () => { try { (CSS as any).highlights?.delete('ai-selection') } catch { /**/ }; aiHighlightRef.current = null }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createAiHighlight = (range: Range) => { try { if ((CSS as any).highlights && (window as any).Highlight) { const h = new (window as any).Highlight(range); (CSS as any).highlights.set('ai-selection', h); aiHighlightRef.current = h } } catch { /**/ } }
+
+  useEffect(() => {
+    if (document.getElementById('ai-sel-hl')) return
+    const s = document.createElement('style'); s.id = 'ai-sel-hl'
+    s.textContent = '::highlight(ai-selection){background-color:rgba(66,133,244,0.2)}'
+    document.head.appendChild(s)
+  }, [])
 
   useEffect(() => {
     setIsLoading(true)
@@ -335,78 +392,155 @@ export default function PreviewTasksPreviewScreenV9() {
     setLocalDoc(null); setLocalSummary(null); setIsEditing(false); setIsSaving(false)
     setEditingName(''); setEditingDomain(''); setEditingCustomTags([])
     setEditingRemovedFields(new Set()); setEditingSummary(''); setTagInputVal('')
-    setTextSelection(null); setInlineEditOpen(false); setInlineEditHtml('')
-    setTaskStates({}); setDocHtmlOverride(null); savedRangeRef.current = null
-    setAiEditMode('entire'); setAiEditInstruction(''); setAiEditSelectedText('')
-    setAiEditIsGenerating(false); setAiEditResult(null)
+    setActiveTab('details'); setTaskStates({})
+    const stored = id ? customHtmlMap.get(id) ?? null : null
+    setDocHtml(stored); setIsDocEditing(false); setHasDocChanges(false)
+    docHtmlInitialized.current = stored !== null
+    savedDocHtmlRef.current = stored ?? ''
+    setDocToolbarStyle(null)
+    setAiPopupOpen(false)
+    setHasAiChanges(false)
+    setIsApplyingChanges(false)
+    preAiDocHtmlRef.current = null
   }, [id])
+
+  useLayoutEffect(() => {
+    if (!isLoading && docContentRef.current && !docHtmlInitialized.current) {
+      setDocHtml(docContentRef.current.innerHTML)
+      docHtmlInitialized.current = true
+    }
+  }, [isLoading])
+
+  useEffect(() => {
+    if (!isDocEditing || !docContentRef.current) return
+    const el = docContentRef.current
+    el.focus({ preventScroll: true })
+    if (savedSelRangeRef.current) {
+      const sel = window.getSelection()
+      if (sel) { sel.removeAllRanges(); sel.addRange(savedSelRangeRef.current) }
+      savedSelRangeRef.current = null
+      return
+    }
+    const firstText = getFirstTextNode(el)
+    const range = document.createRange()
+    const sel = window.getSelection()
+    if (firstText) { range.setStart(firstText, 0) } else { range.setStart(el, 0) }
+    range.collapse(true)
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+  }, [isDocEditing])
+
+  useEffect(() => {
+    if (!isDocEditing && !hasAiChanges) { setDocToolbarStyle(null); return }
+    const update = () => {
+      const rect = docBodyRef.current?.getBoundingClientRect()
+      if (rect) setDocToolbarStyle({ left: rect.left, width: rect.width })
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [isDocEditing, hasAiChanges])
+
+  useEffect(() => { isDocEditingRef.current = isDocEditing }, [isDocEditing])
+  useEffect(() => { aiPopupOpenRef.current = aiPopupOpen }, [aiPopupOpen])
+
+  useEffect(() => {
+    if (!isDocEditing || hasDocChanges) return
+    const cancel = (e: MouseEvent) => {
+      if (!docBodyRef.current?.contains(e.target as Node) && !editToolbarRef.current?.contains(e.target as Node)) {
+        setIsDocEditing(false)
+      }
+    }
+    document.addEventListener('mousedown', cancel)
+    return () => document.removeEventListener('mousedown', cancel)
+  }, [isDocEditing, hasDocChanges])
+
+  useEffect(() => {
+    if (!aiPopupOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (aiPopupRef.current && !aiPopupRef.current.contains(e.target as Node)) {
+        setAiPopupOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [aiPopupOpen])
 
   useEffect(() => {
     const onMouseUp = () => {
-      if (inlineEditOpen) return
+      if (isDocEditingRef.current) return
+      if (aiPopupOpenRef.current) return
       const sel = window.getSelection()
       if (!sel || sel.isCollapsed || !sel.toString().trim()) return
-      if (!docBodyRef.current?.contains(sel.anchorNode)) { setTextSelection(null); return }
+      if (!docBodyRef.current?.contains(sel.anchorNode)) return
       const range = sel.getRangeAt(0)
-      savedRangeRef.current = range.cloneRange()
       const rect = range.getBoundingClientRect()
       const frag = range.cloneContents()
       let selectedText = ''
+      const BLOCK_TAGS = new Set(['DIV', 'P', 'SECTION', 'H1', 'H2', 'H3', 'H4', 'LI', 'TR'])
       const walk = (node: Node) => {
-        if (node.nodeType === Node.TEXT_NODE) selectedText += node.textContent ?? ''
-        else if ((node as Element).tagName === 'BR') selectedText += '\n'
-        else node.childNodes.forEach(walk)
+        if (node.nodeType === Node.TEXT_NODE) {
+          selectedText += node.textContent ?? ''
+        } else {
+          const tag = (node as Element).tagName ?? ''
+          if (tag === 'BR') {
+            selectedText += '\n'
+          } else {
+            const isBlock = BLOCK_TAGS.has(tag)
+            if (isBlock && selectedText.length > 0 && !selectedText.endsWith('\n')) selectedText += '\n'
+            node.childNodes.forEach(walk)
+            if (isBlock && selectedText.length > 0 && !selectedText.endsWith('\n')) selectedText += '\n'
+          }
+        }
       }
       walk(frag)
-
-      // If the AI edit tab is active in "section" mode, capture for AI edit
-      if (activeTabRef.current === 'ai-edit' && aiEditModeRef.current === 'section') {
-        setAiEditSelectedText(selectedText.trim())
-        setAiEditResult(null)
-        return
-      }
-
-      // Otherwise show the regular floating toolbar
-      setTextSelection({
-        text: selectedText,
-        x: Math.round(rect.left + rect.width / 2),
-        y: Math.round(rect.top),
-        bottom: Math.round(rect.bottom),
-      })
-    }
-    const onMouseDown = (e: MouseEvent) => {
-      if (selToolbarRef.current?.contains(e.target as Node)) return
-      if (!docBodyRef.current?.contains(e.target as Node)) setTextSelection(null)
+      if (!selectedText.trim()) return
+      const selHtmlDiv = document.createElement('div')
+      selHtmlDiv.appendChild(range.cloneContents())
+      setAiPopupSelectedHtml(selHtmlDiv.innerHTML)
+      const docRect = docBodyRef.current?.getBoundingClientRect()
+      if (!docRect) return
+      const selTop = Math.round(rect.top)
+      const selBottom = Math.round(rect.bottom)
+      const selCenterX = Math.round(rect.left + rect.width / 2)
+      const rawLeft = selCenterX - POPUP_W / 2
+      const left = Math.max(docRect.left + 8, Math.min(rawLeft, docRect.right - POPUP_W - 8))
+      const POPUP_H = 390
+      const TOP_BAR_H = 60
+      const topBelow = selBottom + 10
+      const topAbove = selTop - POPUP_H - 10
+      const fitsBelow = topBelow + POPUP_H <= window.innerHeight - 8
+      const top = fitsBelow ? topBelow : Math.max(TOP_BAR_H, topAbove)
+      setAiPopupPos({ top, left })
+      setAiPopupSource('selection')
+      setAiPopupSelectedText(selectedText)
+      setAiPopupInstruction('')
+      setAiPopupPhase('instructions')
+      setAiPopupResult(null)
+      createAiHighlight(range.cloneRange())
+      setAiPopupOpen(true)
     }
     document.addEventListener('mouseup', onMouseUp)
-    document.addEventListener('mousedown', onMouseDown)
-    return () => { document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('mousedown', onMouseDown) }
-  }, [inlineEditOpen])
+    return () => document.removeEventListener('mouseup', onMouseUp)
+  }, [])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-9" replace />
+  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-11" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`
   const filename = `${displayDoc.name}.${displayDoc.fileFormat.toLowerCase()}`
 
+  // ─── Details handlers ──────────────────────────────────────────────────────
+
   const startEdit = () => {
-    setEditingName(displayDoc.name)
-    setEditingDomain(displayDoc.domain)
-    setEditingDocumentType(displayDoc.documentType)
-    setEditingCustomTags(displayDoc.tagList ?? [])
-    setEditingRemovedFields(new Set())
-    setEditingSummary(displaySummary)
-    setTagInputVal('')
-    setIsEditing(true)
+    setEditingName(displayDoc.name); setEditingDomain(displayDoc.domain)
+    setEditingDocumentType(displayDoc.documentType); setEditingCustomTags(displayDoc.tagList ?? [])
+    setEditingRemovedFields(new Set()); setEditingSummary(displaySummary); setTagInputVal(''); setIsEditing(true)
   }
 
   const saveEdit = () => {
     const updatedDoc: MetadataDocument = {
-      ...displayDoc,
-      name: editingName,
-      domain: editingDomain,
-      documentType: editingDocumentType,
-      tagList: editingCustomTags,
+      ...displayDoc, name: editingName, domain: editingDomain, documentType: editingDocumentType, tagList: editingCustomTags,
       ...(editingRemovedFields.has('namedEntity')     && { namedEntity: '—' }),
       ...(editingRemovedFields.has('namedEntityId')   && { namedEntityId: '—' }),
       ...(editingRemovedFields.has('jurisdiction')    && { jurisdiction: '—' }),
@@ -415,12 +549,9 @@ export default function PreviewTasksPreviewScreenV9() {
       ...(editingRemovedFields.has('monetaryAmounts') && { monetaryAmounts: 0 }),
       ...(editingRemovedFields.has('monetaryTypes')   && { monetaryTypes: 'None' }),
     }
-    setIsEditing(false)
-    setIsSaving(true)
+    setIsEditing(false); setIsSaving(true)
     setTimeout(() => {
-      setLocalDoc(updatedDoc)
-      setLocalSummary(editingSummary)
-      setIsSaving(false)
+      setLocalDoc(updatedDoc); setLocalSummary(editingSummary); setIsSaving(false)
       notification.success({ title: 'Document details updated successfully', placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
     }, 1000)
   }
@@ -432,20 +563,13 @@ export default function PreviewTasksPreviewScreenV9() {
 
   const addTag = () => {
     const t = tagInputVal.trim()
-    if (t && !editingCustomTags.some(tag => tag.text === t)) {
-      setEditingCustomTags(prev => [...prev, { text: t, style: chipStyles.ACCENT_NEUTRAL, variant: chipVariants.HIGHLIGHT }])
-    }
+    if (t && !editingCustomTags.some(tag => tag.text === t)) setEditingCustomTags(prev => [...prev, { text: t, style: chipStyles.ACCENT_NEUTRAL, variant: chipVariants.HIGHLIGHT }])
     setTagInputVal('')
   }
 
   const handleTabChange = (key: string) => {
     setActiveTab(key)
     if (isEditing) cancelEdit()
-    // When leaving ai-edit tab, clear the selection hint
-    if (key !== 'ai-edit') {
-      setAiEditSelectedText('')
-      setAiEditResult(null)
-    }
   }
 
   const runTask = (taskId: string) => {
@@ -455,113 +579,112 @@ export default function PreviewTasksPreviewScreenV9() {
     }, 1800)
   }
 
-  // ─── AI edit handlers ────────────────────────────────────────────────────────
+  // ─── Doc editing handlers ──────────────────────────────────────────────────
 
-  const handleAiGenerate = () => {
-    if (!aiEditInstruction.trim()) return
-    if (aiEditMode === 'section' && !aiEditSelectedText) return
+  const applyMarkup = (type: MarkupType) => {
+    const el = docContentRef.current
+    if (!el || !isDocEditing) return
+    switch (type) {
+      case 'h1': document.execCommand('fontSize', false, '5'); if (!document.queryCommandState('bold')) document.execCommand('bold'); break
+      case 'h2': applyFontSizePx('15px'); if (!document.queryCommandState('bold')) document.execCommand('bold'); break
+      case 'p': document.execCommand('removeFormat'); break
+      case 'pb': if (!document.queryCommandState('bold')) document.execCommand('bold'); break
+    }
+    if (el) setHasDocChanges(el.innerHTML !== savedDocHtmlRef.current)
+  }
 
-    const docText = docContentRef.current?.innerText?.trim() || getDocumentContentFallback(displayDoc)
-    const original = aiEditMode === 'section' ? aiEditSelectedText : docText
+  const enterDocEdit = () => { savedDocHtmlRef.current = docHtml ?? ''; setHasDocChanges(false); setIsDocEditing(true) }
+  const saveDocEdit = () => { if (docContentRef.current) setDocHtml(docContentRef.current.innerHTML); setHasDocChanges(false); setIsDocEditing(false) }
+  const discardDocEdit = () => { if (docContentRef.current) docContentRef.current.innerHTML = savedDocHtmlRef.current; setHasDocChanges(false); setIsDocEditing(false) }
 
-    setAiEditIsGenerating(true)
-    setAiEditResult(null)
+  const saveAsCopy = () => {
+    const html = (isDocEditing && docContentRef.current) ? docContentRef.current.innerHTML : (docHtml ?? docContentRef.current?.innerHTML ?? '')
+    const copyId = `copy-${displayDoc._id}-${Date.now()}`
+    const copyDoc: MetadataDocument = { ...displayDoc, _id: copyId, name: `${displayDoc.name} (Copy)`, uploadedDate: new Date().toISOString().slice(0, 10) }
+    addCopiedDoc(copyDoc, html)
+    notification.success({ title: 'Copy saved', content: <Typography size="base" color="neutral-darken5">{copyDoc.name}</Typography>, placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
+    navigate(`/my-documents/preview-tasks/version-11/${copyId}`, { replace: true })
+  }
+
+  // ─── AI popup handlers ────────────────────────────────────────────────────
+
+  const executeAiEdit = (instruction: string) => {
+    if (!instruction.trim()) return
+    const docText = docContentRef.current?.innerText?.trim() || `${displayDoc.documentType} — ${displayDoc.namedEntity}`
+    const isSelection = aiPopupSource === 'selection'
+    const original = isSelection ? aiPopupSelectedText : docText
+    const originalHtml = isSelection
+      ? aiPopupSelectedHtml
+      : (docHtml ?? docContentRef.current?.innerHTML ?? '')
+    setAiPopupInstruction(instruction)
+    setAiPopupPhase('generating')
     setTimeout(() => {
-      setAiEditResult({ original, suggested: simulateGptEdit(original, aiEditInstruction) })
-      setAiEditIsGenerating(false)
+      const suggested = simulateGptEdit(original, instruction)
+      const suggestedHtml = originalHtml ? simulateGptEditHtml(originalHtml, instruction) : ''
+      setAiPopupResult({ original, originalHtml, suggested, suggestedHtml })
+      setAiPopupPhase(instruction.toLowerCase().includes('summar') ? 'summary' : 'result')
     }, 1600)
   }
 
-  const handleAiApply = () => {
-    setAiEditResult(null)
-    setAiEditInstruction('')
-    setAiEditSelectedText('')
-    notification.success({
-      title: 'Changes applied',
-      placement: toastPlacements.BOTTOM_LEFT,
-      duration: 4,
-      content: <Typography size="base" color="neutral-darken5">AI edits applied to "{displayDoc.name}"</Typography>,
-    })
+  const applyAiEdit = () => {
+    if (!aiPopupResult) return
+    const source = aiPopupSource
+    const currentDocHtml = docHtml
+    const { originalHtml, suggestedHtml, suggested } = aiPopupResult
+
+    preAiDocHtmlRef.current = currentDocHtml
+    setAiPopupOpen(false)
+    setIsApplyingChanges(true)
+
+    setTimeout(() => {
+      let newDocHtml: string
+
+      if (source === 'document') {
+        newDocHtml = suggestedHtml || (() => {
+          const escaped = suggested.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')
+          return `<div style="font-family:'Open Sans',sans-serif;font-size:14px;line-height:1.8">${escaped}</div>`
+        })()
+      } else {
+        const html = currentDocHtml ?? ''
+        const replacement = suggestedHtml || (() => {
+          const escaped = suggested.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')
+          return escaped
+        })()
+        newDocHtml = (originalHtml && html.includes(originalHtml))
+          ? html.replace(originalHtml, replacement)
+          : html
+      }
+
+      setDocHtml(newDocHtml)
+      setIsApplyingChanges(false)
+      setHasAiChanges(true)
+    }, 800)
   }
 
-  // ─── Text selection toolbar actions ─────────────────────────────────────────
-
-  const toolbarAboveY = (textSelection?.y ?? 0) - 52
-  const showToolbarBelow = toolbarAboveY < 60
-  const toolbarY = showToolbarBelow ? (textSelection?.bottom ?? 0) + 10 : toolbarAboveY
-  const toolbarX = Math.max(200, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 200, textSelection?.x ?? 0))
-
-  useEffect(() => {
-    if (inlineEditOpen && dialogEditRef.current) {
-      dialogEditRef.current.innerHTML = inlineEditHtml
-      dialogEditRef.current.focus()
-      const sel = window.getSelection()
-      const r = document.createRange()
-      r.selectNodeContents(dialogEditRef.current)
-      sel?.removeAllRanges()
-      sel?.addRange(r)
-    }
-  }, [inlineEditOpen])
-
-  const openInlineEdit = () => {
-    if (!savedRangeRef.current) return
-    const frag = savedRangeRef.current.cloneContents()
-    const temp = document.createElement('div')
-    temp.appendChild(frag)
-    setInlineEditHtml(temp.innerHTML)
-    setTextSelection(null)
-    setInlineEditOpen(true)
+  const discardAiChanges = () => {
+    if (preAiDocHtmlRef.current !== null) setDocHtml(preAiDocHtmlRef.current)
+    preAiDocHtmlRef.current = null
+    setHasAiChanges(false)
   }
 
-  const closeInlineEdit = () => {
-    setInlineEditOpen(false)
-    setEditFocused(false)
-    savedRangeRef.current = null
+  const saveAiChanges = () => {
+    if (id && docHtml !== null) customHtmlMap.set(id, docHtml)
+    preAiDocHtmlRef.current = null
+    setHasAiChanges(false)
+    notification.success({ title: 'Changes saved', placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
   }
 
-  const saveInlineEdit = () => {
-    if (savedRangeRef.current && docContentRef.current && dialogEditRef.current) {
-      const range = savedRangeRef.current
-      range.deleteContents()
-      const temp = document.createElement('div')
-      temp.innerHTML = dialogEditRef.current.innerHTML
-      const frag = document.createDocumentFragment()
-      while (temp.firstChild) frag.appendChild(temp.firstChild)
-      range.insertNode(frag)
-      window.getSelection()?.removeAllRanges()
-      savedRangeRef.current = null
-      setDocHtmlOverride(docContentRef.current.innerHTML)
-    }
-    notification.success({ title: 'Text updated successfully', placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
-    setInlineEditOpen(false)
-  }
+  const handleAiCrossRef = () => setAiPopupPhase('crossref')
+  const handleAiCopilot = () => {}
 
-  const selectionAction = (action: string) => {
-    if (action === 'edit') { openInlineEdit(); return }
-    if (action === 'ai-edit') {
-      // Switch to AI edit tab with the selected text pre-populated as a section
-      setAiEditSelectedText(textSelection?.text ?? '')
-      setAiEditMode('section')
-      setAiEditResult(null)
-      setActiveTab('ai-edit')
-      setTextSelection(null)
-      return
-    }
-    const labels: Record<string, string> = { crossref: 'Cross-referencing…', copilot: 'Sent to CoPilot' }
-    const short = (textSelection?.text ?? '').slice(0, 40)
-    notification.default({
-      title: labels[action] ?? action,
-      content: <Typography size="base" color="neutral-darken5">"{short}"</Typography>,
-      placement: toastPlacements.BOTTOM_RIGHT,
-      duration: 4,
-    })
-    setTextSelection(null)
-  }
+  const relatedDocs = allDocs
+    .filter(d => d._id !== displayDoc._id && (
+      d.domain === displayDoc.domain ||
+      (d.namedEntity !== '—' && d.namedEntity === displayDoc.namedEntity)
+    ))
+    .slice(0, 5)
 
-  // ─── Tabs ────────────────────────────────────────────────────────────────────
-
-  const isAiEditTabActive = activeTab === 'ai-edit'
-  const isAiSectionMode = isAiEditTabActive && aiEditMode === 'section'
+  // ─── Tab definitions ───────────────────────────────────────────────────────
 
   const tabs = [
     {
@@ -590,37 +713,15 @@ export default function PreviewTasksPreviewScreenV9() {
     },
     {
       key: 'tasks',
-      label: 'Tasks',
-      content: (
-        <div style={{ paddingTop: 16 }}>
-          <TasksPanel taskStates={taskStates} onRun={runTask} />
-        </div>
-      ),
-    },
-    {
-      key: 'ai-edit',
       label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <SparkleIcon size={13} />
-          Edit with AI
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}>
+          Tasks
+          <Chip label="BETA" chipStyle={chipStyles.SEMANTIC_INFO} variant={chipVariants.SUBTLE} />
         </span>
       ),
       content: (
         <div style={{ paddingTop: 16 }}>
-          <AiEditPanel
-            mode={aiEditMode}
-            onModeChange={(m) => { setAiEditMode(m); setAiEditSelectedText(''); setAiEditResult(null) }}
-            instruction={aiEditInstruction}
-            onInstructionChange={(v) => { setAiEditInstruction(v); setAiEditResult(null) }}
-            selectedText={aiEditSelectedText}
-            onClearSelection={() => { setAiEditSelectedText(''); setAiEditResult(null) }}
-            isGenerating={aiEditIsGenerating}
-            result={aiEditResult}
-            canGenerate={!!aiEditInstruction.trim() && (aiEditMode === 'entire' || !!aiEditSelectedText) && !aiEditIsGenerating}
-            onGenerate={handleAiGenerate}
-            onApply={handleAiApply}
-            onDiscard={() => setAiEditResult(null)}
-          />
+          <TasksPanel taskStates={taskStates} onRun={runTask} />
         </div>
       ),
     },
@@ -628,6 +729,16 @@ export default function PreviewTasksPreviewScreenV9() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F5F9FF' }}>
+      <style>{`
+        .preview-right-panel-v11 .ant-tabs-nav {
+          border-bottom: 1px solid ${colorPalette.neutral.lighten3} !important;
+          margin-bottom: 0 !important;
+        }
+        .preview-right-panel-v11 .ant-tabs-nav::before {
+          border-bottom-color: ${colorPalette.neutral.lighten3} !important;
+        }
+      `}</style>
+
       {/* Top bar */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: TOP_BAR_BG, padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <ButtonGhost mode="contrast" leftIcon={iconType.ChevronLeftOutlined} onClick={() => navigate(-1)}>Back</ButtonGhost>
@@ -655,69 +766,27 @@ export default function PreviewTasksPreviewScreenV9() {
         <div
           ref={docBodyRef}
           style={{
+            position: 'relative',
             flex: '0 0 62%',
             backgroundColor: colorPalette.white,
             borderRadius: 8,
             padding: '32px 40px',
             minHeight: 640,
-            // Subtle blue glow when user should select text for AI edit
-            outline: isAiSectionMode ? `2px solid ${colorPalette.blue.base}` : 'none',
-            outlineOffset: -1,
-            transition: 'outline-color 0.2s ease',
+            border: isDocEditing ? `1px solid ${token.colorPrimary}` : '1px solid transparent',
+            transition: 'border-color 0.2s',
           }}
         >
-          {/* Section selection hint overlay */}
-          {isAiSectionMode && !aiEditSelectedText && (
-            <div style={{
-              position: 'sticky',
-              top: 8,
-              zIndex: 10,
-              backgroundColor: '#EFF6FF',
-              border: `1px solid ${colorPalette.blue.base}`,
-              borderRadius: 6,
-              padding: `${spacing(2)}px ${spacing(3)}px`,
-              marginBottom: spacing(4),
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing(2),
-            }}>
-              <SparkleIcon size={14} />
-              <Typography size="base-sm" color="primary-base">
-                Select text below to define the section you want to edit with AI
-              </Typography>
-            </div>
-          )}
-          {isAiSectionMode && aiEditSelectedText && (
-            <div style={{
-              position: 'sticky',
-              top: 8,
-              zIndex: 10,
-              backgroundColor: '#F0FDF4',
-              border: '1px solid #86EFAC',
-              borderRadius: 6,
-              padding: `${spacing(2)}px ${spacing(3)}px`,
-              marginBottom: spacing(4),
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing(2),
-            }}>
-              <SparkleIcon size={14} />
-              <Typography size="base-sm" color="neutral-darken5">
-                Section selected — set your instructions in the panel on the right
-              </Typography>
-            </div>
-          )}
-          {isLoading
+          {isLoading || isApplyingChanges
             ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '60%' }} paragraph={{ rows: 16 }} />
-            : docHtmlOverride !== null
-            ? <div ref={docContentRef} dangerouslySetInnerHTML={{ __html: docHtmlOverride }} />
+            : docHtml !== null
+            ? <div ref={docContentRef} contentEditable={isDocEditing} suppressContentEditableWarning dangerouslySetInnerHTML={{ __html: docHtml }} style={{ outline: 'none' }} onInput={() => { if (docContentRef.current) setHasDocChanges(docContentRef.current.innerHTML !== savedDocHtmlRef.current) }} />
             : <div ref={docContentRef}><DocumentBody doc={displayDoc} /></div>
           }
         </div>
 
-        {/* Right panel */}
+        {/* Right panel — tabbed */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="preview-right-panel" style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: `${spacing(2)}px ${spacing(4)}px ${spacing(4)}px` }}>
+          <div className="preview-right-panel-v11" style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: `${spacing(2)}px ${spacing(4)}px ${spacing(4)}px` }}>
             {isLoading
               ? <div style={{ padding: '24px 0' }}><Skeleton variant={skeletonVariants.TEXT} title={{ width: '50%' }} paragraph={{ rows: 10 }} /></div>
               : <Tabs options={tabs} activeKey={activeTab} onChange={handleTabChange} />
@@ -726,301 +795,298 @@ export default function PreviewTasksPreviewScreenV9() {
         </div>
       </div>
 
-      {/* Text selection toolbar — shown when text is selected outside AI-edit section mode */}
-      {textSelection && !inlineEditOpen && (
-        <div
-          ref={selToolbarRef}
-          style={{
-            position: 'fixed',
-            left: toolbarX,
-            top: toolbarY,
-            transform: 'translateX(-50%)',
-            zIndex: 1000,
-            backgroundColor: colorPalette.white,
-            borderRadius: 8,
-            padding: '3px 6px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.14)',
-            border: '1px solid #e5e7eb',
-            userSelect: 'none',
-          }}
-        >
-          <ButtonGhost leftIcon={iconType.EditOutlined} onClick={() => selectionAction('edit')}>Edit</ButtonGhost>
-          <ButtonGhost leftIcon={iconType.ArrowSwapOutlined} onClick={() => selectionAction('crossref')}>Cross-reference</ButtonGhost>
-          <ButtonGhost onClick={() => selectionAction('ai-edit')}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}>
-              <SparkleIcon size={14} />
-              Edit with AI
-            </span>
-          </ButtonGhost>
-          <ButtonGhost onClick={() => selectionAction('copilot')}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot<Icon type={iconType.ExternalLinkOutlined} size={16} /></span>
-          </ButtonGhost>
+      {/* AI edit popup */}
+      {aiPopupOpen && (
+        <AiEditPopup
+          ref={aiPopupRef}
+          phase={aiPopupPhase}
+          source={aiPopupSource}
+          selectedText={aiPopupSelectedText}
+          instruction={aiPopupInstruction}
+          result={aiPopupResult}
+          pos={aiPopupPos}
+          onInstructionChange={v => setAiPopupInstruction(v)}
+          onExecute={executeAiEdit}
+          onCrossRef={handleAiCrossRef}
+          onCopilot={handleAiCopilot}
+          onSubmit={() => executeAiEdit(aiPopupInstruction)}
+          onDiscard={() => { setAiPopupPhase('instructions'); setAiPopupResult(null); setAiPopupInstruction('') }}
+          onGoBack={() => { setAiPopupPhase('instructions'); setAiPopupResult(null) }}
+          relatedDocs={relatedDocs}
+          onApply={applyAiEdit}
+          onClose={() => { clearAiHighlight(); setAiPopupOpen(false) }}
+        />
+      )}
+
+      {/* Doc editing bottom toolbar */}
+      {isDocEditing && docToolbarStyle && (
+        <div ref={editToolbarRef} style={{ position: 'fixed', bottom: spacing(2), left: docToolbarStyle.left + spacing(2), width: docToolbarStyle.width - spacing(2) * 2, zIndex: 200 }}>
+          <Toolbar
+            visible
+            leftItems={[
+              hasDocChanges
+                ? <Typography key="msg" color="neutral-darken5">You have unsaved changes</Typography>
+                : <Typography key="msg" color="neutral-darken2">Editing document content</Typography>,
+            ]}
+            rightItems={[
+              <div key="actions" style={{ display: 'flex', gap: spacing(2) }}>
+                <ButtonTertiary onClick={discardDocEdit}>Discard</ButtonTertiary>
+                {hasDocChanges && <ButtonTertiary onClick={saveAsCopy} leftIcon={iconType.CopyOutlined}>Save as copy</ButtonTertiary>}
+                {hasDocChanges && <ButtonPrimary onClick={saveDocEdit}>Save</ButtonPrimary>}
+              </div>,
+            ]}
+          />
         </div>
       )}
 
-      {/* Inline edit modal */}
-      <style>{`
-        .ant-modal.goat-edit-selection-modal { margin-top: ${spacing(6)}px !important; margin-bottom: ${spacing(6)}px !important; }
-        .preview-right-panel .ant-tabs-nav { border-bottom: 1px solid ${colorPalette.neutral.lighten3} !important; margin-bottom: 0 !important; }
-        .preview-right-panel .ant-tabs-nav::before { border-bottom-color: ${colorPalette.neutral.lighten3} !important; }
-      `}</style>
-      <Modal
-        visible={inlineEditOpen}
-        title="Edit Selection"
-        onClose={closeInlineEdit}
-        withIcon={false}
-        minWidth={520}
-        className="goat-edit-selection-modal"
-        footer={{
-          buttons: [
-            { variant: buttonVariants.TERTIARY, props: { children: 'Cancel', onClick: closeInlineEdit } },
-            { variant: buttonVariants.PRIMARY, props: { children: 'Save', onClick: saveInlineEdit } },
-          ],
-        }}
-      >
-        <div
-          ref={dialogEditRef}
-          contentEditable
-          suppressContentEditableWarning
-          onFocus={() => setEditFocused(true)}
-          onBlur={() => setEditFocused(false)}
-          style={{
-            minHeight: 80,
-            padding: `${spacing(2)}px ${spacing(3)}px`,
-            border: `1px solid ${editFocused ? token.colorPrimary : colorPalette.neutral.lighten2}`,
-            borderRadius: 6,
-            outline: 'none',
-            fontFamily: "'Open Sans', sans-serif",
-            lineHeight: 1.8,
-            fontSize: 14,
-            color: colorPalette.neutral.darken5,
-            cursor: 'text',
-            boxShadow: editFocused ? `0 0 0 ${token.controlOutlineWidth}px ${token.controlOutline}` : 'none',
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-          }}
-        />
-      </Modal>
+      {/* AI changes toolbar */}
+      {hasAiChanges && docToolbarStyle && (
+        <div style={{ position: 'fixed', bottom: spacing(2), left: docToolbarStyle.left + spacing(2), width: docToolbarStyle.width - spacing(2) * 2, zIndex: 200 }}>
+          <Toolbar
+            visible
+            leftItems={[
+              <Typography key="msg" color="neutral-darken5">AI changes applied — review before saving</Typography>,
+            ]}
+            rightItems={[
+              <div key="actions" style={{ display: 'flex', gap: spacing(2) }}>
+                <ButtonTertiary onClick={discardAiChanges}>Discard</ButtonTertiary>
+                <ButtonTertiary onClick={saveAsCopy} leftIcon={iconType.CopyOutlined}>Save as copy</ButtonTertiary>
+                <ButtonPrimary onClick={saveAiChanges}>Save</ButtonPrimary>
+              </div>,
+            ]}
+          />
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── AI Edit panel ────────────────────────────────────────────────────────────
+// ─── AI Edit Popup ────────────────────────────────────────────────────────────
 
-function AiEditPanel({
-  mode, onModeChange, instruction, onInstructionChange,
-  selectedText, onClearSelection, isGenerating, result,
-  canGenerate, onGenerate, onApply, onDiscard,
-}: {
-  mode: AiEditMode
-  onModeChange: (m: AiEditMode) => void
-  instruction: string
-  onInstructionChange: (v: string) => void
+const AiEditPopup = React.forwardRef<HTMLDivElement, {
+  phase: AiPopupPhase
+  source: AiPopupSource
   selectedText: string
-  onClearSelection: () => void
-  isGenerating: boolean
+  instruction: string
   result: AiEditResult | null
-  canGenerate: boolean
-  onGenerate: () => void
-  onApply: () => void
+  pos: { top: number; left: number }
+  relatedDocs: MetadataDocument[]
+  onInstructionChange: (v: string) => void
+  onExecute: (instruction: string) => void
+  onCrossRef: () => void
+  onCopilot: () => void
+  onSubmit: () => void
   onDiscard: () => void
-}) {
+  onApply: () => void
+  onGoBack: () => void
+  onClose: () => void
+}>(function AiEditPopup({ phase, source, selectedText, instruction, result, pos, relatedDocs, onInstructionChange, onExecute, onCrossRef, onCopilot, onSubmit, onDiscard, onApply, onGoBack, onClose }, ref) {
+  const isResult = phase === 'result'
+  const isGenerating = phase === 'generating'
+  const isCrossRef = phase === 'crossref'
+  const isSummary = phase === 'summary'
+  const [copied, setCopied] = useState(false)
+
+  const [localPos, setLocalPos] = useState({ top: pos.top, left: pos.left })
+  const dragRef = useRef<{ startX: number; startY: number; startTop: number; startLeft: number } | null>(null)
+
+  const handleHeaderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startTop: localPos.top, startLeft: localPos.left }
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      setLocalPos({
+        top: dragRef.current.startTop + (ev.clientY - dragRef.current.startY),
+        left: dragRef.current.startLeft + (ev.clientX - dragRef.current.startX),
+      })
+    }
+    const onUp = () => {
+      dragRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
-
-      {/* Scope toggle */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-        <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Scope</Typography>
-        <div style={{ display: 'flex', gap: spacing(2) }}>
-          {(['entire', 'section'] as AiEditMode[]).map(m => (
-            <div
-              key={m}
-              onClick={() => onModeChange(m)}
-              style={{
-                flex: 1,
-                padding: `${spacing(2)}px ${spacing(2)}px`,
-                border: `1.5px solid ${mode === m ? colorPalette.blue.base : '#e5e7eb'}`,
-                borderRadius: 6,
-                cursor: 'pointer',
-                backgroundColor: mode === m ? '#EFF6FF' : colorPalette.white,
-                textAlign: 'center',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <Typography
-                size="base-sm"
-                color={mode === m ? 'primary-base' : 'neutral-darken3'}
-                weight={mode === m ? fontWeight.BOLD : fontWeight.REGULAR}
-              >
-                {m === 'entire' ? 'Entire document' : 'Selected section'}
-              </Typography>
-            </div>
-          ))}
+    <div
+      ref={ref}
+      style={{
+        position: 'fixed',
+        top: localPos.top,
+        left: localPos.left,
+        width: POPUP_W,
+        backgroundColor: colorPalette.white,
+        borderRadius: 8,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
+        border: '1px solid #e5e7eb',
+        zIndex: 1001,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Header — drag handle */}
+      <div
+        onMouseDown={handleHeaderMouseDown}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `${spacing(3)}px ${spacing(4)}px`, borderBottom: '1px solid #f0f0f0', cursor: 'grab', userSelect: 'none' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+          <Typography size="base" weight="semibold" color="neutral-darken5">Tasks</Typography>
+          <Chip label="BETA" chipStyle={chipStyles.SEMANTIC_INFO} variant={chipVariants.SUBTLE} />
         </div>
+        <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.CrossOutlined} onClick={onClose} />
       </div>
 
-      {/* Section selection state */}
-      {mode === 'section' && (
-        <>
-          {!selectedText ? (
-            <div style={{
-              border: '1px dashed #93C5FD',
-              borderRadius: 6,
-              padding: spacing(3),
-              backgroundColor: '#F8FAFF',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: spacing(2),
-            }}>
-              <Icon type={iconType.InfoCircleOutlined} size={16} color="primary-base" />
-              <Typography size="base-sm" color="neutral-darken3">
-                Select text in the document to define a section, or use "Edit with AI" from the text selection toolbar.
-              </Typography>
-            </div>
-          ) : (
-            <div style={{
-              border: '1.5px solid #86EFAC',
-              borderRadius: 6,
-              padding: spacing(3),
-              backgroundColor: '#F0FDF4',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: spacing(2),
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography size="base-sm" weight={fontWeight.BOLD} color="neutral-darken5">Selected section</Typography>
-                <ButtonGhost size="small" leftIcon={iconType.CrossOutlined} onClick={onClearSelection} />
-              </div>
-              <Typography size="base-sm" color="neutral-darken5" maxLines={3}>
-                "{selectedText}"
-              </Typography>
-            </div>
-          )}
-        </>
-      )}
+      <div style={{ padding: `${spacing(3)}px ${spacing(4)}px`, display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
 
-      {/* Quick actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-        <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Quick actions</Typography>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(1) }}>
-          {QUICK_ACTIONS.map(action => {
-            const active = instruction === action.instruction
-            return (
-              <div
-                key={action.label}
-                onClick={() => onInstructionChange(action.instruction)}
-                style={{
-                  padding: `${spacing(1)}px ${spacing(2)}px`,
-                  border: `1.5px solid ${active ? colorPalette.blue.base : '#e5e7eb'}`,
-                  borderRadius: 16,
-                  cursor: 'pointer',
-                  backgroundColor: active ? '#EFF6FF' : colorPalette.white,
-                  fontSize: 12,
-                  lineHeight: '20px',
-                  color: active ? colorPalette.blue.base : colorPalette.neutral.darken3,
-                  fontWeight: active ? 600 : 400,
-                  transition: 'all 0.15s ease',
-                  userSelect: 'none',
-                }}
-              >
-                {action.label}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Instruction input */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-        <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Instructions</Typography>
-        <TextArea
-          name="ai-instruction"
-          value={instruction}
-          onChange={e => onInstructionChange(e.target.value)}
-          placeholder="Describe what you'd like to change or improve…"
-          rows={3}
-        />
-      </div>
-
-      {/* Generate button */}
-      <ButtonPrimary disabled={!canGenerate} onClick={onGenerate}>
-        {isGenerating ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        {/* Generating */}
+        {isGenerating && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing(2), padding: `${spacing(4)}px 0` }}>
             <Spinner size="small" />
-            Generating…
-          </span>
-        ) : (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <SparkleIcon size={14} />
-            Generate with AI
-          </span>
-        )}
-      </ButtonPrimary>
-
-      {/* Diff result */}
-      {result && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3), borderTop: '1px solid #e5e7eb', paddingTop: spacing(4) }}>
-          <Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">Suggested changes</Typography>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: '#FCA5A5', flexShrink: 0 }} />
-              <Typography size="base-sm" weight={fontWeight.BOLD} color="neutral-darken3">Before</Typography>
-            </div>
-            <div style={{
-              backgroundColor: '#FEF2F2',
-              border: '1px solid #FECACA',
-              borderRadius: 6,
-              padding: spacing(3),
-              maxHeight: 140,
-              overflowY: 'auto',
-              fontSize: 12,
-              lineHeight: '1.6',
-              color: colorPalette.neutral.darken5,
-              whiteSpace: 'pre-wrap',
-            }}>
-              {result.original}
-            </div>
+            <Typography size="base-sm" color="neutral-darken3">Generating…</Typography>
           </div>
+        )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: '#86EFAC', flexShrink: 0 }} />
-              <Typography size="base-sm" weight={fontWeight.BOLD} color="neutral-darken3">After</Typography>
+        {/* Instructions */}
+        {!isResult && !isGenerating && !isCrossRef && !isSummary && (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(1) }}>
+              <ButtonTertiary size="small" onClick={onCrossRef}>Cross-reference</ButtonTertiary>
+              {QUICK_ACTIONS.map(action => (
+                <ButtonTertiary key={action.label} size="small" onClick={() => onExecute(action.instruction)}>
+                  {action.label}
+                </ButtonTertiary>
+              ))}
+              <ButtonTertiary size="small" rightIcon={iconType.ExternalLinkOutlined} onClick={onCopilot}>Ask CoPilot</ButtonTertiary>
             </div>
-            <div style={{
-              backgroundColor: '#F0FDF4',
-              border: '1px solid #BBF7D0',
-              borderRadius: 6,
-              padding: spacing(3),
-              maxHeight: 140,
-              overflowY: 'auto',
-              fontSize: 12,
-              lineHeight: '1.6',
-              color: colorPalette.neutral.darken5,
-              whiteSpace: 'pre-wrap',
-            }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+              <Typography size="base-sm" weight="semibold" color="neutral-darken5">Instructions</Typography>
+              <TextArea
+                name="ai-instruction"
+                value={instruction}
+                onChange={e => onInstructionChange(e.target.value)}
+                placeholder="Describe what you'd like to do"
+                rows={3}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing(2) }}>
+              <ButtonTertiary onClick={onClose}>Cancel</ButtonTertiary>
+              <ButtonPrimary disabled={!instruction.trim()} onClick={onSubmit}>Submit</ButtonPrimary>
+            </div>
+          </>
+        )}
+
+        {/* Result */}
+        {isResult && result && (
+          <>
+            <Typography size="base" color="neutral-darken5">
+              {QUICK_ACTIONS.find(a => a.instruction === instruction)?.label ?? instruction}
+            </Typography>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+              <Typography size="base-sm" weight="semibold" color="neutral-darken3">Before</Typography>
+              <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 6, padding: spacing(3), maxHeight: 140, overflowY: 'auto' }}>
+                {result.originalHtml
+                  ? <div dangerouslySetInnerHTML={{ __html: result.originalHtml }} style={{ fontFamily: "'Open Sans', sans-serif", fontSize: 14, lineHeight: 1.8, color: colorPalette.neutral.darken5, wordBreak: 'break-word' }} />
+                  : <div style={{ fontFamily: "'Open Sans', sans-serif", fontSize: 14, lineHeight: 1.8, color: colorPalette.neutral.darken5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{result.original}</div>
+                }
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+              <Typography size="base-sm" weight="semibold" color="neutral-darken3">After</Typography>
+              <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 6, padding: spacing(3), maxHeight: 140, overflowY: 'auto' }}>
+                {result.suggestedHtml
+                  ? <div dangerouslySetInnerHTML={{ __html: result.suggestedHtml }} style={{ fontFamily: "'Open Sans', sans-serif", fontSize: 14, lineHeight: 1.8, color: colorPalette.neutral.darken5, wordBreak: 'break-word' }} />
+                  : <div style={{ fontFamily: "'Open Sans', sans-serif", fontSize: 14, lineHeight: 1.8, color: colorPalette.neutral.darken5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{result.suggested}</div>
+                }
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing(2) }}>
+              <ButtonTertiary onClick={onDiscard}>Discard</ButtonTertiary>
+              <ButtonPrimary onClick={onApply}>Apply changes</ButtonPrimary>
+            </div>
+          </>
+        )}
+
+        {/* Summary */}
+        {isSummary && result && (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+              <Typography size="base-sm" weight="semibold" color="neutral-darken3">Summary</Typography>
+            </div>
+            <div style={{ fontFamily: "'Open Sans', sans-serif", fontSize: 14, lineHeight: 1.8, color: colorPalette.neutral.darken5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {result.suggested}
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: spacing(2) }}>
-            <div style={{ flex: 1 }}>
-              <ButtonTertiary leftIcon={iconType.CrossOutlined} onClick={onDiscard}>Discard</ButtonTertiary>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <ButtonTertiary onClick={onGoBack}>Back</ButtonTertiary>
+              <ButtonPrimary
+                onClick={() => {
+                  navigator.clipboard.writeText(result.suggested)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }}
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </ButtonPrimary>
             </div>
-            <ButtonPrimary leftIcon={iconType.EditRecOutlined} onClick={onApply}>Apply</ButtonPrimary>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+
+        {/* Cross-reference */}
+        {isCrossRef && (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+              <Typography size="base" weight="semibold" color="neutral-darken5">Cross-Reference</Typography>
+              <Typography size="base-sm" color="neutral-darken2">
+                {selectedText ? `Documents related to "${selectedText.slice(0, 50)}${selectedText.length > 50 ? '…' : ''}"` : 'Documents that may be relevant to this content'}
+              </Typography>
+            </div>
+
+            {relatedDocs.length === 0
+              ? <Typography size="base" color="neutral-darken2">No related documents found in your library.</Typography>
+              : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {relatedDocs.map(doc => (
+                    <div
+                      key={doc._id}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: colorPalette.white }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Typography size="base" weight="semibold" color="neutral-darken5">{doc.name.replace(/\s*\(\d{4}\)\s*/g, '').trim()}</Typography>
+                        <Typography size="base-sm" color="neutral-darken2">{doc.documentType} · {doc.domain}</Typography>
+                      </div>
+                      <ButtonGhost
+                        shape={buttonShapes.SQUARE}
+                        leftIcon={iconType.ExternalLinkOutlined}
+                        onClick={() => window.open(`/my-documents/preview-tasks/version-11/${doc._id}`, '_blank', 'noopener,noreferrer')}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+
+            <div>
+              <ButtonTertiary onClick={onGoBack}>Back</ButtonTertiary>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
-}
+})
 
 // ─── Tasks panel ──────────────────────────────────────────────────────────────
 
-function TasksPanel({ taskStates, onRun }: { taskStates: Record<string, TaskState>; onRun: (taskId: string) => void }) {
+function TasksPanel({ taskStates, onRun }: {
+  taskStates: Record<string, TaskState>
+  onRun: (taskId: string) => void
+}) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {TASK_DEFS.map(task => (
@@ -1053,14 +1119,10 @@ function TaskCard({ task, state, onRun }: {
           <Typography size="base" weight="semibold" color="neutral-darken5">{task.label}</Typography>
           <Typography size="base-sm" color="neutral-darken2">{task.description}</Typography>
         </div>
-        {isDone && (
-          <div style={{ flexShrink: 0 }}>
-            <ButtonTertiary shape={buttonShapes.SQUARE} leftIcon={iconType.RefreshOutlined} onClick={e => { e.stopPropagation(); onRun(task.id) }} />
-          </div>
-        )}
+        {isDone && <div style={{ flexShrink: 0 }}><ButtonTertiary shape={buttonShapes.SQUARE} leftIcon={iconType.RefreshOutlined} onClick={e => { e.stopPropagation(); onRun(task.id) }} /></div>}
       </div>
       {isRunning && <div style={{ padding: '0 14px 14px' }}><Skeleton variant={skeletonVariants.TEXT} paragraph={{ rows: 3 }} /></div>}
-      {isDone && state?.result && <div style={{ padding: '14px 14px 14px', borderTop: '1px solid #ede9fe' }}>{state.result}</div>}
+      {isDone && state?.result && <div style={{ padding: '0 14px 14px', borderTop: '1px solid #e5e7eb' }}><div style={{ paddingTop: 14 }}>{state.result}</div></div>}
     </div>
   )
 }
@@ -1087,20 +1149,16 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: { displayDoc: Metadat
 }
 
 function EditPanel({
-  displayDoc, editingName, setEditingName: _setEditingName,
-  editingDomain: _editingDomain, setEditingDomain: _setEditingDomain,
-  editingDocumentType, setEditingDocumentType,
-  editingCustomTags, setEditingCustomTags, editingRemovedFields, setEditingRemovedFields,
-  editingSummary, setEditingSummary, tagInputVal, setTagInputVal, addTag, onSave, onCancel,
+  displayDoc, editingName, setEditingName: _setEditingName, editingDomain: _editingDomain, setEditingDomain: _setEditingDomain,
+  editingDocumentType, setEditingDocumentType, editingCustomTags, setEditingCustomTags,
+  editingRemovedFields, setEditingRemovedFields, editingSummary, setEditingSummary,
+  tagInputVal, setTagInputVal, addTag, onSave, onCancel,
 }: {
-  displayDoc: MetadataDocument
-  editingName: string; setEditingName: (_v: string) => void
-  editingDomain: string; setEditingDomain: (v: string) => void
-  editingDocumentType: string; setEditingDocumentType: (v: string) => void
+  displayDoc: MetadataDocument; editingName: string; setEditingName: (_v: string) => void
+  editingDomain: string; setEditingDomain: (v: string) => void; editingDocumentType: string; setEditingDocumentType: (v: string) => void
   editingCustomTags: Tag[]; setEditingCustomTags: React.Dispatch<React.SetStateAction<Tag[]>>
   editingRemovedFields: Set<string>; setEditingRemovedFields: React.Dispatch<React.SetStateAction<Set<string>>>
-  editingSummary: string; setEditingSummary: (v: string) => void
-  tagInputVal: string; setTagInputVal: (v: string) => void
+  editingSummary: string; setEditingSummary: (v: string) => void; tagInputVal: string; setTagInputVal: (v: string) => void
   addTag: () => void; onSave: () => void; onCancel: () => void
 }) {
   const removeField = (key: string) => setEditingRemovedFields(prev => new Set(prev).add(key))
@@ -1108,10 +1166,7 @@ function EditPanel({
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing(3) }}>
         <Typography size="base" weight="semibold" color="neutral-darken5">Document Details</Typography>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <ButtonTertiary onClick={onCancel}>Cancel</ButtonTertiary>
-          <ButtonPrimary onClick={onSave}>Save</ButtonPrimary>
-        </div>
+        <div style={{ display: 'flex', gap: 8 }}><ButtonTertiary onClick={onCancel}>Cancel</ButtonTertiary><ButtonPrimary onClick={onSave}>Save</ButtonPrimary></div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Input label="Name" name="name" value={editingName} disabled />

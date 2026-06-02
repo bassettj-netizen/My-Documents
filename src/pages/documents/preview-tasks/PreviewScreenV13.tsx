@@ -4,8 +4,10 @@ import { theme as antTheme } from 'antd'
 import {
   ButtonGhost,
   ButtonPrimary,
+  ButtonSecondary,
   ButtonTertiary,
   buttonShapes,
+  buttonSizes,
   Chip,
   chipStyles,
   chipVariants,
@@ -50,11 +52,9 @@ const QUICK_ACTIONS = [
 
 type Tag = { text: string; style: string; variant?: string }
 type TaskId = 'extract' | 'compliance' | 'related' | 'actions'
-type TaskStatus = 'idle' | 'running' | 'done'
-type AiPopupPhase = 'instructions' | 'generating' | 'result' | 'summary' | 'crossref'
+type AiPopupPhase = 'idle' | 'instructions' | 'generating' | 'result' | 'summary' | 'crossref'
 type AiPopupSource = 'selection' | 'document'
 interface AiEditResult { original: string; originalHtml: string; suggested: string; suggestedHtml: string }
-interface TaskState { status: TaskStatus; result: ReactNode | null }
 interface SelectionPos { text: string; x: number; y: number; bottom: number }
 type MarkupType = 'h1' | 'h2' | 'p' | 'pb'
 
@@ -245,7 +245,7 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
         <div style={gap8}>
           {related.length === 0 && <Typography size="base" color="neutral-darken2">No closely related documents found.</Typography>}
           {related.map(r => (
-            <div key={r._id} onClick={() => window.open(`/my-documents/preview-tasks/version-10/${r._id}`, '_blank', 'noopener,noreferrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <div key={r._id} onClick={() => window.open(`/my-documents/preview-tasks/version-13/${r._id}`, '_blank', 'noopener,noreferrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <Typography size="base" color="primary-base">{r.name}</Typography>
               <Icon type={iconType.ExternalLinkOutlined} size={12} color="primary-base" />
             </div>
@@ -317,7 +317,7 @@ function MarkupButtons({ onApply }: { onApply: (type: MarkupType) => void }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function PreviewTasksPreviewScreenV10() {
+export default function PreviewTasksPreviewScreenV13() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { notification } = useNotifications()
@@ -334,7 +334,6 @@ export default function PreviewTasksPreviewScreenV10() {
   const [editingRemovedFields, setEditingRemovedFields] = useState<Set<string>>(new Set())
   const [editingSummary, setEditingSummary] = useState('')
   const [tagInputVal, setTagInputVal] = useState('')
-  const [taskStates, setTaskStates] = useState<Record<string, TaskState>>({})
   const [docHtml, setDocHtml] = useState<string | null>(() => (id ? customHtmlMap.get(id) ?? null : null))
   const [isDocEditing, setIsDocEditing] = useState(false)
   const [hasDocChanges, setHasDocChanges] = useState(false)
@@ -348,7 +347,7 @@ export default function PreviewTasksPreviewScreenV10() {
   const [aiPopupSource, setAiPopupSource] = useState<AiPopupSource>('selection')
   const [aiPopupSelectedText, setAiPopupSelectedText] = useState('')
   const [aiPopupInstruction, setAiPopupInstruction] = useState('')
-  const [aiPopupPos, setAiPopupPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const [aiPopupPos, setAiPopupPos] = useState<{ bottom: number; right: number }>({ bottom: 0, right: 0 })
   const [aiPopupResult, setAiPopupResult] = useState<AiEditResult | null>(null)
   const [aiPopupSelectedHtml, setAiPopupSelectedHtml] = useState('')
 
@@ -359,8 +358,10 @@ export default function PreviewTasksPreviewScreenV10() {
   const editToolbarRef = useRef<HTMLDivElement>(null)
   const isDocEditingRef = useRef(false)
   const aiPopupOpenRef = useRef(false)
+  const aiPopupPhaseRef = useRef<AiPopupPhase>('idle')
   const preAiDocHtmlRef = useRef<string | null>(null)
   const aiPopupRef = useRef<HTMLDivElement>(null)
+  const floatingBtnRef = useRef<HTMLDivElement>(null)
   const aiHighlightRef = useRef<unknown>(null)
   const docHtmlInitialized = useRef(id ? customHtmlMap.has(id) : false)
   const savedDocHtmlRef = useRef<string>(id ? customHtmlMap.get(id) ?? '' : '')
@@ -391,7 +392,6 @@ export default function PreviewTasksPreviewScreenV10() {
     setLocalDoc(null); setLocalSummary(null); setIsEditing(false); setIsSaving(false)
     setEditingName(''); setEditingDomain(''); setEditingCustomTags([])
     setEditingRemovedFields(new Set()); setEditingSummary(''); setTagInputVal('')
-    setTaskStates({})
     const stored = id ? customHtmlMap.get(id) ?? null : null
     setDocHtml(stored); setIsDocEditing(false); setHasDocChanges(false)
     docHtmlInitialized.current = stored !== null
@@ -442,6 +442,22 @@ export default function PreviewTasksPreviewScreenV10() {
 
   useEffect(() => { isDocEditingRef.current = isDocEditing }, [isDocEditing])
   useEffect(() => { aiPopupOpenRef.current = aiPopupOpen }, [aiPopupOpen])
+  useEffect(() => { aiPopupPhaseRef.current = aiPopupPhase }, [aiPopupPhase])
+
+  const [floatingBtnPos, setFloatingBtnPos] = useState<{ bottom: number; right: number } | null>(null)
+  useEffect(() => {
+    const update = () => {
+      const rect = docBodyRef.current?.getBoundingClientRect()
+      if (rect) setFloatingBtnPos({
+        bottom: spacing(6),
+        right: window.innerWidth - rect.right + spacing(4),
+      })
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [isLoading])
+
 
   useEffect(() => {
     if (!isDocEditing || hasDocChanges) return
@@ -469,7 +485,40 @@ export default function PreviewTasksPreviewScreenV10() {
   useEffect(() => {
     const onMouseUp = () => {
       if (isDocEditingRef.current) return
-      if (aiPopupOpenRef.current) return
+      if (aiPopupOpenRef.current) {
+        if (aiPopupPhaseRef.current !== 'idle') return
+        const sel = window.getSelection()
+        if (!sel || sel.isCollapsed || !sel.toString().trim()) return
+        if (!docBodyRef.current?.contains(sel.anchorNode)) return
+        const range = sel.getRangeAt(0)
+        const frag = range.cloneContents()
+        let selectedText = ''
+        const BLOCK_TAGS = new Set(['DIV', 'P', 'SECTION', 'H1', 'H2', 'H3', 'H4', 'LI', 'TR'])
+        const walk = (node: Node) => {
+          if (node.nodeType === Node.TEXT_NODE) { selectedText += node.textContent ?? '' }
+          else {
+            const tag = (node as Element).tagName ?? ''
+            if (tag === 'BR') { selectedText += '\n' }
+            else {
+              const isBlock = BLOCK_TAGS.has(tag)
+              if (isBlock && selectedText.length > 0 && !selectedText.endsWith('\n')) selectedText += '\n'
+              node.childNodes.forEach(walk)
+              if (isBlock && selectedText.length > 0 && !selectedText.endsWith('\n')) selectedText += '\n'
+            }
+          }
+        }
+        walk(frag)
+        if (!selectedText.trim()) return
+        const selHtmlDiv = document.createElement('div')
+        selHtmlDiv.appendChild(range.cloneContents())
+        setAiPopupSelectedHtml(selHtmlDiv.innerHTML)
+        setAiPopupSelectedText(selectedText)
+        setAiPopupSource('selection')
+        setAiPopupInstruction('')
+        setAiPopupResult(null)
+        setAiPopupPhase('instructions')
+        return
+      }
       const sel = window.getSelection()
       if (!sel || sel.isCollapsed || !sel.toString().trim()) return
       if (!docBodyRef.current?.contains(sel.anchorNode)) return
@@ -498,20 +547,12 @@ export default function PreviewTasksPreviewScreenV10() {
       const selHtmlDiv = document.createElement('div')
       selHtmlDiv.appendChild(range.cloneContents())
       setAiPopupSelectedHtml(selHtmlDiv.innerHTML)
-      const docRect = docBodyRef.current?.getBoundingClientRect()
-      if (!docRect) return
-      const selTop = Math.round(rect.top)
-      const selBottom = Math.round(rect.bottom)
-      const selCenterX = Math.round(rect.left + rect.width / 2)
-      const rawLeft = selCenterX - POPUP_W / 2
-      const left = Math.max(docRect.left + 8, Math.min(rawLeft, docRect.right - POPUP_W - 8))
-      const POPUP_H = 390
-      const TOP_BAR_H = 60
-      const topBelow = selBottom + 10
-      const topAbove = selTop - POPUP_H - 10
-      const fitsBelow = topBelow + POPUP_H <= window.innerHeight - 8
-      const top = fitsBelow ? topBelow : Math.max(TOP_BAR_H, topAbove)
-      setAiPopupPos({ top, left })
+      const btnRect = floatingBtnRef.current?.getBoundingClientRect()
+      if (!btnRect) return
+      setAiPopupPos({
+        bottom: window.innerHeight - btnRect.top + spacing(2),
+        right: window.innerWidth - btnRect.right,
+      })
       setAiPopupSource('selection')
       setAiPopupSelectedText(selectedText)
       setAiPopupInstruction('')
@@ -524,7 +565,7 @@ export default function PreviewTasksPreviewScreenV10() {
     return () => document.removeEventListener('mouseup', onMouseUp)
   }, [])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-10" replace />
+  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-13" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`
@@ -567,12 +608,6 @@ export default function PreviewTasksPreviewScreenV10() {
     setTagInputVal('')
   }
 
-  const runTask = (taskId: string) => {
-    setTaskStates(prev => ({ ...prev, [taskId]: { status: 'running', result: null } }))
-    setTimeout(() => {
-      setTaskStates(prev => ({ ...prev, [taskId]: { status: 'done', result: getMockResult(taskId as TaskId, displayDoc) } }))
-    }, 1800)
-  }
 
   // ─── Doc editing handlers ──────────────────────────────────────────────────
 
@@ -599,7 +634,7 @@ export default function PreviewTasksPreviewScreenV10() {
     const copyDoc: MetadataDocument = { ...displayDoc, _id: copyId, name: `${displayDoc.name} (Copy)`, uploadedDate: new Date().toISOString().slice(0, 10) }
     addCopiedDoc(copyDoc, html)
     notification.success({ title: 'Copy saved', content: <Typography size="base" color="neutral-darken5">{copyDoc.name}</Typography>, placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
-    navigate(`/my-documents/preview-tasks/version-10/${copyId}`, { replace: true })
+    navigate(`/my-documents/preview-tasks/version-13/${copyId}`, { replace: true })
   }
 
   // ─── AI popup handlers ────────────────────────────────────────────────────
@@ -671,6 +706,22 @@ export default function PreviewTasksPreviewScreenV10() {
   }
 
   const handleAiCrossRef = () => setAiPopupPhase('crossref')
+
+  const handleFloatingButtonClick = () => {
+    if (isDocEditing) return
+    if (aiPopupOpen) { setAiPopupOpen(false); return }
+    const btnRect = floatingBtnRef.current?.getBoundingClientRect()
+    setAiPopupPos({
+      bottom: btnRect ? window.innerHeight - btnRect.top + spacing(2) : spacing(6) + 48 + spacing(2),
+      right: btnRect ? window.innerWidth - btnRect.right : spacing(4),
+    })
+    setAiPopupSource('selection')
+    setAiPopupSelectedText('')
+    setAiPopupInstruction('')
+    setAiPopupResult(null)
+    setAiPopupPhase('idle')
+    setAiPopupOpen(true)
+  }
 
   const relatedDocs = allDocs
     .filter(d => d._id !== displayDoc._id && (
@@ -752,19 +803,6 @@ export default function PreviewTasksPreviewScreenV10() {
             }
           </div>
 
-          {/* Suggested Actions card */}
-          <div style={{ backgroundColor: colorPalette.white, borderRadius: 8, padding: `${spacing(4)}px` }}>
-            {isLoading
-              ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '40%' }} paragraph={{ rows: 6 }} />
-              : <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2), marginBottom: spacing(3) }}>
-                    <Typography size="base" weight="semibold" color="neutral-darken5">Tasks</Typography>
-                    <Chip label="BETA" chipStyle={chipStyles.SEMANTIC_INFO} variant={chipVariants.SUBTLE} />
-                  </div>
-                  <TasksPanel taskStates={taskStates} onRun={runTask} />
-                </>
-            }
-          </div>
         </div>
       </div>
 
@@ -788,6 +826,7 @@ export default function PreviewTasksPreviewScreenV10() {
           relatedDocs={relatedDocs}
           onApply={applyAiEdit}
           onClose={() => { clearAiHighlight(); setAiPopupOpen(false) }}
+          doc={displayDoc}
         />
       )}
 
@@ -808,6 +847,25 @@ export default function PreviewTasksPreviewScreenV10() {
                 {hasDocChanges && <ButtonPrimary onClick={saveDocEdit}>Save</ButtonPrimary>}
               </div>,
             ]}
+          />
+        </div>
+      )}
+
+      {/* Floating Tasks button */}
+      {floatingBtnPos && !isLoading && !isApplyingChanges && !isDocEditing && (
+        <div ref={floatingBtnRef} style={{
+          position: 'fixed',
+          bottom: floatingBtnPos.bottom,
+          right: floatingBtnPos.right,
+          zIndex: 50,
+          borderRadius: '50%',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+        }}>
+          <ButtonSecondary
+            shape={buttonShapes.CIRCLE}
+            size={buttonSizes.LARGE}
+            leftIcon={iconType.SparksFilled}
+            onClick={handleFloatingButtonClick}
           />
         </div>
       )}
@@ -842,8 +900,9 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
   selectedText: string
   instruction: string
   result: AiEditResult | null
-  pos: { top: number; left: number }
+  pos: { bottom: number; right: number }
   relatedDocs: MetadataDocument[]
+  doc: MetadataDocument
   onInstructionChange: (v: string) => void
   onExecute: (instruction: string) => void
   onCrossRef: () => void
@@ -853,25 +912,48 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
   onApply: () => void
   onGoBack: () => void
   onClose: () => void
-}>(function AiEditPopup({ phase, source, selectedText, instruction, result, pos, relatedDocs, onInstructionChange, onExecute, onCrossRef, onCopilot, onSubmit, onDiscard, onApply, onGoBack, onClose }, ref) {
+}>(function AiEditPopup({ phase, source, selectedText, instruction, result, pos, relatedDocs, doc, onInstructionChange, onExecute, onCrossRef, onCopilot, onSubmit, onDiscard, onApply, onGoBack, onClose }, ref) {
+  const isIdle = phase === 'idle'
   const isResult = phase === 'result'
   const isGenerating = phase === 'generating'
   const isCrossRef = phase === 'crossref'
   const isSummary = phase === 'summary'
   const [copied, setCopied] = useState(false)
 
-  const [localPos, setLocalPos] = useState({ top: pos.top, left: pos.left })
-  const dragRef = useRef<{ startX: number; startY: number; startTop: number; startLeft: number } | null>(null)
+  const [activeTask, setActiveTask] = useState<typeof TASK_DEFS[0] | null>(null)
+  const [taskRunning, setTaskRunning] = useState(false)
+  const [internalTaskResult, setInternalTaskResult] = useState<ReactNode | null>(null)
+
+  const handleTaskClick = (task: typeof TASK_DEFS[0]) => {
+    setActiveTask(task)
+    setTaskRunning(true)
+    setInternalTaskResult(null)
+    setTimeout(() => {
+      setInternalTaskResult(getMockResult(task.id, doc))
+      setTaskRunning(false)
+    }, 1800)
+  }
+
+  const handleTaskBack = () => {
+    setActiveTask(null)
+    setTaskRunning(false)
+    setInternalTaskResult(null)
+  }
+
+  const [localPos, setLocalPos] = useState({ bottom: pos.bottom, right: pos.right })
+  const dragRef = useRef<{ startX: number; startY: number; startBottom: number; startRight: number } | null>(null)
 
   const handleHeaderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return
     e.preventDefault()
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startTop: localPos.top, startLeft: localPos.left }
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startBottom: localPos.bottom, startRight: localPos.right }
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return
+      const popupEl = typeof ref !== 'function' ? ref?.current : null
+      const popupH = popupEl?.offsetHeight ?? 390
       setLocalPos({
-        top: dragRef.current.startTop + (ev.clientY - dragRef.current.startY),
-        left: dragRef.current.startLeft + (ev.clientX - dragRef.current.startX),
+        bottom: Math.max(8, Math.min(dragRef.current.startBottom - (ev.clientY - dragRef.current.startY), window.innerHeight - popupH - 8)),
+        right: Math.max(8, Math.min(dragRef.current.startRight - (ev.clientX - dragRef.current.startX), window.innerWidth - POPUP_W - 8)),
       })
     }
     const onUp = () => {
@@ -888,8 +970,8 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
       ref={ref}
       style={{
         position: 'fixed',
-        top: localPos.top,
-        left: localPos.left,
+        bottom: localPos.bottom,
+        right: localPos.right,
         width: POPUP_W,
         backgroundColor: colorPalette.white,
         borderRadius: 8,
@@ -921,9 +1003,64 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
           </div>
         )}
 
-        {/* Instructions */}
-        {!isResult && !isGenerating && !isCrossRef && !isSummary && (
+        {/* Idle — document-level tasks */}
+        {isIdle && (
           <>
+            {activeTask ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+                  <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ChevronLeftOutlined} onClick={handleTaskBack} />
+                  <Typography size="base" weight="semibold" color="neutral-darken5">{activeTask.label}</Typography>
+                </div>
+                {taskRunning ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing(2), padding: `${spacing(4)}px 0` }}>
+                    <Spinner size="small" />
+                    <Typography size="base-sm" color="neutral-darken3">Running…</Typography>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
+                    {internalTaskResult}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <ButtonTertiary leftIcon={iconType.RefreshOutlined} onClick={() => handleTaskClick(activeTask)}>Re-run</ButtonTertiary>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <Typography size="base" weight="semibold" color="neutral-darken5">What would you like to do?</Typography>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {TASK_DEFS.map(task => (
+                    <div
+                      key={task.id}
+                      onClick={() => handleTaskClick(task)}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', transition: 'border-color 0.15s', backgroundColor: colorPalette.white }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#a5b4fc' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb' }}
+                    >
+                      <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex', transform: task.iconRotation ? `rotate(${task.iconRotation})` : undefined }}>
+                        <Icon type={task.icon} size={16} color="neutral-darken4" />
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Typography size="base" weight="semibold" color="neutral-darken5">{task.label}</Typography>
+                        <Typography size="base-sm" color="neutral-darken2">{task.description}</Typography>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+                  <Icon type={iconType.InfoCircleOutlined} size={14} color="neutral-darken2" />
+                  <Typography size="base-sm" color="neutral-darken2">Select document text for more specific actions</Typography>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Instructions — text selection tasks */}
+        {!isIdle && !isResult && !isGenerating && !isCrossRef && !isSummary && (
+          <>
+            <Typography size="base" weight="semibold" color="neutral-darken5">What would you like to do?</Typography>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(1) }}>
               <ButtonTertiary size="small" onClick={onCrossRef}>Cross-reference</ButtonTertiary>
               {QUICK_ACTIONS.map(action => (
@@ -1037,7 +1174,7 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
                       <ButtonGhost
                         shape={buttonShapes.SQUARE}
                         leftIcon={iconType.ExternalLinkOutlined}
-                        onClick={() => window.open(`/my-documents/preview-tasks/version-10/${doc._id}`, '_blank', 'noopener,noreferrer')}
+                        onClick={() => window.open(`/my-documents/preview-tasks/version-13/${doc._id}`, '_blank', 'noopener,noreferrer')}
                       />
                     </div>
                   ))}
@@ -1054,52 +1191,6 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
     </div>
   )
 })
-
-// ─── Tasks panel ──────────────────────────────────────────────────────────────
-
-function TasksPanel({ taskStates, onRun }: {
-  taskStates: Record<string, TaskState>
-  onRun: (taskId: string) => void
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {TASK_DEFS.map(task => (
-        <TaskCard key={task.id} task={task} state={taskStates[task.id] ?? null} onRun={onRun} />
-      ))}
-    </div>
-  )
-}
-
-function TaskCard({ task, state, onRun }: {
-  task: { id: TaskId; label: string; description: string; icon: string; iconRotation?: string }
-  state: TaskState | null
-  onRun: (taskId: string) => void
-}) {
-  const isRunning = state?.status === 'running'
-  const isDone = state?.status === 'done'
-  const isIdle = !isRunning && !isDone
-  return (
-    <div
-      style={{ border: `1px solid ${isDone ? colorPalette.neutral.lighten1 : '#e5e7eb'}`, borderRadius: 8, overflow: 'hidden', cursor: isIdle ? 'pointer' : 'default', transition: 'border-color 0.15s', backgroundColor: colorPalette.white }}
-      onClick={isIdle ? () => onRun(task.id) : undefined}
-      onMouseEnter={isIdle ? e => { e.currentTarget.style.borderColor = '#a5b4fc' } : undefined}
-      onMouseLeave={isIdle ? e => { e.currentTarget.style.borderColor = '#e5e7eb' } : undefined}
-    >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px' }}>
-        <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex', transform: task.iconRotation ? `rotate(${task.iconRotation})` : undefined }}>
-          <Icon type={task.icon} size={16} color="neutral-darken4" />
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Typography size="base" weight="semibold" color="neutral-darken5">{task.label}</Typography>
-          <Typography size="base-sm" color="neutral-darken2">{task.description}</Typography>
-        </div>
-        {isDone && <div style={{ flexShrink: 0 }}><ButtonTertiary shape={buttonShapes.SQUARE} leftIcon={iconType.RefreshOutlined} onClick={e => { e.stopPropagation(); onRun(task.id) }} /></div>}
-      </div>
-      {isRunning && <div style={{ padding: '0 14px 14px' }}><Skeleton variant={skeletonVariants.TEXT} paragraph={{ rows: 3 }} /></div>}
-      {isDone && state?.result && <div style={{ padding: '0 14px 14px', borderTop: '1px solid #e5e7eb' }}><div style={{ paddingTop: 14 }}>{state.result}</div></div>}
-    </div>
-  )
-}
 
 // ─── Details panels ───────────────────────────────────────────────────────────
 

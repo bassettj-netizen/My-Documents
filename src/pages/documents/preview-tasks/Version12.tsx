@@ -6,6 +6,7 @@ import {
   buttonShapes,
   ButtonPrimary,
   ButtonTertiary,
+  buttonVariants,
   Checkbox,
   Chip,
   chipStyles,
@@ -20,6 +21,8 @@ import {
   iconType,
   Input,
   LAYOUT_SIDEBAR_ID,
+  Modal,
+  modalVariants,
   Pagination,
   Select,
   SearchBar,
@@ -34,8 +37,9 @@ import {
   useNotifications,
 } from '@goat-ui/goat-ui-core'
 import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type FileFormat } from '../bulk-edit/documents'
+import { extraDocs } from './docStore'
 
-const { colorPalette, spacing } = constants
+const { colorPalette, spacing, fontWeight } = constants
 const PAGE_SIZE = 10
 
 const UPLOAD_FORMATS = new Set<string>(['PDF', 'DOCX', 'XLSX', 'PPTX'])
@@ -356,7 +360,7 @@ function CompareIcon() {
   )
 }
 
-export default function PreviewTasksV4() {
+export default function PreviewTasksV12() {
   const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -367,9 +371,11 @@ export default function PreviewTasksV4() {
   const [isSearching, setIsSearching] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [tempDocs, setTempDocs] = useState<MetadataDocument[]>([])
-  const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...documents])
+  const [localDocs, setLocalDocs] = useState<MetadataDocument[]>(() => [...extraDocs, ...documents])
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [securityModalOpen, setSecurityModalOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_COLLAPSED_WIDTH)
   const pendingEditsRef = useRef<Record<string, string>>({})
   const pendingTagsRef = useRef<Tag[] | null>(null)
@@ -551,6 +557,21 @@ export default function PreviewTasksV4() {
 
   const allDocs = useMemo(() => [...tempDocs, ...localDocs], [tempDocs, localDocs])
 
+  const confirmDelete = useCallback(() => {
+    const count = selectedKeys.size
+    const doc = count === 1 ? allDocs.find(d => selectedKeys.has(d._id)) : undefined
+    const name = doc ? `${stripYear(doc.name)}.${doc.fileFormat.toLowerCase()}` : ''
+    handleBulkDelete()
+    setDeleteModalOpen(false)
+    notification.default({
+      title: count === 1 ? 'Document deleted' : 'Documents deleted',
+      icon: iconType.TrashFilled,
+      content: <Typography size="base" color="neutral-darken5">{count === 1 ? name : `${count} documents`}</Typography>,
+      placement: toastPlacements.BOTTOM_LEFT,
+      duration: 4,
+    })
+  }, [selectedKeys, allDocs, handleBulkDelete, notification])
+
   const filteredDocs = useMemo(
     () =>
       allDocs.filter((doc) => {
@@ -624,7 +645,7 @@ export default function PreviewTasksV4() {
         ellipsis: needsEllipsis,
         sorter: key !== 'tags' ? makeSorter(key) : undefined,
         onCell: (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-4/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-12/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           ...(isNonEditable ? {} : {
             editable: true,
@@ -658,7 +679,7 @@ export default function PreviewTasksV4() {
           </div>
         )
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-4/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-12/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
         })
       }
@@ -666,7 +687,7 @@ export default function PreviewTasksV4() {
       if (key === 'documentType') {
         col.width = 160
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-4/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-12/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           editable: true,
           isEditing: editingKey === record._id,
@@ -824,7 +845,7 @@ export default function PreviewTasksV4() {
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       onClick={() => {
-                        navigate(`/my-documents/preview-tasks/version-4/${doc._id}`)
+                        navigate(`/my-documents/preview-tasks/version-12/${doc._id}`)
                         setShowDropdown(false)
                       }}
                     >
@@ -960,14 +981,85 @@ export default function PreviewTasksV4() {
               <ButtonTertiary leftIcon={iconType.DownloadOutlined} onClick={() => console.log('Download')}>Download</ButtonTertiary>
             </div>
           </div>
-          <ButtonDanger leftIcon={iconType.TrashOutlined} onClick={handleBulkDelete}>Delete</ButtonDanger>
+          <ButtonDanger leftIcon={iconType.TrashOutlined} onClick={() => setDeleteModalOpen(true)}>Delete</ButtonDanger>
         </div>
       )}
 
       <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: spacing(2), paddingTop: spacing(2), paddingBottom: spacing(2) }}>
         <Icon type={iconType.ShieldCheckFilled} color="primary-base" size={16} />
-        <Typography size="base" color="neutral-darken2">All files are securely uploaded and scanned for viruses.</Typography>
+        <Typography size="base" color="neutral-darken2">All files are securely uploaded and scanned for viruses. <span style={{ color: colorPalette.blue.base, cursor: 'pointer' }} onClick={() => setSecurityModalOpen(true)}>Learn more</span></Typography>
       </div>
+
+      <Modal
+        visible={deleteModalOpen}
+        variant={modalVariants.DANGER}
+        title={selectedKeys.size === 1 ? 'Delete Document' : 'Delete Documents'}
+        onClose={() => setDeleteModalOpen(false)}
+        footer={{
+          buttons: [
+            {
+              variant: buttonVariants.GHOST,
+              props: { children: 'Cancel', onClick: () => setDeleteModalOpen(false) },
+            },
+            {
+              variant: buttonVariants.DANGER,
+              props: {
+                children: 'Delete',
+                onClick: confirmDelete,
+              },
+            },
+          ],
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
+          <Typography size="base" color="neutral-darken5">
+            You are about to{' '}
+            <span style={{ color: colorPalette.danger.darken2, fontWeight: 700 }}>DELETE</span>{' '}
+            {selectedKeys.size === 1
+              ? `"${stripYear(allDocs.find(d => selectedKeys.has(d._id))?.name ?? '')}"`
+              : `${selectedKeys.size} documents`
+            }
+          </Typography>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+            <Icon type={iconType.InfoCircleOutlined} size={16} color="neutral-darken2" />
+            <Typography size="base-sm" color="neutral-darken2">{selectedKeys.size === 1 ? 'This document' : 'These documents'} will no longer be available</Typography>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        visible={securityModalOpen}
+        title="Your data is private and secure"
+        onClose={() => setSecurityModalOpen(false)}
+        footer={{
+          buttons: [
+            {
+              variant: buttonVariants.PRIMARY,
+              props: { children: 'Close', onClick: () => setSecurityModalOpen(false) },
+            },
+          ],
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+          <Typography size="base" color="neutral-darken5">The highest data protection standards are essential for the professional use of our solution. The following information provides an overview of our security architecture.</Typography>
+          {[
+            { icon: iconType.ShieldCheckOutlined, title: 'Secure data storage in Germany', body: 'All data is stored securely on European servers. Our data centre is certified to ISO 27001, 27017, 27018, SOC 2 and CS, making it one of the most secure data centres in the world.' },
+            { icon: iconType.LockOutlined, title: 'Data encryption', body: 'All data is stored in encrypted form in the data centre (AES 256) and transmitted to the data centre in encrypted form (TLS 1.3).' },
+            { icon: iconType.LayersHorOutlined, title: 'Backups', body: 'Regular backups and a disaster recovery strategy protect against data loss.' },
+            { icon: iconType.MinusCircleOutlined, title: 'No training with your data', body: 'The uploaded files are not used to train language models.' },
+          ].map(({ icon, title, body }) => (
+            <div key={title} style={{ display: 'flex', gap: spacing(3), alignItems: 'flex-start' }}>
+              <div style={{ flexShrink: 0, marginTop: 2 }}>
+                <Icon type={icon} color="neutral-darken5" size={20} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+                <Typography size="base" color="neutral-darken5" weight={fontWeight.BOLD}>{title}</Typography>
+                <Typography size="base" color="neutral-darken5">{body}</Typography>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -68,7 +68,11 @@
       "Bash(npx --yes playwright --version)",
       "Bash(npm init *)",
       "Bash(npm install *)",
-      "Bash(curl -s http://localhost:5173/src/pages/documents/preview-tasks/Version8.tsx)"
+      "Bash(curl -s http://localhost:5173/src/pages/documents/preview-tasks/Version8.tsx)",
+      "Bash(sed 's/version-10/version-12/g; s/PreviewTasksV10/PreviewTasksV12/g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/Version10.tsx)",
+      "Bash(sed 's/version-10/version-12/g; s/PreviewTasksPreviewScreenV10/PreviewTasksPreviewScreenV12/g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)",
+      "Bash(sed 's/version-10/version-13/g; s/PreviewTasksV10/PreviewTasksV13/g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/Version10.tsx)",
+      "Bash(sed 's/version-10/version-13/g; s/PreviewTasksPreviewScreenV10/PreviewTasksPreviewScreenV13/g' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)"
     ]
   }
 }
