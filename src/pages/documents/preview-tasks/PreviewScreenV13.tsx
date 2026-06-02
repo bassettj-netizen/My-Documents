@@ -55,8 +55,7 @@ type TaskId = 'extract' | 'compliance' | 'related' | 'actions'
 type AiPopupPhase = 'idle' | 'instructions' | 'generating' | 'result' | 'summary' | 'crossref'
 type AiPopupSource = 'selection' | 'document'
 interface AiEditResult { original: string; originalHtml: string; suggested: string; suggestedHtml: string }
-interface SelectionPos { text: string; x: number; y: number; bottom: number }
-type MarkupType = 'h1' | 'h2' | 'p' | 'pb'
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -164,16 +163,6 @@ function CopilotIcon() {
   )
 }
 
-function SparkleIcon({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M8 2L9.2 5.8H13.2L10 8.1L11.2 11.9L8 9.6L4.8 11.9L6 8.1L2.8 5.8H6.8L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      <circle cx="13" cy="3" r="0.9" fill="currentColor" opacity="0.6"/>
-      <circle cx="3" cy="13" r="0.75" fill="currentColor" opacity="0.4"/>
-    </svg>
-  )
-}
-
 // ─── DataRow ──────────────────────────────────────────────────────────────────
 
 function DataRow({ label, value }: { label: ReactNode; value: ReactNode }) {
@@ -277,20 +266,6 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
 
 // ─── Markup helpers ───────────────────────────────────────────────────────────
 
-function applyFontSizePx(px: string) {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
-  const range = sel.getRangeAt(0)
-  const span = document.createElement('span')
-  span.style.fontSize = px
-  span.appendChild(range.extractContents())
-  range.insertNode(span)
-  const newRange = document.createRange()
-  newRange.selectNodeContents(span)
-  sel.removeAllRanges()
-  sel.addRange(newRange)
-}
-
 function getFirstTextNode(el: Node): Text | null {
   if (el.nodeType === Node.TEXT_NODE && (el.textContent ?? '').trim().length > 0) return el as Text
   for (let i = 0; i < el.childNodes.length; i++) {
@@ -298,21 +273,6 @@ function getFirstTextNode(el: Node): Text | null {
     if (found) return found
   }
   return null
-}
-
-const MARKUP_BUTTONS: Array<{ type: MarkupType; label: string }> = [
-  { type: 'h1', label: 'Heading' }, { type: 'h2', label: 'Sub-heading' },
-  { type: 'p', label: 'Paragraph' }, { type: 'pb', label: 'Bold' },
-]
-
-function MarkupButtons({ onApply }: { onApply: (type: MarkupType) => void }) {
-  return (
-    <>
-      {MARKUP_BUTTONS.map(({ type, label }) => (
-        <ButtonGhost key={type} onMouseDown={e => { e.preventDefault(); onApply(type) }}>{label}</ButtonGhost>
-      ))}
-    </>
-  )
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -523,7 +483,6 @@ export default function PreviewTasksPreviewScreenV13() {
       if (!sel || sel.isCollapsed || !sel.toString().trim()) return
       if (!docBodyRef.current?.contains(sel.anchorNode)) return
       const range = sel.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
       const frag = range.cloneContents()
       let selectedText = ''
       const BLOCK_TAGS = new Set(['DIV', 'P', 'SECTION', 'H1', 'H2', 'H3', 'H4', 'LI', 'TR'])
@@ -611,20 +570,6 @@ export default function PreviewTasksPreviewScreenV13() {
 
   // ─── Doc editing handlers ──────────────────────────────────────────────────
 
-  const applyMarkup = (type: MarkupType) => {
-    const el = docContentRef.current
-    if (!el || !isDocEditing) return
-    switch (type) {
-      case 'h1': document.execCommand('fontSize', false, '5'); if (!document.queryCommandState('bold')) document.execCommand('bold'); break
-      case 'h2': applyFontSizePx('15px'); if (!document.queryCommandState('bold')) document.execCommand('bold'); break
-      case 'p': document.execCommand('removeFormat'); break
-      case 'pb': if (!document.queryCommandState('bold')) document.execCommand('bold'); break
-    }
-    if (el) setHasDocChanges(el.innerHTML !== savedDocHtmlRef.current)
-  }
-
-  const enterDocEdit = () => { savedDocHtmlRef.current = docHtml ?? ''; setHasDocChanges(false); setIsDocEditing(true) }
-  const enterDocEditFromSelection = () => { savedDocHtmlRef.current = docHtml ?? ''; setHasDocChanges(false); setIsDocEditing(true) }
   const saveDocEdit = () => { if (docContentRef.current) setDocHtml(docContentRef.current.innerHTML); setHasDocChanges(false); setIsDocEditing(false) }
   const discardDocEdit = () => { if (docContentRef.current) docContentRef.current.innerHTML = savedDocHtmlRef.current; setHasDocChanges(false); setIsDocEditing(false) }
 
@@ -912,7 +857,7 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
   onApply: () => void
   onGoBack: () => void
   onClose: () => void
-}>(function AiEditPopup({ phase, source, selectedText, instruction, result, pos, relatedDocs, doc, onInstructionChange, onExecute, onCrossRef, onCopilot, onSubmit, onDiscard, onApply, onGoBack, onClose }, ref) {
+}>(function AiEditPopup({ phase, source: _source, selectedText, instruction, result, pos, relatedDocs, doc, onInstructionChange, onExecute, onCrossRef, onCopilot, onSubmit, onDiscard, onApply, onGoBack, onClose }, ref) {
   const isIdle = phase === 'idle'
   const isResult = phase === 'result'
   const isGenerating = phase === 'generating'
@@ -1049,7 +994,7 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
                   ))}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
-                  <Icon type={iconType.InfoCircleOutlined} size={14} color="neutral-darken2" />
+                  <Icon type={iconType.InfoCircleOutlined} size={16} color="neutral-darken2" />
                   <Typography size="base-sm" color="neutral-darken2">Select document text for more specific actions</Typography>
                 </div>
               </>

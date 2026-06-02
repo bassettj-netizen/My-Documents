@@ -55,7 +55,6 @@ type AiPopupPhase = 'instructions' | 'generating' | 'result' | 'summary' | 'cros
 type AiPopupSource = 'selection' | 'document'
 interface AiEditResult { original: string; originalHtml: string; suggested: string; suggestedHtml: string }
 interface TaskState { status: TaskStatus; result: ReactNode | null }
-interface SelectionPos { text: string; x: number; y: number; bottom: number }
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getDocumentTags(doc: MetadataDocument): Tag[] {

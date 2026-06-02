@@ -465,7 +465,6 @@ export default function PreviewTasksPreviewScreenV12() {
       if (!sel || sel.isCollapsed || !sel.toString().trim()) return
       if (!docBodyRef.current?.contains(sel.anchorNode)) return
       const range = sel.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
       const frag = range.cloneContents()
       let selectedText = ''
       const BLOCK_TAGS = new Set(['DIV', 'P', 'SECTION', 'H1', 'H2', 'H3', 'H4', 'LI', 'TR'])
@@ -1129,39 +1128,6 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
     </div>
   )
 })
-
-// ─── Tasks panel ──────────────────────────────────────────────────────────────
-
-function TaskCard({ task, state, onRun }: {
-  task: { id: TaskId; label: string; description: string; icon: string; iconRotation?: string }
-  state: TaskState | null
-  onRun: (taskId: string) => void
-}) {
-  const isRunning = state?.status === 'running'
-  const isDone = state?.status === 'done'
-  const isIdle = !isRunning && !isDone
-  return (
-    <div
-      style={{ border: `1px solid ${isDone ? colorPalette.neutral.lighten1 : '#e5e7eb'}`, borderRadius: 8, overflow: 'hidden', cursor: isIdle ? 'pointer' : 'default', transition: 'border-color 0.15s', backgroundColor: colorPalette.white }}
-      onClick={isIdle ? () => onRun(task.id) : undefined}
-      onMouseEnter={isIdle ? e => { e.currentTarget.style.borderColor = '#a5b4fc' } : undefined}
-      onMouseLeave={isIdle ? e => { e.currentTarget.style.borderColor = '#e5e7eb' } : undefined}
-    >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px' }}>
-        <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex', transform: task.iconRotation ? `rotate(${task.iconRotation})` : undefined }}>
-          <Icon type={task.icon} size={16} color="neutral-darken4" />
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Typography size="base" weight="semibold" color="neutral-darken5">{task.label}</Typography>
-          <Typography size="base-sm" color="neutral-darken2">{task.description}</Typography>
-        </div>
-        {isDone && <div style={{ flexShrink: 0 }}><ButtonTertiary shape={buttonShapes.SQUARE} leftIcon={iconType.RefreshOutlined} onClick={e => { e.stopPropagation(); onRun(task.id) }} /></div>}
-      </div>
-      {isRunning && <div style={{ padding: '0 14px 14px' }}><Skeleton variant={skeletonVariants.TEXT} paragraph={{ rows: 3 }} /></div>}
-      {isDone && state?.result && <div style={{ padding: '0 14px 14px', borderTop: '1px solid #e5e7eb' }}><div style={{ paddingTop: 14 }}>{state.result}</div></div>}
-    </div>
-  )
-}
 
 // ─── Details panels ───────────────────────────────────────────────────────────
 
