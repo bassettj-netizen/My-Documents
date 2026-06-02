@@ -4,10 +4,8 @@ import { theme as antTheme } from 'antd'
 import {
   ButtonGhost,
   ButtonPrimary,
-  ButtonSecondary,
   ButtonTertiary,
   buttonShapes,
-  buttonSizes,
   Chip,
   chipStyles,
   chipVariants,
@@ -57,9 +55,6 @@ type AiPopupPhase = 'idle' | 'instructions' | 'generating' | 'result' | 'summary
 type AiPopupSource = 'selection' | 'document'
 interface AiEditResult { original: string; originalHtml: string; suggested: string; suggestedHtml: string }
 interface TaskState { status: TaskStatus; result: ReactNode | null }
-interface SelectionPos { text: string; x: number; y: number; bottom: number }
-type MarkupType = 'h1' | 'h2' | 'p' | 'pb'
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getDocumentTags(doc: MetadataDocument): Tag[] {
@@ -279,20 +274,6 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
 
 // ─── Markup helpers ───────────────────────────────────────────────────────────
 
-function applyFontSizePx(px: string) {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
-  const range = sel.getRangeAt(0)
-  const span = document.createElement('span')
-  span.style.fontSize = px
-  span.appendChild(range.extractContents())
-  range.insertNode(span)
-  const newRange = document.createRange()
-  newRange.selectNodeContents(span)
-  sel.removeAllRanges()
-  sel.addRange(newRange)
-}
-
 function getFirstTextNode(el: Node): Text | null {
   if (el.nodeType === Node.TEXT_NODE && (el.textContent ?? '').trim().length > 0) return el as Text
   for (let i = 0; i < el.childNodes.length; i++) {
@@ -300,21 +281,6 @@ function getFirstTextNode(el: Node): Text | null {
     if (found) return found
   }
   return null
-}
-
-const MARKUP_BUTTONS: Array<{ type: MarkupType; label: string }> = [
-  { type: 'h1', label: 'Heading' }, { type: 'h2', label: 'Sub-heading' },
-  { type: 'p', label: 'Paragraph' }, { type: 'pb', label: 'Bold' },
-]
-
-function MarkupButtons({ onApply }: { onApply: (type: MarkupType) => void }) {
-  return (
-    <>
-      {MARKUP_BUTTONS.map(({ type, label }) => (
-        <ButtonGhost key={type} onMouseDown={e => { e.preventDefault(); onApply(type) }}>{label}</ButtonGhost>
-      ))}
-    </>
-  )
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -525,8 +491,6 @@ export default function PreviewTasksPreviewScreenV12() {
       setAiPopupSelectedHtml(selHtmlDiv.innerHTML)
       const docRect = docBodyRef.current?.getBoundingClientRect()
       if (!docRect) return
-      const selTop = Math.round(rect.top)
-      const selBottom = Math.round(rect.bottom)
       const POPUP_H = 390
       const BTN_SIZE = 52
       const MARGIN = spacing(4)
@@ -596,20 +560,6 @@ export default function PreviewTasksPreviewScreenV12() {
 
   // ─── Doc editing handlers ──────────────────────────────────────────────────
 
-  const applyMarkup = (type: MarkupType) => {
-    const el = docContentRef.current
-    if (!el || !isDocEditing) return
-    switch (type) {
-      case 'h1': document.execCommand('fontSize', false, '5'); if (!document.queryCommandState('bold')) document.execCommand('bold'); break
-      case 'h2': applyFontSizePx('15px'); if (!document.queryCommandState('bold')) document.execCommand('bold'); break
-      case 'p': document.execCommand('removeFormat'); break
-      case 'pb': if (!document.queryCommandState('bold')) document.execCommand('bold'); break
-    }
-    if (el) setHasDocChanges(el.innerHTML !== savedDocHtmlRef.current)
-  }
-
-  const enterDocEdit = () => { savedDocHtmlRef.current = docHtml ?? ''; setHasDocChanges(false); setIsDocEditing(true) }
-  const enterDocEditFromSelection = () => { savedDocHtmlRef.current = docHtml ?? ''; setHasDocChanges(false); setIsDocEditing(true) }
   const saveDocEdit = () => { if (docContentRef.current) setDocHtml(docContentRef.current.innerHTML); setHasDocChanges(false); setIsDocEditing(false) }
   const discardDocEdit = () => { if (docContentRef.current) docContentRef.current.innerHTML = savedDocHtmlRef.current; setHasDocChanges(false); setIsDocEditing(false) }
 
@@ -936,7 +886,7 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
   onClose: () => void
   onRunTask: (taskId: string) => void
   taskStates: Record<string, TaskState>
-}>(function AiEditPopup({ phase, source, selectedText, instruction, result, pos, relatedDocs, onInstructionChange, onExecute, onCrossRef, onCopilot, onSubmit, onDiscard, onApply, onGoBack, onClose, onRunTask, taskStates }, ref) {
+}>(function AiEditPopup({ phase, source: _source, selectedText, instruction, result, pos, relatedDocs, onInstructionChange, onExecute, onCrossRef, onCopilot, onSubmit, onDiscard, onApply, onGoBack, onClose, onRunTask, taskStates }, ref) {
   const isIdle = phase === 'idle'
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const isResult = phase === 'result'
@@ -1181,19 +1131,6 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
 })
 
 // ─── Tasks panel ──────────────────────────────────────────────────────────────
-
-function TasksPanel({ taskStates, onRun }: {
-  taskStates: Record<string, TaskState>
-  onRun: (taskId: string) => void
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {TASK_DEFS.map(task => (
-        <TaskCard key={task.id} task={task} state={taskStates[task.id] ?? null} onRun={onRun} />
-      ))}
-    </div>
-  )
-}
 
 function TaskCard({ task, state, onRun }: {
   task: { id: TaskId; label: string; description: string; icon: string; iconRotation?: string }
