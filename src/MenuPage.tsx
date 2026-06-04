@@ -27,6 +27,8 @@ const groups = [
     title: 'Bulk Edit',
     items: [
       { label: 'Version 1', path: '/my-documents/bulk-edit/version-1' },
+      { label: 'Version 2', path: '/my-documents/bulk-edit/version-2' },
+      { label: 'Version 3', path: '/my-documents/bulk-edit/version-3' },
     ],
   },
   {

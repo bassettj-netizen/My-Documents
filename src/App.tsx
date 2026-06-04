@@ -23,6 +23,8 @@ import MetadataVersion3 from './pages/documents/metadata/Version3'
 import MetadataVersion4 from './pages/documents/metadata/Version4'
 import MetadataPreviewScreenV2 from './pages/documents/metadata/PreviewScreenV2'
 import BulkEditV1 from './pages/documents/bulk-edit/Version1'
+import BulkEditV2 from './pages/documents/bulk-edit/Version2'
+import BulkEditV3 from './pages/documents/bulk-edit/Version3'
 import BulkEditPreview from './pages/documents/bulk-edit/PreviewScreen'
 import PreviewTasksV1 from './pages/documents/preview-tasks/Version1'
 import PreviewTasksPreviewScreen from './pages/documents/preview-tasks/PreviewScreen'
@@ -111,6 +113,8 @@ function App() {
           <Route path="/my-documents/metadata/version-3" element={<MetadataVersion3 />} />
           <Route path="/my-documents/metadata/version-4" element={<MetadataVersion4 />} />
           <Route path="/my-documents/bulk-edit/version-1" element={<BulkEditV1 />} />
+          <Route path="/my-documents/bulk-edit/version-2" element={<BulkEditV2 />} />
+          <Route path="/my-documents/bulk-edit/version-3" element={<BulkEditV3 />} />
           <Route path="/my-documents/preview-tasks/version-1" element={<PreviewTasksV1 />} />
           <Route path="/my-documents/preview-tasks/version-2" element={<PreviewTasksV2 />} />
           <Route path="/my-documents/preview-tasks/version-3" element={<PreviewTasksV3 />} />
@@ -136,6 +140,8 @@ function App() {
         <Route path="/my-documents/metadata/version-3/:id" element={<MetadataPreviewScreenV2 />} />
         <Route path="/my-documents/metadata/version-4/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/bulk-edit/version-1/:id" element={<BulkEditPreview />} />
+        <Route path="/my-documents/bulk-edit/version-2/:id" element={<BulkEditPreview />} />
+        <Route path="/my-documents/bulk-edit/version-3/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/preview-tasks/version-1/:id" element={<PreviewTasksPreviewScreen />} />
         <Route path="/my-documents/preview-tasks/version-2/:id" element={<PreviewTasksPreviewScreenV2 />} />
         <Route path="/my-documents/preview-tasks/version-3/:id" element={<PreviewTasksPreviewScreenV3 />} />

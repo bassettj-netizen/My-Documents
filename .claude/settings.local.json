@@ -83,7 +83,16 @@
       "Bash(sed -n '165,170p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)",
       "Bash(sed -n '306,312p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)",
       "Bash(sed -n '577,594p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)",
-      "Bash(sed -n '853,860p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)"
+      "Bash(sed -n '853,860p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)",
+      "Bash(sed -n '56,60p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV13.tsx)",
+      "Bash(sed -n '165,180p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV13.tsx)",
+      "Bash(sed -n '523,530p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV13.tsx)",
+      "Bash(sed -n '612,630p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV13.tsx)",
+      "Bash(sed -n '912,918p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV13.tsx)",
+      "Bash(sed -n '1049,1055p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV13.tsx)",
+      "Bash(sed -n '56,60p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)",
+      "Bash(sed -n '465,472p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV12.tsx)",
+      "Bash(sed -n '1132,1138p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV12.tsx)"
     ]
   }
 }
