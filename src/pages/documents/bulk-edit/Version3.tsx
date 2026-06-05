@@ -901,9 +901,9 @@ export default function BulkEditV3() {
               transition: 'background-color 0.2s ease',
             }}
           >
-            <Icon type={iconType.UploadOutlined} color="neutral-darken4" />
-            <Typography color="neutral-darken5">Click to select a document or drag it here.</Typography>
-            <Typography size="base-sm" color="neutral-darken2">PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
+            <Icon type={iconType.UploadOutlined} color={(isUploading || isInteractionLocked) ? 'disabled-base' : 'neutral-darken4'} />
+            <Typography color={(isUploading || isInteractionLocked) ? 'disabled-base' : 'neutral-darken5'}>Click to select a document or drag it here.</Typography>
+            <Typography size="base-sm" color={(isUploading || isInteractionLocked) ? 'disabled-base' : 'neutral-darken2'}>PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
           </div>
         </FileUploader>
         {(isUploading || isInteractionLocked) && (

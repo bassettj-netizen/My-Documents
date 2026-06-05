@@ -571,11 +571,11 @@ export default function MetadataVersion4() {
         <FileUploader onUpload={handleUpload} accept={['.pdf', '.docx', '.xlsx', '.pptx']} {...({ multiple: true } as any)}>
           <div
             className="upload-zone"
-            style={{ border: '1.5px dashed #d0d0d0', borderRadius: 8, padding: '28px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: isUploading ? 'not-allowed' : 'pointer', width: '100%', opacity: isUploading ? 0.5 : 1, pointerEvents: isUploading ? 'none' : 'auto', transition: 'opacity 0.2s ease' }}
+            style={{ border: '1.5px dashed #d0d0d0', borderRadius: 8, padding: '28px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: isUploading ? 'not-allowed' : 'pointer', width: '100%', backgroundColor: isUploading ? '#F0F0F0' : undefined, pointerEvents: isUploading ? 'none' : 'auto', transition: 'background-color 0.2s ease' }}
           >
-            <Icon type={iconType.UploadOutlined} color="neutral-darken4" />
-            <Typography color="neutral-darken5">Click to select a document or drag it here.</Typography>
-            <Typography size="base-sm" color="neutral-darken2">PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
+            <Icon type={iconType.UploadOutlined} color={isUploading ? 'disabled-base' : 'neutral-darken4'} />
+            <Typography color={isUploading ? 'disabled-base' : 'neutral-darken5'}>Click to select a document or drag it here.</Typography>
+            <Typography size="base-sm" color={isUploading ? 'disabled-base' : 'neutral-darken2'}>PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
           </div>
         </FileUploader>
       </div>
