@@ -573,9 +573,9 @@ export default function MetadataVersion4() {
             className="upload-zone"
             style={{ border: '1.5px dashed #d0d0d0', borderRadius: 8, padding: '28px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: isUploading ? 'not-allowed' : 'pointer', width: '100%', backgroundColor: isUploading ? '#F0F0F0' : undefined, pointerEvents: isUploading ? 'none' : 'auto', transition: 'background-color 0.2s ease' }}
           >
-            <Icon type={iconType.UploadOutlined} color={isUploading ? 'disabled-base' : 'neutral-darken4'} />
-            <Typography color={isUploading ? 'disabled-base' : 'neutral-darken5'}>Click to select a document or drag it here.</Typography>
-            <Typography size="base-sm" color={isUploading ? 'disabled-base' : 'neutral-darken2'}>PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
+            <Icon type={iconType.UploadOutlined} color={isUploading ? 'disabled-lighten1' : 'neutral-darken4'} />
+            <Typography color={isUploading ? 'disabled-lighten1' : 'neutral-darken5'}>Click to select a document or drag it here.</Typography>
+            <Typography size="base-sm" color={isUploading ? 'disabled-lighten1' : 'neutral-darken2'}>PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
           </div>
         </FileUploader>
       </div>

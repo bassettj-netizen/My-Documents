@@ -872,9 +872,9 @@ export default function MetadataUserTestingV3() {
               transition: 'background-color 0.2s ease',
             }}
           >
-            <Icon type={iconType.UploadOutlined} color={isUploading ? 'disabled-base' : 'neutral-darken4'} />
-            <Typography color={isUploading ? 'disabled-base' : 'neutral-darken5'}>Click to select a document or drag it here.</Typography>
-            <Typography size="base-sm" color={isUploading ? 'disabled-base' : 'neutral-darken2'}>PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
+            <Icon type={iconType.UploadOutlined} color={isUploading ? 'disabled-lighten1' : 'neutral-darken4'} />
+            <Typography color={isUploading ? 'disabled-lighten1' : 'neutral-darken5'}>Click to select a document or drag it here.</Typography>
+            <Typography size="base-sm" color={isUploading ? 'disabled-lighten1' : 'neutral-darken2'}>PDF, DOCX, XLSX and PPTX formats, max. 10 MB</Typography>
           </div>
         </FileUploader>
       </div>
