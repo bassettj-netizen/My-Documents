@@ -897,8 +897,8 @@ export default function BulkEditV3() {
               gap: 8,
               cursor: 'pointer',
               width: '100%',
-              opacity: (isUploading || isInteractionLocked) ? 0.5 : 1,
-              transition: 'opacity 0.2s ease',
+              backgroundColor: (isUploading || isInteractionLocked) ? '#F0F0F0' : undefined,
+              transition: 'background-color 0.2s ease',
             }}
           >
             <Icon type={iconType.UploadOutlined} color="neutral-darken4" />

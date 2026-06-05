@@ -92,7 +92,13 @@
       "Bash(sed -n '1049,1055p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV13.tsx)",
       "Bash(sed -n '56,60p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV10.tsx)",
       "Bash(sed -n '465,472p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV12.tsx)",
-      "Bash(sed -n '1132,1138p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV12.tsx)"
+      "Bash(sed -n '1132,1138p' /Users/james.bassett/Desktop/Claude_stuff/my-app/src/pages/documents/preview-tasks/PreviewScreenV12.tsx)",
+      "Bash(grep -o '\"#[a-fA-F0-9]\\\\{3,8\\\\}\"' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)",
+      "Bash(grep -o '.disabled.\\\\{0,200\\\\}background.\\\\{0,60\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/goat-ui-core.js)",
+      "Bash(grep -o 'disabled.\\\\{0,300\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/goat-ui-core.js)",
+      "Bash(grep -o 'disabled.\\\\{0,500\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)",
+      "Bash(grep -i \"lighten\\\\|#[a-fA-F0-9]\\\\{3,6\\\\}\")",
+      "Bash(grep -o 'disabled.\\\\{0,200\\\\}lighten4.\\\\{0,50\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)"
     ]
   }
 }
