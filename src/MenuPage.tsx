@@ -21,6 +21,14 @@ const groups = [
       { label: 'Version 2', path: '/my-documents/metadata/version-2' },
       { label: 'Version 3', path: '/my-documents/metadata/version-3' },
       { label: 'Version 4', path: '/my-documents/metadata/version-4' },
+      { label: 'Version 5', path: '/my-documents/metadata/version-5' },
+    ],
+  },
+  {
+    title: 'SharePoint Sync',
+    items: [
+      { label: 'Version 1', path: '/my-documents/sharepoint/version-1' },
+      { label: 'Version 2', path: '/my-documents/sharepoint/version-2' },
     ],
   },
   {

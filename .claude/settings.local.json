@@ -99,7 +99,9 @@
       "Bash(grep -o 'disabled.\\\\{0,500\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)",
       "Bash(grep -i \"lighten\\\\|#[a-fA-F0-9]\\\\{3,6\\\\}\")",
       "Bash(grep -o 'disabled.\\\\{0,200\\\\}lighten4.\\\\{0,50\\\\}' /Users/james.bassett/Desktop/Claude_stuff/my-app/node_modules/@goat-ui/goat-ui-core/dist/index-DOQ4xnKK.js)",
-      "Bash(xargs sed -i '' \"s/'disabled-base'/'disabled-lighten1'/g\")"
+      "Bash(xargs sed -i '' \"s/'disabled-base'/'disabled-lighten1'/g\")",
+      "Bash(curl -s http://localhost:5176/menu.html)",
+      "Bash(curl -s http://localhost:5180/menu.html)"
     ]
   }
 }
