@@ -25,6 +25,7 @@ import MetadataVersion5 from './pages/documents/metadata/Version5'
 import MetadataVersion6 from './pages/documents/metadata/Version6'
 import MetadataVersion7 from './pages/documents/metadata/Version7'
 import MetadataPreviewScreenV2 from './pages/documents/metadata/PreviewScreenV2'
+import MetadataPreviewV6 from './pages/documents/metadata/PreviewScreenV6'
 import BulkEditV1 from './pages/documents/bulk-edit/Version1'
 import BulkEditV2 from './pages/documents/bulk-edit/Version2'
 import BulkEditV3 from './pages/documents/bulk-edit/Version3'
@@ -150,8 +151,8 @@ function App() {
         <Route path="/my-documents/metadata/version-3/:id" element={<MetadataPreviewScreenV2 />} />
         <Route path="/my-documents/metadata/version-4/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/metadata/version-5/:id" element={<MetadataPreviewScreenV2 />} />
-        <Route path="/my-documents/metadata/version-6/:id" element={<BulkEditPreview />} />
-        <Route path="/my-documents/metadata/version-7/:id" element={<BulkEditPreview />} />
+        <Route path="/my-documents/metadata/version-6/:id" element={<MetadataPreviewV6 />} />
+        <Route path="/my-documents/metadata/version-7/:id" element={<MetadataPreviewV6 />} />
         <Route path="/my-documents/bulk-edit/version-1/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/bulk-edit/version-2/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/bulk-edit/version-3/:id" element={<BulkEditPreview />} />

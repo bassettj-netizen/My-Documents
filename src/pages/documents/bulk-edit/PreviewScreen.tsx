@@ -441,7 +441,7 @@ function Section({ number, heading, children }: { number: number; heading: strin
   )
 }
 
-function DocumentBody({ doc }: { doc: MetadataDocument }) {
+export function DocumentBody({ doc }: { doc: MetadataDocument }) {
   return (
     <div style={{ fontFamily: "'Open Sans', sans-serif", lineHeight: 1.8, color: '#1a1a1a', fontSize: 14 }}>
       <div style={{ marginBottom: 32 }}>
