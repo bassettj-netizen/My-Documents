@@ -481,9 +481,9 @@ function ConnectModal({ open, onClose, onConnected }: {
             <MicrosoftIcon />
             <Typography size="base" color="neutral-darken5">Sign in with Microsoft</Typography>
           </div>
-          <Typography size="base-sm" color="neutral-darken2" style={{ textAlign: 'center', maxWidth: 320 }}>
-            You'll be redirected to Microsoft's login page. Your credentials are never stored by this app.
-          </Typography>
+          <div style={{ textAlign: 'center', maxWidth: 320 }}>
+            <Typography size="base-sm" color="neutral-darken2">You'll be redirected to Microsoft's login page. Your credentials are never stored by this app.</Typography>
+          </div>
         </div>
       )}
       {step === 'authenticating' && (
@@ -565,7 +565,7 @@ function BrowseModal({ open, siteName, onClose, onImport, alreadyImportedKeys }:
         </div>
         {alreadyImportedKeys.size > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
-            <Icon type={iconType.InfoCircleOutlined} size={14} color="neutral-darken2" />
+            <Icon type={iconType.InfoCircleOutlined} size={16} color="neutral-darken2" />
             <Typography size="base-sm" color="neutral-darken2">{alreadyImportedKeys.size} file{alreadyImportedKeys.size > 1 ? 's' : ''} already imported</Typography>
           </div>
         )}
@@ -593,9 +593,9 @@ function SharePointTabContent({ connectionStatus, onConnect, connectedSite, spDo
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
           <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>No SharePoint connection</Typography>
-          <Typography size="base-sm" color="neutral-darken2" style={{ maxWidth: 360 }}>
-            Connect your Microsoft SharePoint account to browse and import documents directly into this library.
-          </Typography>
+          <div style={{ maxWidth: 360 }}>
+            <Typography size="base-sm" color="neutral-darken2">Connect your Microsoft SharePoint account to browse and import documents directly into this library.</Typography>
+          </div>
         </div>
         <ButtonPrimary onClick={onConnect}>Connect to SharePoint</ButtonPrimary>
       </div>
@@ -611,7 +611,7 @@ function SharePointTabContent({ connectionStatus, onConnect, connectedSite, spDo
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
             <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{connectedSite?.name}</Typography>
-            <Icon type={iconType.CheckCircleFilled} color="success-base" size={14} />
+            <Icon type={iconType.CheckCircleFilled} color="success-base" size={16} />
           </div>
           <Typography size="base-sm" color="neutral-darken2">
             james.bassett@haufe.com · {spDocCount} document{spDocCount !== 1 ? 's' : ''} imported · Last synced just now

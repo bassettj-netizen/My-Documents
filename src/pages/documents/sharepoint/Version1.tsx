@@ -120,10 +120,6 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 function stripYear(name: string) {
   return name.replace(/\s*\(\d{4}\)\s*/g, '').trim()
@@ -443,9 +439,9 @@ function ConnectModal({ open, onClose, onConnected }: {
             <MicrosoftIcon />
             <Typography size="base" color="neutral-darken5">Sign in with Microsoft</Typography>
           </div>
-          <Typography size="base-sm" color="neutral-darken2" style={{ textAlign: 'center', maxWidth: 320 }}>
-            You'll be redirected to Microsoft's login page. Your credentials are never stored by this app.
-          </Typography>
+          <div style={{ textAlign: 'center', maxWidth: 320 }}>
+            <Typography size="base-sm" color="neutral-darken2">You'll be redirected to Microsoft's login page. Your credentials are never stored by this app.</Typography>
+          </div>
         </div>
       )}
 
@@ -553,7 +549,7 @@ function BrowseModal({ open, siteName, onClose, onImport, alreadyImportedKeys }:
         </div>
         {alreadyImportedKeys.size > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
-            <Icon type={iconType.InfoCircleOutlined} size={14} color="neutral-darken2" />
+            <Icon type={iconType.InfoCircleOutlined} size={16} color="neutral-darken2" />
             <Typography size="base-sm" color="neutral-darken2">{alreadyImportedKeys.size} file{alreadyImportedKeys.size > 1 ? 's' : ''} already imported</Typography>
           </div>
         )}
@@ -587,7 +583,7 @@ function DisconnectedCard({ onConnect }: { onConnect: () => void }) {
           </Typography>
         </div>
       </div>
-      <ButtonPrimary onClick={onConnect} style={{ flexShrink: 0 }}>Connect SharePoint</ButtonPrimary>
+      <div style={{ flexShrink: 0 }}><ButtonPrimary onClick={onConnect}>Connect SharePoint</ButtonPrimary></div>
     </div>
   )
 }
