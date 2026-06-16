@@ -464,7 +464,7 @@ export default function MetadataUserTestingV6() {
             return (
               <div onClick={e => e.stopPropagation()}>
                 <Input
-                  autoFocus
+                  {...({ autoFocus: true } as any)}
                   value={cellValue}
                   onChange={e => setCellValue(e.target.value)}
                   onBlur={doSave}
@@ -817,12 +817,6 @@ export default function MetadataUserTestingV6() {
             columns={columns as never}
             pagination={false}
             innerLoading={isUploading || isSearching}
-            onRow={(record: MetadataDocument) => ({
-              style: {
-                height: 72,
-                ...(editingCell?.id === record._id ? { backgroundColor: '#F5F9FF' } : {}),
-              },
-            })}
           />
         )}
       </div>
