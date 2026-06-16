@@ -150,8 +150,8 @@ function App() {
         <Route path="/my-documents/metadata/version-3/:id" element={<MetadataPreviewScreenV2 />} />
         <Route path="/my-documents/metadata/version-4/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/metadata/version-5/:id" element={<MetadataPreviewScreenV2 />} />
-        <Route path="/my-documents/metadata/version-6/:id" element={<MetadataPreviewScreenV2 />} />
-        <Route path="/my-documents/metadata/version-7/:id" element={<MetadataPreviewScreenV2 />} />
+        <Route path="/my-documents/metadata/version-6/:id" element={<BulkEditPreview />} />
+        <Route path="/my-documents/metadata/version-7/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/bulk-edit/version-1/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/bulk-edit/version-2/:id" element={<BulkEditPreview />} />
         <Route path="/my-documents/bulk-edit/version-3/:id" element={<BulkEditPreview />} />
