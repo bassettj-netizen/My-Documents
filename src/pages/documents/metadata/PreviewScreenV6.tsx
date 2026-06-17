@@ -233,10 +233,10 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
         <Typography size="base" color="neutral-darken5">{displaySummary}</Typography>
       </div>
       <PropRow>
-        <PropertyItem label="Document name" value={displayDoc.name} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} />
+        <PropertyItem label="Name" value={displayDoc.name} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} />
       </PropRow>
       <PropRow>
-        <PropertyItem label="Document type" value={displayDoc.documentType} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} />
+        <PropertyItem label="Type" value={displayDoc.documentType} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} />
       </PropRow>
       <PropRow>
         <PropertyItem label="Uploaded" value={formatDate(displayDoc.uploadedDate)} variant={propertyItemVariants.HORIZONTAL} labelProps={PROP_LABEL} valueProps={PROP_VALUE} />
@@ -246,23 +246,21 @@ function ViewPanel({ displayDoc, displaySummary, onEdit }: {
       </PropRow>
       {tags.length > 0 && (
         <PropRow>
-          <PropertyItem
-            label="Tags"
-            value={
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {tags.map((tag, i) => (
-                  <Chip
-                    key={i}
-                    label={tag.text}
-                    chipStyle={tag.style as ChipStyleValue}
-                    variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE}
-                  />
-                ))}
-              </div>
-            }
-            variant={propertyItemVariants.HORIZONTAL}
-            labelProps={{ ...PROP_LABEL }}
-          />
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <div style={{ width: 130, flexShrink: 0 }}>
+              <Typography size="base" color="neutral-darken2">Tags</Typography>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {tags.map((tag, i) => (
+                <Chip
+                  key={i}
+                  label={tag.text}
+                  chipStyle={tag.style as ChipStyleValue}
+                  variant={(tag.variant as typeof chipVariants[keyof typeof chipVariants]) ?? chipVariants.SUBTLE}
+                />
+              ))}
+            </div>
+          </div>
         </PropRow>
       )}
     </>
@@ -311,14 +309,14 @@ function EditPanel({
         />
 
         <Input
-          label="Document Name"
+          label="Name"
           name="name"
           value={displayDoc.name}
           disabled
         />
 
         <Input
-          label="Document Type"
+          label="Type"
           name="documentType"
           value={editingDocumentType}
           onChange={e => setEditingDocumentType(e.target.value)}

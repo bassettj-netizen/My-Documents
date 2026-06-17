@@ -45,8 +45,8 @@ const UPLOAD_KEY = 'upload-in-progress'
 
 
 const FIXED_COLS = [
-  { key: 'name',         label: 'Document Name' },
-  { key: 'documentType', label: 'Type'          },
+  { key: 'name',         label: 'Name' },
+  { key: 'documentType', label: 'Type' },
   { key: 'tags',         label: 'Tags'          },
   { key: 'uploadedDate', label: 'Uploaded'      },
   { key: 'fileSize',     label: 'Size'          },
@@ -623,7 +623,7 @@ export default function MetadataVersion7() {
       >
         {panelDoc && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Input label="Document Name" name="name" value={panelDoc.name} disabled />
+            <Input label="Name" name="name" value={panelDoc.name} disabled />
             <Input label="Type" name="documentType" value={editingDocumentType} onChange={e => setEditingDocumentType(e.target.value)} />
 
             <Select

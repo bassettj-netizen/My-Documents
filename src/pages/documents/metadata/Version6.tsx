@@ -37,12 +37,12 @@ const UPLOAD_FORMATS = new Set<string>(['PDF', 'DOCX', 'XLSX', 'TXT'])
 const UPLOAD_KEY = 'upload-in-progress'
 
 const FIXED_COLS = [
-  { key: 'name',         label: 'NAME'          },
-  { key: 'documentType', label: 'DOCUMENT TYPE'  },
-  { key: 'tags',         label: 'TAGS'           },
-  { key: 'uploadedDate', label: 'UPLOADED'       },
-  { key: 'fileSize',     label: 'SIZE'           },
-  { key: 'fileFormat',   label: 'FORMAT'         },
+  { key: 'name',         label: 'Name'     },
+  { key: 'documentType', label: 'Type'     },
+  { key: 'tags',         label: 'Tags'     },
+  { key: 'uploadedDate', label: 'Uploaded' },
+  { key: 'fileSize',     label: 'Size'     },
+  { key: 'fileFormat',   label: 'Format'   },
 ]
 
 type Tag = { text: string; style: string; variant?: string }
