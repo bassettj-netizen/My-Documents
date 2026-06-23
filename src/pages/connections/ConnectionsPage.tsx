@@ -317,7 +317,7 @@ export default function ConnectionsPage() {
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
                   <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{site.name}</Typography>
-                  <Icon type={iconType.CheckCircleFilled} color="success-base" size={14} />
+                  <Icon type={iconType.CheckCircleFilled} color="success-base" size={12} />
                 </div>
                 <Typography size="base-sm" color="neutral-darken2">{site.host}</Typography>
                 <div style={{ marginTop: 2 }}>

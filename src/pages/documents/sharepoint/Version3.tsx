@@ -16,7 +16,6 @@ import {
   Dropdown,
   dropdownPlacement,
   dropdownTriggers,
-  FileUploader,
   Icon,
   iconType,
   Input,
@@ -39,12 +38,11 @@ import {
 import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type FileFormat } from '../bulk-edit/documents'
 import { useConnections } from '../../../contexts/ConnectionsContext'
 
-const { colorPalette, spacing, fontWeight } = constants
+const { colorPalette, spacing } = constants
 const PAGE_SIZE = 10
 const UPLOAD_KEY = 'upload-in-progress'
 const UPLOAD_FORMATS = new Set<string>(['PDF', 'DOCX', 'XLSX', 'PPTX'])
 const NON_EDITABLE_KEYS = new Set(['fileFormat', 'fileSize', 'uploadedDate', 'name'])
-const RIGHT_PANEL_WIDTH = 300
 
 const DOMAIN_OPTIONS = [
   { label: 'HR', value: 'HR' },
@@ -99,36 +97,6 @@ const SP_FILE_SITE: Record<string, string> = {
 
 type SpBrowseRow = { key: string; name: string; siteId: string; siteName: string; size: string; modified: string; format: FileFormat; alreadyImported: boolean }
 
-const SHAREPOINT_TREE = [
-  {
-    key: 'folder-hr',
-    title: 'HR Documents',
-    children: [
-      { key: 'sp-emp-handbook',  title: <SpFileLabel id="sp-emp-handbook" />,  isLeaf: true },
-      { key: 'sp-salary-policy', title: <SpFileLabel id="sp-salary-policy" />, isLeaf: true },
-      { key: 'sp-relocation',    title: <SpFileLabel id="sp-relocation" />,    isLeaf: true },
-      { key: 'sp-homeoffice',    title: <SpFileLabel id="sp-homeoffice" />,    isLeaf: true },
-    ],
-  },
-  {
-    key: 'folder-tax',
-    title: 'Tax & Compliance',
-    children: [
-      { key: 'sp-tax-treaty',  title: <SpFileLabel id="sp-tax-treaty" />,  isLeaf: true },
-      { key: 'sp-183-day',     title: <SpFileLabel id="sp-183-day" />,     isLeaf: true },
-      { key: 'sp-payroll-tax', title: <SpFileLabel id="sp-payroll-tax" />, isLeaf: true },
-      { key: 'sp-withholding', title: <SpFileLabel id="sp-withholding" />, isLeaf: true },
-    ],
-  },
-  {
-    key: 'folder-policies',
-    title: 'Company Policies',
-    children: [
-      { key: 'sp-expense',    title: <SpFileLabel id="sp-expense" />,    isLeaf: true },
-      { key: 'sp-compliance', title: <SpFileLabel id="sp-compliance" />, isLeaf: true },
-    ],
-  },
-]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -281,30 +249,6 @@ function SharePointSourceIcon({ siteName }: { siteName?: string }) {
         />
       </svg>
     </Tooltip>
-  )
-}
-
-function SharePointIcon({ size = 20 }: { size?: number }) {
-  const r = Math.round(size * 0.22)
-  return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="20" height="20" rx={r} fill="#0078D4" />
-      <path
-        d="M 13.5 5.5 C 13.5 4 12.3 3 10.8 3 C 9.2 3 7.3 4 7.3 6 C 7.3 8 9 8.8 10.5 9.5 C 12.3 10.3 14 11.3 14 13.3 C 14 15.3 12.3 16.5 10.5 16.5 C 8.7 16.5 7 15.5 7 14"
-        stroke="white" strokeWidth="1.8" strokeLinecap="round" fill="none"
-      />
-    </svg>
-  )
-}
-
-function MicrosoftIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1"    y="1"    width="8.5" height="8.5" fill="#F25022" />
-      <rect x="10.5" y="1"    width="8.5" height="8.5" fill="#7FBA00" />
-      <rect x="1"    y="10.5" width="8.5" height="8.5" fill="#00A4EF" />
-      <rect x="10.5" y="10.5" width="8.5" height="8.5" fill="#FFB900" />
-    </svg>
   )
 }
 
@@ -574,52 +518,6 @@ export default function SharepointVersion3() {
     return () => { document.removeEventListener('mousedown', handleClickOutside); document.removeEventListener('keydown', handleEscape) }
   }, [])
 
-  // ── Upload ───────────────────────────────────────────────────────────────
-
-  const handleUpload = useCallback((file: File | Blob) => {
-    if (!(file instanceof File)) return
-    pendingFilesRef.current.push(file)
-    if (batchTimerRef.current) clearTimeout(batchTimerRef.current)
-    batchTimerRef.current = setTimeout(() => {
-      const files = [...pendingFilesRef.current]
-      pendingFilesRef.current = []
-      setIsUploading(true)
-      const label = files.length === 1 ? files[0].name : `${files.length} documents`
-      const toastContent = (text: string) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Spinner size="small" /><Typography>{text}</Typography></div>
-      )
-      notification.default({ key: UPLOAD_KEY, title: 'Uploading…', placement: toastPlacements.BOTTOM_RIGHT, duration: 0, leadingIcon: false, content: toastContent(label) })
-      setTimeout(() => { notification.default({ key: UPLOAD_KEY, title: 'Extracting metadata…', placement: toastPlacements.BOTTOM_RIGHT, duration: 0, leadingIcon: false, content: toastContent(label) }) }, 1000)
-      setTimeout(() => {
-        notification.destroy(UPLOAD_KEY)
-        setIsUploading(false)
-        const today = new Date().toISOString().slice(0, 10)
-        const newDocs: MetadataDocument[] = files.map((f, i) => {
-          const ext = (f.name.split('.').pop() ?? 'PDF').toUpperCase()
-          const extracted = simulateExtraction(f.name.replace(/\.[^/.]+$/, ''))
-          return {
-            _id: `temp-${Date.now()}-${i}`,
-            name: f.name.replace(/\.[^/.]+$/, ''),
-            domain: extracted.domain,
-            documentType: extracted.documentType,
-            status: 'Draft' as const,
-            namedEntity: '—', namedEntityId: '—',
-            year: extracted.year,
-            monetaryAmounts: 0, currency: 'EUR', monetaryTypes: 'None',
-            lawType: '—', citations: '—',
-            jurisdiction: extracted.jurisdiction,
-            uploadedDate: today,
-            fileSize: formatFileSize(f.size),
-            fileFormat: (UPLOAD_FORMATS.has(ext) ? ext : 'PDF') as FileFormat,
-          }
-        })
-        setTempDocs(prev => [...newDocs, ...prev])
-        const successLabel = files.length === 1 ? '1 document' : `${files.length} documents`
-        notification.success({ title: 'Upload successful', placement: toastPlacements.BOTTOM_LEFT, duration: 5, content: <Typography>{successLabel}</Typography> })
-      }, 2000)
-    }, 150)
-  }, [notification])
-
   // ── SharePoint ───────────────────────────────────────────────────────────
 
   const handleBrowseImport = useCallback(() => {
@@ -632,7 +530,7 @@ export default function SharepointVersion3() {
     setTimeout(() => {
       const newDocs = toImport.map(({ key }) => spFileToDoc(key))
       const newMapping: Record<string, string> = {}
-      toImport.forEach(({ key, siteId }, i) => { spDocIds.current.add(newDocs[i]._id); newMapping[newDocs[i]._id] = siteId })
+      toImport.forEach(({ siteId }, i) => { spDocIds.current.add(newDocs[i]._id); newMapping[newDocs[i]._id] = siteId })
       setSpDocs(prev => [...newDocs, ...prev])
       setSpDocSiteIds(prev => ({ ...prev, ...newMapping }))
       setImportedSpKeys(prev => new Set([...prev, ...toImport.map(({ key }) => key)]))
@@ -888,11 +786,11 @@ export default function SharepointVersion3() {
               {connectedSites.length > 1 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
                   <div style={{ cursor: 'pointer' }} onClick={() => setSpBrowseSiteFilter('all')}>
-                    <Chip label="All sites" chipStyle={spBrowseSiteFilter === 'all' ? chipStyles.PRIMARY : chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />
+                    <Chip label="All sites" chipStyle={spBrowseSiteFilter === 'all' ? chipStyles.ACCENT_BLUE : chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />
                   </div>
                   {connectedSites.map(site => (
                     <div key={site.id} style={{ cursor: 'pointer' }} onClick={() => setSpBrowseSiteFilter(site.id)}>
-                      <Chip label={site.name} chipStyle={spBrowseSiteFilter === site.id ? chipStyles.PRIMARY : chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />
+                      <Chip label={site.name} chipStyle={spBrowseSiteFilter === site.id ? chipStyles.ACCENT_BLUE : chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />
                     </div>
                   ))}
                 </div>
@@ -940,13 +838,13 @@ export default function SharepointVersion3() {
                 dataSource={spBrowseRows}
                 columns={spBrowseColumns as never}
                 pagination={false}
-                onRow={(row: SpBrowseRow) => ({
+                {...({ onRow: (row: SpBrowseRow) => ({
                   style: { height: 56, cursor: row.alreadyImported ? 'default' : 'pointer' },
                   onClick: () => {
                     if (row.alreadyImported) return
                     setSpBrowseSelected(prev => { const next = new Set(prev); if (next.has(row.key)) next.delete(row.key); else next.add(row.key); return next })
                   },
-                })}
+                }) } as any)}
               />
             ) : isInitialLoading ? (
               <Skeleton variant={skeletonVariants.TEXT} title paragraph={{ rows: PAGE_SIZE }} />
@@ -957,10 +855,9 @@ export default function SharepointVersion3() {
                 pagination={false}
                 innerLoading={isSearching || isUploading}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                {...({ components: { body: { cell: EditableCell } } } as any)}
-                onRow={(record: MetadataDocument) => ({
+                {...({ components: { body: { cell: EditableCell } }, onRow: (record: MetadataDocument) => ({
                   style: { height: 72, ...(editingKey === record._id ? { backgroundColor: '#F5F9FF' } : selectedKeys.has(record._id) ? { backgroundColor: '#EEF4FF' } : {}) },
-                })}
+                }) } as any)}
               />
             )}
           </div>
