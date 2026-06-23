@@ -304,7 +304,7 @@ export default function MetadataUserTestingV6() {
     const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as Element
       if (tagsEditRef.current?.contains(target)) return
-      if (target.closest('.ant-select-dropdown')) return
+      if (target.closest('.goat-select-dropdown')) return
       const record = allDocs.find(d => d._id === editingCell.id)
       if (record) {
         handleSave({

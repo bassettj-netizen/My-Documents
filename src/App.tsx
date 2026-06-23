@@ -52,6 +52,11 @@ import DocumentPreviewV3 from './pages/documents/document-preview/Version3'
 import DocumentPreviewV4 from './pages/documents/document-preview/Version4'
 import SharepointV1 from './pages/documents/sharepoint/Version1'
 import SharepointV2 from './pages/documents/sharepoint/Version2'
+import SharepointV3 from './pages/documents/sharepoint/Version3'
+import SharepointV4 from './pages/documents/sharepoint/Version4'
+import SharepointV5 from './pages/documents/sharepoint/Version5'
+import ConnectionsPage from './pages/connections/ConnectionsPage'
+import { ConnectionsProvider } from './contexts/ConnectionsContext'
 import DocumentPreviewScreen from './pages/documents/document-preview/PreviewScreen'
 import PreviewScreenV2 from './pages/documents/document-preview/PreviewScreenV2'
 import PreviewScreenV3 from './pages/documents/document-preview/PreviewScreenV3'
@@ -61,15 +66,27 @@ function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const activeKey = location.pathname.startsWith('/my-documents') ? 'documents' : ''
+  const sharepointMatch = location.pathname.match(/\/my-documents\/sharepoint\/(version-\d+)/)
+  const sharepointVersion = sharepointMatch ? sharepointMatch[1] : null
+  const activeKey = location.pathname.includes('/connections') && sharepointVersion ? 'connections' : location.pathname.startsWith('/my-documents') ? 'documents' : ''
 
   const sidebarTopItems = [
     {
       key: 'documents',
       label: 'Dokumente',
       icon: <Icon type={iconType.FolderFilled} />,
-      onClick: () => navigate('/my-documents/1'),
+      onClick: () => navigate(
+        sharepointVersion === 'version-3'
+          ? '/my-documents/sharepoint/version-3/my-documents'
+          : `/my-documents/sharepoint/${sharepointVersion ?? 'version-3'}`
+      ),
     },
+    ...(sharepointVersion ? [{
+      key: 'connections',
+      label: 'Connections',
+      icon: <Icon type={iconType.LinkOutlined} />,
+      onClick: () => navigate(`/my-documents/sharepoint/${sharepointVersion}/connections`),
+    }] : []),
   ] as unknown as SidebarItem[]
 
   return (
@@ -105,10 +122,11 @@ function App() {
 
   return (
     <ThemeProvider selectedTheme={selectedTheme}>
+      <ConnectionsProvider>
       <Routes>
         {/* Routes rendered inside the sidebar/header Layout */}
         <Route element={<AppShell />}>
-          <Route path="/" element={<Navigate to="/my-documents/1" replace />} />
+          <Route path="/" element={<Navigate to="/my-documents/sharepoint/version-3/my-documents" replace />} />
           <Route path="/my-documents/1" element={<DocumentsV1 />} />
           <Route path="/my-documents/2" element={<DocumentsV2 />} />
           <Route path="/my-documents/3" element={<DocumentsV3 />} />
@@ -122,7 +140,14 @@ function App() {
           <Route path="/my-documents/metadata/version-6" element={<MetadataVersion6 />} />
           <Route path="/my-documents/metadata/version-7" element={<MetadataVersion7 />} />
           <Route path="/my-documents/sharepoint/version-1" element={<SharepointV1 />} />
+          <Route path="/my-documents/sharepoint/version-1/connections" element={<ConnectionsPage />} />
           <Route path="/my-documents/sharepoint/version-2" element={<SharepointV2 />} />
+          <Route path="/my-documents/sharepoint/version-2/connections" element={<ConnectionsPage />} />
+          <Route path="/my-documents/sharepoint/version-3" element={<Navigate to="/my-documents/sharepoint/version-3/my-documents" replace />} />
+          <Route path="/my-documents/sharepoint/version-3/my-documents" element={<SharepointV3 />} />
+          <Route path="/my-documents/sharepoint/version-3/connections" element={<ConnectionsPage />} />
+          <Route path="/my-documents/sharepoint/version-4" element={<SharepointV4 />} />
+          <Route path="/my-documents/sharepoint/version-5" element={<SharepointV5 />} />
           <Route path="/my-documents/bulk-edit/version-1" element={<BulkEditV1 />} />
           <Route path="/my-documents/bulk-edit/version-2" element={<BulkEditV2 />} />
           <Route path="/my-documents/bulk-edit/version-3" element={<BulkEditV3 />} />
@@ -139,7 +164,7 @@ function App() {
           <Route path="/my-documents/document-preview/version-3" element={<DocumentPreviewV3 />} />
           <Route path="/my-documents/document-preview/version-4" element={<DocumentPreviewV4 />} />
           <Route path="/profile" element={<ProfilePage selectedTheme={selectedTheme} onThemeChange={setSelectedTheme} />} />
-          <Route path="*" element={<Navigate to="/my-documents/1" replace />} />
+          <Route path="*" element={<Navigate to="/my-documents/sharepoint/version-3/my-documents" replace />} />
         </Route>
 
         {/* Full-screen routes — rendered outside the Layout */}
@@ -165,6 +190,7 @@ function App() {
         <Route path="/my-documents/preview-tasks/version-12/:id" element={<PreviewTasksPreviewScreenV12 />} />
         <Route path="/my-documents/preview-tasks/version-13/:id" element={<PreviewTasksPreviewScreenV13 />} />
       </Routes>
+      </ConnectionsProvider>
     </ThemeProvider>
   )
 }
