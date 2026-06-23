@@ -40,8 +40,6 @@ import { useConnections } from '../../../contexts/ConnectionsContext'
 
 const { colorPalette, spacing } = constants
 const PAGE_SIZE = 10
-const UPLOAD_KEY = 'upload-in-progress'
-const UPLOAD_FORMATS = new Set<string>(['PDF', 'DOCX', 'XLSX', 'PPTX'])
 const NON_EDITABLE_KEYS = new Set(['fileFormat', 'fileSize', 'uploadedDate', 'name'])
 
 const DOMAIN_OPTIONS = [
@@ -100,28 +98,11 @@ type SpBrowseRow = { key: string; name: string; siteId: string; siteName: string
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function SpFileLabel({ id }: { id: string }) {
-  const meta = SP_FILE_META[id]
-  if (!meta) return null
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-      <span style={{ flex: 1, fontSize: 13 }}>{meta.name}.{meta.format.toLowerCase()}</span>
-      <span style={{ fontSize: 12, color: colorPalette.neutral.darken2, flexShrink: 0 }}>{meta.size}</span>
-      <span style={{ fontSize: 12, color: colorPalette.neutral.darken2, flexShrink: 0, minWidth: 70 }}>
-        {formatDate(meta.modified)}
-      </span>
-    </div>
-  )
-}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 function stripYear(name: string) {
   return name.replace(/\s*\(\d{4}\)\s*/g, '').trim()
@@ -371,10 +352,8 @@ export default function SharepointVersion3() {
   const { connectedSiteIds } = useConnections()
 
   // Upload (device)
-  const [isUploading, setIsUploading] = useState(false)
+  const [isUploading] = useState(false)
   const [tempDocs, setTempDocs] = useState<MetadataDocument[]>([])
-  const pendingFilesRef = useRef<File[]>([])
-  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // SharePoint — browse mode
   const [viewMode, setViewMode] = useState<'library' | 'sharepoint'>('library')
