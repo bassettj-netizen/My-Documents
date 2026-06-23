@@ -543,7 +543,11 @@ export default function MetadataUserTestingV6() {
                   open
                   value={editingTags}
                   options={tagOptions}
-                  onChange={vals => setEditingTags(vals as string[])}
+                  onChange={vals => {
+                    const newVals = vals as string[]
+                    if (newVals.length < editingTags.length) return
+                    setEditingTags(newVals)
+                  }}
                   tagRender={props => (
                     <span
                       onMouseDown={e => { e.preventDefault(); e.stopPropagation() }}
