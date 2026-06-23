@@ -35,7 +35,7 @@ import {
   Typography,
   useNotifications,
 } from '@goat-ui/goat-ui-core'
-import { documents, DOCUMENT_SNIPPETS, type MetadataDocument, type FileFormat } from '../bulk-edit/documents'
+import { documents, type MetadataDocument, type FileFormat } from '../bulk-edit/documents'
 
 const { colorPalette, spacing, fontWeight } = constants
 const PAGE_SIZE = 10
@@ -171,7 +171,7 @@ const CONNECTOR_FILE_COUNTS: Record<ConnectorType, number> = {
 
 function guessFormat(filename: string): FileFormat {
   const ext = filename.split('.').pop()?.toUpperCase() ?? ''
-  const known: FileFormat[] = ['PDF', 'DOCX', 'XLSX', 'PPTX', 'DOC', 'XLS']
+  const known: FileFormat[] = ['PDF', 'DOCX', 'XLSX', 'PPTX']
   return (known.includes(ext as FileFormat) ? ext : 'PDF') as FileFormat
 }
 
@@ -365,7 +365,7 @@ function connectorLabel(type: ConnectorType) {
 const CONNECTOR_CHIP_STYLE: Record<ConnectorType, ChipStyleValue> = {
   'sharepoint':   chipStyles.ACCENT_BLUE,
   'onedrive':     chipStyles.ACCENT_BLUE,
-  'datev':        chipStyles.ACCENT_RED,
+  'datev':        chipStyles.ACCENT_PURPLE,
   'google-drive': chipStyles.ACCENT_NEUTRAL,
 }
 
@@ -1036,7 +1036,7 @@ function UploadModal({ open, onClose, connectors, onUpload }: {
             }}
           >
             <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon type={iconType.UploadOutlined} size={22} color="neutral-darken3" />
+              <Icon type={iconType.UploadOutlined} size={20} color="neutral-darken3" />
             </div>
             <div style={{ textAlign: 'center' }}>
               <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>Drag files here</Typography>
@@ -1052,7 +1052,7 @@ function UploadModal({ open, onClose, connectors, onUpload }: {
               {queuedFiles.map((f, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: spacing(3), padding: `${spacing(2)}px ${spacing(3)}px`, border: '1px solid #e0e0e0', borderRadius: 8 }}>
                   <Chip label={guessFormat(f.name)} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />
-                  <Typography size="base" color="neutral-darken5" style={{ flex: 1 }}>{f.name}</Typography>
+                  <span style={{ flex: 1 }}><Typography size="base" color="neutral-darken5">{f.name}</Typography></span>
                   <Typography size="base-sm" color="neutral-darken2">
                     {f.size < 1024 * 1024 ? `${(f.size / 1024).toFixed(0)} KB` : `${(f.size / 1024 / 1024).toFixed(1)} MB`}
                   </Typography>
@@ -1102,7 +1102,7 @@ function UploadModal({ open, onClose, connectors, onUpload }: {
               onClick={() => { setBrowsingConnector(null); setCheckedTreeKeys([]) }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: spacing(1), color: colorPalette.blue.base }}
             >
-              <Icon type={iconType.ChevronLeftOutlined} size={14} color="primary-base" />
+              <Icon type={iconType.ChevronLeftOutlined} size={12} color="primary-base" />
               <Typography size="base-sm" color="primary-base">All integrations</Typography>
             </button>
             <Typography size="base-sm" color="neutral-darken2">›</Typography>
@@ -1678,7 +1678,7 @@ export default function SharepointVersion4() {
       {spaces.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(4), padding: `${spacing(12)}px 0`, color: colorPalette.neutral.darken2 }}>
           <div style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon type={iconType.FolderFilled} size={28} color="neutral-darken2" />
+            <Icon type={iconType.FolderFilled} size={24} color="neutral-darken2" />
           </div>
           <div style={{ textAlign: 'center' }}>
             <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>No spaces yet</Typography>
