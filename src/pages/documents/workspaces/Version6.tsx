@@ -60,6 +60,7 @@ import {
   relativeTime,
   renderLiteMarkdown,
   SpaceAvatar,
+  SpaceContextModal,
   SpaceFormModal,
   SpacesListView,
   sourceIcon,
@@ -166,12 +167,13 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
   const base = useWorkspacesBase()
   const { spaceId, sessionId, docId } = useParams<{ spaceId: string; sessionId?: string; docId?: string }>()
   const {
-    spaces, getSpaceDocs, setSpaceDocs, addDocsToSpace, updateSpace, deleteSpace,
+    spaces, getSpaceDocs, setSpaceDocs, addDocsToSpace, updateSpace, updateSpaceContext, deleteSpace,
     sessionsBySpace, selectChat, deleteChat, sendMessage,
   } = workspace
   const { isWorkspaceConnectorDisconnected } = useConnections()
 
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [contextModalOpen, setContextModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [chatAttachmentSeed, setChatAttachmentSeed] = useState<{ doc: MetadataDocument; source: DocSource }[]>([])
   const [sortValue, setSortValue] = useState<SortValue>('date-desc')
@@ -284,6 +286,7 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
           onDeleteSharedSession={id => setDismissedSharedIds(prev => new Set(prev).add(id))}
           onRequestEdit={() => setEditModalOpen(true)}
           onRequestDelete={() => setDeleteConfirmOpen(true)}
+          onRequestContext={() => setContextModalOpen(true)}
         />
       )}
 
@@ -373,6 +376,13 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
         initialValues={selectedSpace}
         onClose={() => setEditModalOpen(false)}
         onSubmit={values => { updateSpace(selectedSpace.id, values); setEditModalOpen(false) }}
+      />
+
+      <SpaceContextModal
+        open={contextModalOpen}
+        space={selectedSpace}
+        onClose={() => setContextModalOpen(false)}
+        onSave={context => { updateSpaceContext(selectedSpace.id, context); setContextModalOpen(false) }}
       />
 
       <Modal
@@ -682,7 +692,7 @@ function buildSharedSessions(space: Space, docs: MetadataDocument[]): SharedChat
 
 // ─── Landing (chat-first) view ────────────────────────────────────────────────
 
-function LandingView({ space, docs, sessions, sharedSessions, seedAttachments, onSeedAttachmentsConsumed, onBackToList, onOpenDocuments, onSend, onOpenSession, onDeleteSession, onDeleteSharedSession, onRequestEdit, onRequestDelete }: {
+function LandingView({ space, docs, sessions, sharedSessions, seedAttachments, onSeedAttachmentsConsumed, onBackToList, onOpenDocuments, onSend, onOpenSession, onDeleteSession, onDeleteSharedSession, onRequestEdit, onRequestDelete, onRequestContext }: {
   space: Space
   docs: MetadataDocument[]
   sessions: ChatSession[]
@@ -697,6 +707,7 @@ function LandingView({ space, docs, sessions, sharedSessions, seedAttachments, o
   onDeleteSharedSession: (id: string) => void
   onRequestEdit: () => void
   onRequestDelete: () => void
+  onRequestContext: () => void
 }) {
   const [input, setInput] = useState('')
 
@@ -789,6 +800,9 @@ function LandingView({ space, docs, sessions, sharedSessions, seedAttachments, o
                   ))}
                 </div>
               )}
+              <ButtonTertiary leftIcon={iconType.NoteOutlined} onClick={onRequestContext}>
+                Context
+              </ButtonTertiary>
               <ButtonTertiary leftIcon={iconType.FolderOutlined} onClick={onOpenDocuments}>
                 {docs.length} document{docs.length !== 1 ? 's' : ''}
               </ButtonTertiary>

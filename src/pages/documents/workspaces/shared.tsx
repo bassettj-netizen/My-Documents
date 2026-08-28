@@ -73,6 +73,10 @@ export type Space = {
   visibility: SpaceVisibility
   // Data URL for a custom-uploaded workspace avatar — falls back to initials (SpaceAvatar) when unset.
   avatarUrl?: string
+  // Freeform background on this space — sector, company size, relationship, preferred
+  // communication style, etc. — kept separate from the create/edit form so it stays a
+  // quick, no-friction add rather than another required field.
+  context?: string
 }
 
 export type Tag = { text: string; style: string; variant?: string }
@@ -878,6 +882,47 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit }:
   )
 }
 
+// ─── Space context modal ──────────────────────────────────────────────────────
+
+/**
+ * A single freeform notes box for background on this space — sector, company size,
+ * relationship, preferred communication style, whatever's useful — kept deliberately
+ * to one field so adding it is quick rather than another multi-field form to fill in.
+ */
+export function SpaceContextModal({ open, space, onClose, onSave }: {
+  open: boolean
+  space: Space
+  onClose: () => void
+  onSave: (context: string) => void
+}) {
+  const [value, setValue] = useState(space.context ?? '')
+
+  useEffect(() => { if (open) setValue(space.context ?? '') }, [open, space.context])
+
+  return (
+    <Modal
+      visible={open}
+      title="Workspace Context"
+      withIcon={false}
+      onClose={onClose}
+      footer={{ buttons: [
+        { variant: buttonVariants.GHOST, props: { children: 'Cancel', onClick: onClose } },
+        { variant: buttonVariants.PRIMARY, props: { children: 'Save', onClick: () => onSave(value.trim()) } },
+      ] }}
+    >
+      <TextArea
+        label="Additional context"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        autoSize={{ minRows: 6, maxRows: 14 }}
+        placeholder="e.g. Mid-size manufacturing client, 3-year relationship, prefers concise written summaries over calls, fiscal year ends in June..."
+        helper="Background that helps tailor how this space is worked with — sector, company size, relationship, preferred communication style, or anything else worth knowing."
+        helperMaxLines={3}
+      />
+    </Modal>
+  )
+}
+
 // ─── Upload modal (computer only) ────────────────────────────────────────────
 
 function UploadModal({ open, onClose, onUpload }: {
@@ -1655,6 +1700,11 @@ export function useWorkspaceState() {
     notification.success({ title: `"${values.name}" updated`, placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
   }, [notification])
 
+  const updateSpaceContext = useCallback((id: string, context: string) => {
+    setSpaces(prev => prev.map(s => s.id === id ? { ...s, context } : s))
+    notification.success({ title: 'Context saved', placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
+  }, [notification])
+
   const deleteSpace = useCallback((id: string) => {
     setSpaces(prev => prev.filter(s => s.id !== id))
     setDocsBySpace(prev => { const next = { ...prev }; delete next[id]; return next })
@@ -1728,7 +1778,7 @@ export function useWorkspaceState() {
   }, [updateSession])
 
   return {
-    spaces, createSpace, updateSpace, deleteSpace,
+    spaces, createSpace, updateSpace, updateSpaceContext, deleteSpace,
     getSpaceDocs, setSpaceDocs, addDocsToSpace,
     sessionsBySpace, activeSessionBySpace, newChat, selectChat, deleteChat, sendMessage,
   }
