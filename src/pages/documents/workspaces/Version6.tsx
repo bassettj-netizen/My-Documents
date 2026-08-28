@@ -37,6 +37,7 @@ import {
   searchbarWidth,
   Spinner,
   Table,
+  Tabs,
   TextArea,
   toastPlacements,
   Toolbar,
@@ -52,6 +53,7 @@ import {
   connectorIcon,
   formatDate,
   fontWeight,
+  generateAssistantReply,
   getDocumentTags,
   guessFormat,
   localFileToDoc,
@@ -185,6 +187,9 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
   // Also lifted, so the parent knows whether the drawer is showing its full-size
   // table body and should therefore stay visible under Filter/Sort or Add.
   const [docsViewMode, setDocsViewMode] = useState<'list' | 'table'>('list')
+  // Shared chats are mock data (not part of the real workspace state) — "deleting"
+  // one just dismisses it from this local view.
+  const [dismissedSharedIds, setDismissedSharedIds] = useState<Set<string>>(new Set())
 
   // The app's page layout has no fixed viewport height of its own — content
   // just grows the page — so a plain `height: 100%` on the detail view never
@@ -213,8 +218,10 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
 
   const docs = getSpaceDocs(selectedSpace.id)
   const sessions = sessionsBySpace[selectedSpace.id] ?? []
-  const activeSession = routeKind === 'chat' ? sessions.find(s => s.id === sessionId) ?? null : null
+  const sharedSessions = buildSharedSessions(selectedSpace, docs).filter(s => !dismissedSharedIds.has(s.id))
+  const activeSession = routeKind === 'chat' ? sessions.find(s => s.id === sessionId) ?? sharedSessions.find(s => s.id === sessionId) ?? null : null
   if (routeKind === 'chat' && !activeSession) return <Navigate to={`${base}/spaces/${spaceId}`} replace />
+  const isSharedActiveSession = !!activeSession && !sessions.some(s => s.id === activeSession.id)
 
   const previewDoc = routeKind === 'doc-preview' ? docs.find(d => d._id === docId) ?? null : null
   if (routeKind === 'doc-preview' && !previewDoc) return <Navigate to={`${base}/spaces/${spaceId}/documents`} replace />
@@ -263,6 +270,7 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
           space={selectedSpace}
           docs={docs}
           sessions={sessions}
+          sharedSessions={sharedSessions}
           seedAttachments={chatAttachmentSeed}
           onSeedAttachmentsConsumed={() => setChatAttachmentSeed([])}
           onBackToList={() => navigate(`${base}/workspaces`)}
@@ -273,6 +281,7 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
           }}
           onOpenSession={id => { selectChat(selectedSpace.id, id); navigate(`${base}/spaces/${spaceId}/chat/${id}`) }}
           onDeleteSession={id => deleteChat(selectedSpace.id, id)}
+          onDeleteSharedSession={id => setDismissedSharedIds(prev => new Set(prev).add(id))}
           onRequestEdit={() => setEditModalOpen(true)}
           onRequestDelete={() => setDeleteConfirmOpen(true)}
         />
@@ -283,6 +292,7 @@ function SpaceDetailRoute({ workspace, routeKind }: { workspace: WorkspaceState;
           space={selectedSpace}
           docs={docs}
           session={activeSession}
+          readOnly={isSharedActiveSession}
           onBack={goToLanding}
           onSend={(text, attachments) => sendMessage(selectedSpace.id, docs, activeSession.id, text, attachments)}
         />
@@ -644,12 +654,39 @@ export function MessageComposer({ value, onChange, onSend, placeholder, autoSize
 
 const CHATS_PAGE_SIZE = 10
 
+// ─── Shared chats (mock — colleagues' conversations shared into this space) ───
+
+/** A chat session shared into the space by a colleague, rather than started by the current user. */
+type SharedChatSession = ChatSession & { sharedBy: string }
+
+const SHARED_CHAT_SEEDS: { title: string; sharedBy: string; question: string; hoursAgo: number }[] = [
+  { title: 'Q4 filing — outstanding action items', sharedBy: 'Sabine Hoffmann', question: 'Can you confirm the Q4 filing checklist is complete before we submit?', hoursAgo: 30 },
+  { title: 'Client onboarding — missing documents', sharedBy: 'Albert Berg', question: 'Which documents are still missing from the onboarding packet?', hoursAgo: 75 },
+  { title: 'Audit prep — summary for tomorrow', sharedBy: 'Claudia Richter', question: 'Could you summarize the audit findings for the client call tomorrow?', hoursAgo: 140 },
+]
+
+function buildSharedSessions(space: Space, docs: MetadataDocument[]): SharedChatSession[] {
+  return SHARED_CHAT_SEEDS.map((seed, i) => {
+    const userMsg: ChatMessage = { id: `${space.id}-shared-msg-${i}-user`, role: 'user', content: seed.question }
+    const reply = generateAssistantReply(seed.question, docs)
+    const assistantMsg: ChatMessage = { id: `${space.id}-shared-msg-${i}-assistant`, role: 'assistant', content: reply.content, citedDocIds: reply.citedDocIds }
+    return {
+      id: `${space.id}-shared-chat-${i + 1}`,
+      title: seed.title,
+      messages: [userMsg, assistantMsg],
+      updatedAt: Date.now() - seed.hoursAgo * 3600000,
+      sharedBy: seed.sharedBy,
+    }
+  })
+}
+
 // ─── Landing (chat-first) view ────────────────────────────────────────────────
 
-function LandingView({ space, docs, sessions, seedAttachments, onSeedAttachmentsConsumed, onBackToList, onOpenDocuments, onSend, onOpenSession, onDeleteSession, onRequestEdit, onRequestDelete }: {
+function LandingView({ space, docs, sessions, sharedSessions, seedAttachments, onSeedAttachmentsConsumed, onBackToList, onOpenDocuments, onSend, onOpenSession, onDeleteSession, onDeleteSharedSession, onRequestEdit, onRequestDelete }: {
   space: Space
   docs: MetadataDocument[]
   sessions: ChatSession[]
+  sharedSessions: SharedChatSession[]
   seedAttachments: { doc: MetadataDocument; source: DocSource }[]
   onSeedAttachmentsConsumed: () => void
   onBackToList: () => void
@@ -657,13 +694,11 @@ function LandingView({ space, docs, sessions, seedAttachments, onSeedAttachments
   onSend: (text: string, attachments: OutgoingAttachment[]) => void
   onOpenSession: (id: string) => void
   onDeleteSession: (id: string) => void
+  onDeleteSharedSession: (id: string) => void
   onRequestEdit: () => void
   onRequestDelete: () => void
 }) {
   const [input, setInput] = useState('')
-  const [sortDesc, setSortDesc] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [chatPage, setChatPage] = useState(1)
 
   // The description collapses out of the sticky header while the user scrolls
   // down through the chat list (reclaiming space for content), and reappears
@@ -716,13 +751,6 @@ function LandingView({ space, docs, sessions, seedAttachments, onSeedAttachments
     onSend(text, attachments)
     setInput('')
   }
-
-  const sorted = [...sessions]
-    .filter(s => !searchQuery.trim() || s.title.toLowerCase().includes(searchQuery.trim().toLowerCase()))
-    .sort((a, b) => sortDesc ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt)
-  const pagedSessions = sorted.slice((chatPage - 1) * CHATS_PAGE_SIZE, chatPage * CHATS_PAGE_SIZE)
-
-  useEffect(() => { setChatPage(1) }, [searchQuery, sortDesc])
 
   // Every source actually present among this space's documents — not just
   // the primary connector. Same computation SpaceCard uses for its own
@@ -806,46 +834,99 @@ function LandingView({ space, docs, sessions, seedAttachments, onSeedAttachments
             </Typography>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-            <SearchBar placeholder="Search chats" value={searchQuery} onChange={setSearchQuery} width={searchbarWidth.EXPANDED} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Dropdown
-                items={[
-                  { key: 'newest', label: 'Newest first', onClick: () => setSortDesc(true) },
-                  { key: 'oldest', label: 'Oldest first', onClick: () => setSortDesc(false) },
-                ]}
-                trigger={dropdownTriggers.CLICK}
-                placement={dropdownPlacement.BOTTOM_RIGHT}
-              >
-                <ButtonGhost leftIcon={iconType.ArrowSwapOutlined}>Sort</ButtonGhost>
-              </Dropdown>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-              {sorted.length === 0 ? (
-                <div style={{ padding: `${spacing(8)}px 0`, textAlign: 'center' }}>
-                  <Typography size="base-sm" color="neutral-darken2">
-                    {searchQuery.trim() ? 'No chats match your search.' : 'No requests yet — describe a task above to get started.'}
-                  </Typography>
-                </div>
-              ) : pagedSessions.map(s => (
-                <TaskCard key={s.id} session={s} onOpen={() => onOpenSession(s.id)} onDelete={() => onDeleteSession(s.id)} />
-              ))}
-            </div>
-            {sorted.length > CHATS_PAGE_SIZE && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: `${spacing(3)}px 0` }}>
-                <Pagination current={chatPage} total={sorted.length} pageSize={CHATS_PAGE_SIZE} onChange={setChatPage} />
-              </div>
-            )}
-          </div>
+          <Tabs
+            defaultActiveKey="my-chats"
+            options={[
+              {
+                key: 'my-chats',
+                label: 'My Chats',
+                content: (
+                  <ChatListPanel
+                    sessions={sessions}
+                    onOpenSession={onOpenSession}
+                    onDeleteSession={onDeleteSession}
+                    emptyMessage="No requests yet — describe a task above to get started."
+                  />
+                ),
+              },
+              {
+                key: 'shared-chats',
+                label: 'Shared',
+                content: (
+                  <ChatListPanel
+                    sessions={sharedSessions}
+                    onOpenSession={onOpenSession}
+                    onDeleteSession={onDeleteSharedSession}
+                    emptyMessage="No chats have been shared with you yet."
+                  />
+                ),
+              },
+            ]}
+          />
         </div>
       </div>
     </div>
   )
 }
 
-function TaskCard({ session, onOpen, onDelete }: { session: ChatSession; onOpen: () => void; onDelete: () => void }) {
+// ─── One tab's worth of chats: its own search, sort, list, and pagination ─────
+
+function ChatListPanel({ sessions, onOpenSession, onDeleteSession, emptyMessage }: {
+  sessions: (ChatSession | SharedChatSession)[]
+  onOpenSession: (id: string) => void
+  onDeleteSession: (id: string) => void
+  emptyMessage: string
+}) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortDesc, setSortDesc] = useState(true)
+  const [page, setPage] = useState(1)
+
+  const sorted = [...sessions]
+    .filter(s => !searchQuery.trim() || s.title.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    .sort((a, b) => sortDesc ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt)
+  const pagedSessions = sorted.slice((page - 1) * CHATS_PAGE_SIZE, page * CHATS_PAGE_SIZE)
+
+  useEffect(() => { setPage(1) }, [searchQuery, sortDesc])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2), paddingTop: spacing(4) }}>
+      <SearchBar placeholder="Search chats" value={searchQuery} onChange={setSearchQuery} width={searchbarWidth.EXPANDED} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Dropdown
+          items={[
+            { key: 'newest', label: 'Newest first', onClick: () => setSortDesc(true) },
+            { key: 'oldest', label: 'Oldest first', onClick: () => setSortDesc(false) },
+          ]}
+          trigger={dropdownTriggers.CLICK}
+          placement={dropdownPlacement.BOTTOM_RIGHT}
+        >
+          <ButtonGhost leftIcon={iconType.ArrowSwapOutlined}>Sort</ButtonGhost>
+        </Dropdown>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+        {sorted.length === 0 ? (
+          <div style={{ padding: `${spacing(8)}px 0`, textAlign: 'center' }}>
+            <Typography size="base-sm" color="neutral-darken2">
+              {searchQuery.trim() ? 'No chats match your search.' : emptyMessage}
+            </Typography>
+          </div>
+        ) : pagedSessions.map(s => (
+          <TaskCard key={s.id} session={s} onOpen={() => onOpenSession(s.id)} onDelete={() => onDeleteSession(s.id)} />
+        ))}
+      </div>
+      {sorted.length > CHATS_PAGE_SIZE && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: `${spacing(3)}px 0` }}>
+          <Pagination current={page} total={sorted.length} pageSize={CHATS_PAGE_SIZE} onChange={setPage} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TaskCard({ session, onOpen, onDelete }: { session: ChatSession | SharedChatSession; onOpen: () => void; onDelete: () => void }) {
   const [hovered, setHovered] = useState(false)
   const hasAttachments = session.messages.some(m => m.attachments && m.attachments.length > 0)
+  const sharedBy = 'sharedBy' in session ? session.sharedBy : undefined
   return (
     <div
       onClick={onOpen}
@@ -869,7 +950,9 @@ function TaskCard({ session, onOpen, onDelete }: { session: ChatSession; onOpen:
             </Tooltip>
           )}
         </div>
-        <Typography size="base-sm" color="neutral-darken2">{relativeTime(session.updatedAt)}</Typography>
+        <Typography size="base-sm" color="neutral-darken2">
+          {relativeTime(session.updatedAt)}{sharedBy ? ` · Shared by ${sharedBy}` : ''}
+        </Typography>
       </div>
       <div onClick={e => e.stopPropagation()}>
         <Dropdown
@@ -953,13 +1036,17 @@ function ChatAssistantBlock({ message }: { message: ChatMessage }) {
   )
 }
 
-function ChatDetailView({ space, session, onBack, onSend }: {
+function ChatDetailView({ space, session, readOnly, onBack, onSend }: {
   space: Space
   docs: MetadataDocument[]
-  session: ChatSession
+  session: ChatSession | SharedChatSession
+  // Shared chats are someone else's conversation, browsed rather than continued —
+  // the composer is replaced with a note instead of letting you reply into it.
+  readOnly?: boolean
   onBack: () => void
   onSend: (text: string, attachments: OutgoingAttachment[]) => void
 }) {
+  const sharedBy = 'sharedBy' in session ? session.sharedBy : undefined
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -984,6 +1071,14 @@ function ChatDetailView({ space, session, onBack, onSend }: {
         ]} />
       </div>
 
+      {sharedBy && (
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: `${spacing(3)}px ${spacing(8)}px 0` }}>
+          <div style={{ width: '100%', maxWidth: 840, textAlign: 'left' }}>
+            <Typography size="base-sm" color="neutral-darken2">Shared by {sharedBy}</Typography>
+          </div>
+        </div>
+      )}
+
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
         <div style={{ maxWidth: 840, width: '100%', padding: `${spacing(4)}px ${spacing(8)}px`, display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
           {session.messages.map(m => m.role === 'user' ? <ChatUserBubble key={m.id} space={space} message={m} /> : <ChatAssistantBlock key={m.id} message={m} />)}
@@ -992,18 +1087,27 @@ function ChatDetailView({ space, session, onBack, onSend }: {
 
       <div style={{ flexShrink: 0, padding: `0 ${spacing(8)}px ${spacing(4)}px`, display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: 840, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-          <MessageComposer
-            value={input}
-            onChange={setInput}
-            onSend={handleSend}
-            seedAttachments={[]}
-            onSeedAttachmentsConsumed={() => {}}
-            placeholder="Describe a task"
-            autoSize={{ minRows: 3, maxRows: 5 }}
-          />
-          <Typography size="base-sm" color="neutral-darken2" align="center">
-            CoPilot can make mistakes. Always check important information.
-          </Typography>
+          {readOnly ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2), padding: `${spacing(3)}px ${spacing(4)}px`, borderRadius: 8, backgroundColor: colorPalette.neutral.lighten4 }}>
+              <Icon type={iconType.LockOutlined} size={16} color="neutral-darken2" />
+              <Typography size="base-sm" color="neutral-darken2">This is a shared conversation — read only.</Typography>
+            </div>
+          ) : (
+            <>
+              <MessageComposer
+                value={input}
+                onChange={setInput}
+                onSend={handleSend}
+                seedAttachments={[]}
+                onSeedAttachmentsConsumed={() => {}}
+                placeholder="Describe a task"
+                autoSize={{ minRows: 3, maxRows: 5 }}
+              />
+              <Typography size="base-sm" color="neutral-darken2" align="center">
+                CoPilot can make mistakes. Always check important information.
+              </Typography>
+            </>
+          )}
         </div>
       </div>
     </div>

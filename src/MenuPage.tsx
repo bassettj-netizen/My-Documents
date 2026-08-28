@@ -47,6 +47,7 @@ const groups = [
       { label: 'Version 4', path: '/projects/workspaces/version-4' },
       { label: 'Version 5', path: '/projects/workspaces/version-5' },
       { label: 'Version 6', path: '/projects/workspaces/nuvio' },
+      { label: 'Workspaces Basic', path: '/projects/workspaces/workspaces-basic' },
       { label: 'Launch Pad', path: '/projects/workspaces/launch-pad' },
       { label: 'Launch Pad 2', path: '/projects/workspaces/launch-pad-2' },
     ],

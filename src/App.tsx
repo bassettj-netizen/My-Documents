@@ -66,6 +66,7 @@ import WorkspacesV3 from './pages/documents/workspaces/Version3'
 import WorkspacesV4 from './pages/documents/workspaces/Version4'
 import WorkspacesV5 from './pages/documents/workspaces/Version5'
 import WorkspacesV6 from './pages/documents/workspaces/Version6'
+import WorkspacesBasic from './pages/documents/workspaces/WorkspacesBasic'
 import LaunchPad from './pages/documents/workspaces/LaunchPad'
 import LaunchPad2 from './pages/documents/workspaces/LaunchPad2'
 import ConnectionsPage from './pages/connections/ConnectionsPage'
@@ -124,16 +125,21 @@ function ConnectorIcon() {
 const COPILOT_URL = 'https://example.com/copilot-placeholder'
 
 const WORKSPACES_NUVIO_BASE = '/projects/workspaces/nuvio'
+const WORKSPACES_BASIC_BASE = '/projects/workspaces/workspaces-basic'
 
 function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
+  const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE)
+  // Whichever nested-routing workspaces app (if any) the sidebar's own links
+  // should stay inside of, rather than jumping out to an unrelated top-level page.
+  const workspacesAppBase = inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   const activeKey =
-    location.pathname === '/connectors' || location.pathname === `${WORKSPACES_NUVIO_BASE}/connectors` ? 'connectors' :
-    location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` ? 'documents' :
+    location.pathname === '/connectors' || location.pathname === `${WORKSPACES_NUVIO_BASE}/connectors` || location.pathname === `${WORKSPACES_BASIC_BASE}/connectors` ? 'connectors' :
+    location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` || location.pathname === `${WORKSPACES_BASIC_BASE}/my-documents` ? 'documents' :
     location.pathname.startsWith('/projects/workspaces') ? 'workspaces' :
     location.pathname.startsWith('/projects') ? 'documents' :
     ''
@@ -143,15 +149,16 @@ function AppShell() {
       key: 'documents',
       label: 'My Documents',
       icon: <Icon type={iconType.FolderFilled} />,
-      // Inside the Workspaces V6 app, "My Documents" stays within that app's
-      // own URL space instead of jumping out to the unrelated top-level page.
-      onClick: () => navigate(inWorkspacesV6 ? `${WORKSPACES_NUVIO_BASE}/my-documents` : '/projects/my-documents/version-1'),
+      // Inside a nested-routing workspaces app (V6 or Basic), "My Documents"
+      // stays within that app's own URL space instead of jumping out to the
+      // unrelated top-level page.
+      onClick: () => navigate(inWorkspacesV6 || inWorkspacesBasic ? `${workspacesAppBase}/my-documents` : '/projects/my-documents/version-1'),
     },
     {
       key: 'workspaces',
       label: 'Workspaces',
       icon: <Icon type={iconType.ElementsFilled} />,
-      onClick: () => navigate(`${WORKSPACES_NUVIO_BASE}/workspaces`),
+      onClick: () => navigate(`${workspacesAppBase}/workspaces`),
     },
     {
       key: 'copilot',
@@ -166,9 +173,9 @@ function AppShell() {
       key: 'connectors',
       label: 'Connectors',
       icon: <ConnectorIcon />,
-      // Same rule as "My Documents" — stays inside the Workspaces V6 app when
-      // already there, rather than jumping out to the unrelated top-level page.
-      onClick: () => navigate(inWorkspacesV6 ? `${WORKSPACES_NUVIO_BASE}/connectors` : '/connectors'),
+      // Same rule as "My Documents" — stays inside the current nested workspaces
+      // app when already there, rather than jumping out to the unrelated top-level page.
+      onClick: () => navigate(inWorkspacesV6 || inWorkspacesBasic ? `${workspacesAppBase}/connectors` : '/connectors'),
     },
   ] as unknown as SidebarItem[]
 
@@ -245,6 +252,9 @@ function App() {
               documents drawer, a document preview) is its own nested route under
               this prefix — WorkspacesV6 renders its own <Routes> for the rest. */}
           <Route path="/projects/workspaces/nuvio/*" element={<WorkspacesV6 />} />
+          {/* Same spaces list/detail routing as Workspaces V6, but a space's
+              detail route lands straight on its documents table — no chat. */}
+          <Route path="/projects/workspaces/workspaces-basic/*" element={<WorkspacesBasic />} />
           <Route path="/projects/bulk-edit/version-1" element={<BulkEditV1 />} />
           <Route path="/projects/bulk-edit/version-2" element={<BulkEditV2 />} />
           <Route path="/projects/bulk-edit/version-3" element={<BulkEditV3 />} />
