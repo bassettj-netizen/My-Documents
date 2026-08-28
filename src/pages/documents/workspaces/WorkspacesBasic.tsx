@@ -7,7 +7,6 @@ import {
   ButtonGhost,
   buttonShapes,
   ButtonPrimary,
-  ButtonTertiary,
   buttonVariants,
   Checkbox,
   Chip,
@@ -42,7 +41,6 @@ import {
   Skeleton,
   skeletonVariants,
   SpaceAvatar,
-  SpaceContextModal,
   SpacesListView,
   sourceIcon,
   spaceConnectorLabel,
@@ -116,7 +114,7 @@ function SpacesListRoute({ workspace }: { workspace: WorkspaceState }) {
 function SpaceDetailRoute({ workspace }: { workspace: WorkspaceState }) {
   const navigate = useNavigate()
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>()
-  const { spaces, getSpaceDocs, setSpaceDocs, updateSpaceContext } = workspace
+  const { spaces, getSpaceDocs, setSpaceDocs } = workspace
   const isLoading = useMountLoading()
 
   const selectedSpace = spaces.find(s => slugify(s.name) === workspaceSlug) ?? null
@@ -135,7 +133,6 @@ function SpaceDetailRoute({ workspace }: { workspace: WorkspaceState }) {
       space={selectedSpace}
       docs={getSpaceDocs(selectedSpace.id)}
       onDocsChange={docs => setSpaceDocs(selectedSpace.id, docs)}
-      onSaveContext={context => updateSpaceContext(selectedSpace.id, context)}
       onBack={() => navigate(`${WORKSPACES_BASIC_BASE}/workspaces`)}
     />
   )
@@ -199,15 +196,13 @@ function InlineTagInput({ tags, onTagsChange, onSave, onCancel, containerRef }: 
   )
 }
 
-function BasicSpaceDetail({ space, docs, onDocsChange, onSaveContext, onBack }: {
+function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
   space: Space
   docs: MetadataDocument[]
   onDocsChange: (docs: MetadataDocument[]) => void
-  onSaveContext: (context: string) => void
   onBack: () => void
 }) {
   const { notification } = useNotifications()
-  const [contextModalOpen, setContextModalOpen] = useState(false)
   const sidebarWidth = useSidebarWidth()
 
   const [search, setSearch] = useState('')
@@ -455,9 +450,6 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onSaveContext, onBack }: 
           <SpaceAvatar space={space} size={32} />
           <Typography size="heading-lg" weight="bold">{space.name}</Typography>
           <div style={{ flex: 1 }} />
-          <ButtonTertiary leftIcon={iconType.NoteOutlined} onClick={() => setContextModalOpen(true)}>
-            Context
-          </ButtonTertiary>
           <div style={{ width: 320 }}>
             <SearchBar placeholder="Dokumente durchsuchen" value={search} onChange={v => { setSearch(v); setCurrentPage(1) }} width={searchbarWidth.EXPANDED} />
           </div>
@@ -526,13 +518,6 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onSaveContext, onBack }: 
           onDocsChange([...newDocs, ...docs])
           notification.success({ title: `${newDocs.length} document${newDocs.length !== 1 ? 's' : ''} uploaded`, placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
         }}
-      />
-
-      <SpaceContextModal
-        open={contextModalOpen}
-        space={space}
-        onClose={() => setContextModalOpen(false)}
-        onSave={context => { onSaveContext(context); setContextModalOpen(false) }}
       />
     </div>
   )
