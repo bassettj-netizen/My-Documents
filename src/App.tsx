@@ -156,7 +156,9 @@ function AppShell() {
     },
     {
       key: 'workspaces',
-      label: 'Workspaces',
+      // Workspaces Basic calls these "Spaces" throughout, so the sidebar matches
+      // whichever nested app the user is currently inside.
+      label: inWorkspacesBasic ? 'Spaces' : 'Workspaces',
       icon: <Icon type={iconType.ElementsFilled} />,
       onClick: () => navigate(`${workspacesAppBase}/workspaces`),
     },

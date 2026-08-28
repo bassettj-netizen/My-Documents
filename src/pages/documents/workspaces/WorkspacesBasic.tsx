@@ -7,6 +7,7 @@ import {
   ButtonGhost,
   buttonShapes,
   ButtonPrimary,
+  ButtonTertiary,
   buttonVariants,
   Checkbox,
   Chip,
@@ -68,6 +69,15 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+/** CoPilot outline mark — goat-ui has no icon for this, so it's not a button leftIcon string. */
+function CopilotIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8.00078 10.687C6.5133 10.687 5.31067 9.48436 5.31067 7.99687C5.31067 6.50939 6.5133 5.30677 8.00078 5.30677C9.48826 5.30677 10.6909 6.50939 10.6909 7.99687C10.6909 9.48436 9.48826 10.687 8.00078 10.687ZM8.00078 6.09797C6.9564 6.09797 6.10188 6.9525 6.10188 7.99687C6.10188 9.04125 6.9564 9.89578 8.00078 9.89578C9.04516 9.89578 9.89969 9.04125 9.89969 7.99687C9.89969 6.9525 9.04516 6.09797 8.00078 6.09797ZM8.01662 15.181C6.38673 15.181 5.24739 13.9151 5.24739 12.1111C5.19991 11.0035 4.47199 10.7661 3.87067 10.7661C2.92122 10.7661 2.08254 10.4496 1.51287 9.86414C1.03814 9.37359 0.800781 8.72479 0.800781 7.99687C0.83243 5.9872 2.41485 5.24348 3.8865 5.22764C4.55111 5.22764 5.24739 4.8637 5.24739 3.88259C5.23155 2.03116 6.35505 0.796875 8.00078 0.796875C9.64651 0.796875 10.6909 1.99951 10.77 3.86677C10.8175 5.03775 11.6403 5.22764 12.1151 5.22764C13.5076 5.22764 15.1533 5.97136 15.2008 7.99687C15.2008 8.72479 14.9634 9.37359 14.4729 9.86414C13.9032 10.4338 13.0487 10.7661 12.1151 10.7661C11.5296 10.7661 10.8175 11.0035 10.7859 12.1111C10.7067 13.9784 9.63067 15.181 8.01662 15.181ZM6.02275 3.88259C6.02275 4.94282 5.37396 6.00304 3.8865 6.01885C3.20605 6.01885 1.62364 6.22458 1.59199 7.99687C1.59199 8.50326 1.75023 8.96217 2.08254 9.29447C2.49397 9.72173 3.14276 9.95906 3.87067 9.95906C5.15242 9.95906 5.97527 10.7819 6.03859 12.0637C6.03859 13.2188 6.65571 14.374 8.01662 14.374C9.3775 14.374 9.93133 13.5037 9.99461 12.0637C10.0421 10.7661 10.8649 9.95906 12.1151 9.94326C12.843 9.94326 13.4918 9.70589 13.919 9.27863C14.2513 8.93049 14.4254 8.48742 14.4096 7.98103C14.3779 6.16125 12.6373 6.00304 12.1151 6.00304C11.1182 6.00304 10.0421 5.43337 9.97881 3.88259C9.91549 2.44259 9.18761 1.57226 8.00078 1.57226C6.81396 1.57226 6.02275 2.47424 6.02275 3.86677V3.88259Z" fill="currentColor" stroke="currentColor" strokeWidth="0.2"/>
+    </svg>
+  )
+}
+
 /**
  * Workspaces — Basic: the same spaces list as Version 6 ("nuvio"), but
  * opening a space skips the chat layer entirely — there's no assistant here,
@@ -107,6 +117,7 @@ function SpacesListRoute({ workspace }: { workspace: WorkspaceState }) {
       onUpdateSpace={workspace.updateSpace}
       onDeleteSpace={workspace.deleteSpace}
       showTitleIcon={false}
+      noun="Space"
     />
   )
 }
@@ -261,6 +272,8 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
   const pagedDocs = useMemo(() => filteredDocs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [filteredDocs, currentPage])
   const allSelected = filteredDocs.length > 0 && filteredDocs.every(d => selectedKeys.has(d._id))
   const someSelected = filteredDocs.some(d => selectedKeys.has(d._id))
+  const selectedDocs = docs.filter(d => selectedKeys.has(d._id))
+  const allSelectedAreManualUpload = selectedDocs.length > 0 && selectedDocs.every(d => (sourceMap.get(d._id) ?? 'local') === 'local')
 
   const columns = useMemo(() => [
     {
@@ -485,6 +498,18 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(4) }}>
             <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.CrossOutlined} onClick={() => setSelectedKeys(new Set())} />
             <Typography color="neutral-darken5">{selectedKeys.size} selected</Typography>
+            {/* Display only — no destination exists for this yet, so it deliberately has no onClick.
+                Styled to match ButtonTertiary (e.g. Download below) exactly, since it can't
+                actually be one — its leftIcon has to be this custom CoPilot mark, and
+                ButtonTertiary's leftIcon/rightIcon only accept goat-ui's own icon names. */}
+            <div style={{ display: 'flex', alignItems: 'center', height: 32, padding: '4px 12px', border: '1px solid #BFCAE8', borderRadius: 8, backgroundColor: colorPalette.white, color: '#374058', fontSize: 14, fontWeight: 600, cursor: 'default' }}>
+              <span style={{ display: 'flex', marginRight: 8 }}><CopilotIcon /></span>
+              Ask CoPilot
+              <span style={{ display: 'flex', marginLeft: 8 }}><Icon type={iconType.ExternalLinkOutlined} size={16} color="inherit" /></span>
+            </div>
+            {allSelectedAreManualUpload && (
+              <ButtonTertiary leftIcon={iconType.DownloadOutlined} onClick={() => {}}>Download</ButtonTertiary>
+            )}
           </div>
           <ButtonDanger leftIcon={iconType.TrashOutlined} onClick={() => setPendingDelete(selectedKeys)}>Delete</ButtonDanger>
         </div>

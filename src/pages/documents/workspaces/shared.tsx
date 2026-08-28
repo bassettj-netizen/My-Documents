@@ -810,12 +810,13 @@ function AvatarPicker({ avatarUrl, name, onChange }: { avatarUrl?: string; name:
   )
 }
 
-export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit }: {
+export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace' }: {
   open: boolean
   mode: 'create' | 'edit'
   initialValues?: SpaceFormValues
   onClose: () => void
   onSubmit: (values: SpaceFormValues) => void
+  noun?: 'Workspace' | 'Space'
 }) {
   const [values, setValues] = useState<SpaceFormValues>(EMPTY_SPACE_FORM)
 
@@ -827,7 +828,7 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit }:
   return (
     <Modal
       visible={open}
-      title={mode === 'create' ? 'Create New Workspace' : 'Edit settings'}
+      title={mode === 'create' ? `Create New ${noun}` : 'Edit settings'}
       withIcon={false}
       onClose={onClose}
       footer={{ buttons: [
@@ -1072,7 +1073,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   )
 }
 
-export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true }: {
+export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace' }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   onOpenSpace: (id: string) => void
@@ -1080,6 +1081,8 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   onUpdateSpace: (id: string, values: SpaceFormValues) => void
   onDeleteSpace: (id: string) => void
   showTitleIcon?: boolean
+  // Lets a version call these "Spaces" instead of "Workspaces" without forking this view.
+  noun?: 'Workspace' | 'Space'
 }) {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editSpaceId, setEditSpaceId] = useState<string | null>(null)
@@ -1096,9 +1099,9 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
               <Icon type={iconType.ElementsOutlined} size={32} color="inherit" />
             </div>
           )}
-          <Typography size="heading-lg" weight="bold">Workspaces</Typography>
+          <Typography size="heading-lg" weight="bold">{noun}s</Typography>
         </div>
-        <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateModalOpen(true)}>Workspace</ButtonSecondary>
+        <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateModalOpen(true)}>{noun}</ButtonSecondary>
       </div>
 
       {spaces.length === 0 ? (
@@ -1134,6 +1137,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
       <SpaceFormModal
         open={createModalOpen}
         mode="create"
+        noun={noun}
         onClose={() => setCreateModalOpen(false)}
         onSubmit={values => { onCreateSpace(values); setCreateModalOpen(false) }}
       />
