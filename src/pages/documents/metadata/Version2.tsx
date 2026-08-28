@@ -425,7 +425,7 @@ export default function MetadataUserTestingV1() {
           ellipsis: true,
           sorter: makeSorter(key),
           onCell: (record: MetadataDocument) => ({
-            onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/metadata/version-2/${record._id}`),
+            onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/projects/metadata/version-2/${record._id}`),
             style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : undefined },
             ...(NON_EDITABLE_KEYS.has(key) ? {} : {
               editable: true,
@@ -451,7 +451,7 @@ export default function MetadataUserTestingV1() {
             </div>
           )
           col.onCell = (record: MetadataDocument) => ({
-            onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/metadata/version-2/${record._id}`),
+            onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/projects/metadata/version-2/${record._id}`),
             style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : undefined },
             editable: true,
             isEditing: editingKey === record._id,
@@ -659,7 +659,7 @@ export default function MetadataUserTestingV1() {
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                     onClick={() => {
-                      navigate(`/my-documents/metadata/version-2/${doc._id}`)
+                      navigate(`/projects/metadata/version-2/${doc._id}`)
                       setShowDropdown(false)
                     }}
                   >

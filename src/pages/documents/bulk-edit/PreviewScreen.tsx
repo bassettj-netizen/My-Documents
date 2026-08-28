@@ -115,7 +115,7 @@ export default function PreviewScreenV3() {
     setTagInputVal('')
   }, [id])
 
-  if (!foundDoc) return <Navigate to="/my-documents/bulk-edit/version-1" replace />
+  if (!foundDoc) return <Navigate to="/projects/bulk-edit/version-1" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`

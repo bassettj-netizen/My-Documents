@@ -53,7 +53,7 @@ export default function PreviewScreenV2() {
     return () => clearTimeout(t)
   }, [id])
 
-  if (!doc) return <Navigate to="/my-documents/document-preview/version-2" replace />
+  if (!doc) return <Navigate to="/projects/document-preview/version-2" replace />
 
   const handleQuickPrompt = async (prompt: string) => {
     setActiveTab('ask')

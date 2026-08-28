@@ -617,7 +617,7 @@ export default function PreviewTasksV2() {
         ellipsis: needsEllipsis,
         sorter: key !== 'tags' ? makeSorter(key) : undefined,
         onCell: (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-3/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/projects/preview-tasks/version-3/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           ...(isNonEditable ? {} : {
             editable: true,
@@ -651,7 +651,7 @@ export default function PreviewTasksV2() {
           </div>
         )
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-3/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/projects/preview-tasks/version-3/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
         })
       }
@@ -659,7 +659,7 @@ export default function PreviewTasksV2() {
       if (key === 'documentType') {
         col.width = 160
         col.onCell = (record: MetadataDocument) => ({
-          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/my-documents/preview-tasks/version-3/${record._id}`),
+          onClick: (editingKey === record._id || record._id.startsWith('temp-')) ? undefined : () => navigate(`/projects/preview-tasks/version-3/${record._id}`),
           style: { cursor: (editingKey === record._id || record._id.startsWith('temp-')) ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           editable: true,
           isEditing: editingKey === record._id,
@@ -817,7 +817,7 @@ export default function PreviewTasksV2() {
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       onClick={() => {
-                        navigate(`/my-documents/preview-tasks/version-3/${doc._id}`)
+                        navigate(`/projects/preview-tasks/version-3/${doc._id}`)
                         setShowDropdown(false)
                       }}
                     >

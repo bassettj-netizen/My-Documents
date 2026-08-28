@@ -489,7 +489,7 @@ export default function MetadataUserTestingV7() {
       if (key === 'name') {
         col.width = '25%'
         col.onCell = (record: MetadataDocument) => ({
-          onClick: record._id.startsWith('temp-') ? undefined : () => navigate(`/my-documents/metadata/version-7/${record._id}`),
+          onClick: record._id.startsWith('temp-') ? undefined : () => navigate(`/projects/metadata/version-7/${record._id}`),
           style: {
             cursor: record._id.startsWith('temp-') ? 'default' : 'pointer',
             verticalAlign: 'top',
@@ -749,7 +749,7 @@ export default function MetadataUserTestingV7() {
                       style={{ padding: '12px 16px', cursor: 'pointer', borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none', transition: 'background-color 0.15s ease' }}
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      onClick={() => { navigate(`/my-documents/metadata/version-7/${doc._id}`); setShowDropdown(false) }}
+                      onClick={() => { navigate(`/projects/metadata/version-7/${doc._id}`); setShowDropdown(false) }}
                     >
                       <Typography size="base" weight="semibold" color="neutral-darken5">{highlightAll(stripYear(doc.name), q)}</Typography>
                       <div style={{ marginTop: 4 }}>

@@ -126,7 +126,7 @@ export default function MetadataPreviewV6() {
     setEditingSummary('')
   }, [id])
 
-  if (!foundDoc) return <Navigate to="/my-documents/metadata/version-6" replace />
+  if (!foundDoc) return <Navigate to="/projects/metadata/version-6" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`

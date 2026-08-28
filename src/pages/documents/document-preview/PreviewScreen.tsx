@@ -33,7 +33,7 @@ export default function PreviewScreen() {
     return () => clearTimeout(timer)
   }, [id])
 
-  if (!doc) return <Navigate to="/my-documents/document-preview/version-1" replace />
+  if (!doc) return <Navigate to="/projects/document-preview/version-1" replace />
 
   const filename = `${doc.name}.${doc.format.toLowerCase()}`
 

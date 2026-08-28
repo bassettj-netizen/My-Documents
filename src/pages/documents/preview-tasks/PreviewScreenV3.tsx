@@ -318,7 +318,7 @@ export default function PreviewTasksPreviewScreenV3() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [isDocEditing])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-3" replace />
+  if (!foundDoc) return <Navigate to="/projects/preview-tasks/version-3" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`

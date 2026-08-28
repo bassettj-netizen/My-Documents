@@ -43,3 +43,52 @@ body {
   left: 16px !important;
 }
 
+/* Workspaces V4 landing composer only: the DS TextArea has no slot for embedded
+   controls, so the "Add document" and "Send" buttons are absolutely positioned over
+   it (bottom-left / bottom-right) and this reserves room at the bottom so typed text
+   doesn't run under them. Scoped to this one instance — no other TextArea in the app
+   carries this class. */
+.workspace-composer-field textarea {
+  padding-bottom: 44px !important;
+}
+
+/* Same composer, with a file attached: the chip row is absolutely positioned over
+   the top of the textarea, so reserve room there too — driven by the actual measured
+   chip row height (--attachment-row-height, set inline) since it can wrap to more than
+   one line once several files are attached. 16px clears the chip row before text starts. */
+.workspace-composer-field.has-attachment textarea {
+  padding-top: calc(8px + var(--attachment-row-height, 0px) + 16px) !important;
+}
+
+/* Composer Send button: the DS ButtonPrimary disabled state renders as a dark
+   neutral grey (#808080) with poor "disabled" affordance — override to the
+   lighter grey the Figma composer designs use for a disabled send action. */
+.workspace-composer-send button:disabled {
+  background-color: #C5CACD !important;
+  border-color: #C5CACD !important;
+  color: white !important;
+}
+
+/* Documents drawer: highlights a just-uploaded file card so it reads as newly added
+   at the top of the list — slides/fades in, then the highlight tint fades out. */
+@keyframes doc-card-enter {
+  0% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes doc-card-highlight {
+  0%, 40% { background-color: #EAF1FF; border-color: #3342FF; }
+  100% { background-color: transparent; border-color: #e5e7eb; }
+}
+
+.doc-card-new {
+  animation: doc-card-enter 0.3s ease-out, doc-card-highlight 2.4s ease-out;
+}
+
+.docs-table-sticky-header .goat-table-thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fff;
+}
+

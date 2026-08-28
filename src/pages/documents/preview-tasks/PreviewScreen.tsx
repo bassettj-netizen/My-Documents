@@ -395,7 +395,7 @@ export default function PreviewTasksPreviewScreen() {
     return () => { document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('mousedown', onMouseDown) }
   }, [])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-1" replace />
+  if (!foundDoc) return <Navigate to="/projects/preview-tasks/version-1" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`

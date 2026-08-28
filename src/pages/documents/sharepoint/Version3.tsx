@@ -608,7 +608,7 @@ export default function SharepointVersion3() {
         title: label, key, dataIndex: key, ellipsis: needsEllipsis,
         sorter: key !== 'tags' ? makeSorter(key) : undefined,
         onCell: (record: MetadataDocument) => ({
-          onClick: editingKey === record._id ? undefined : () => navigate(`/my-documents/sharepoint/version-3/${record._id}`),
+          onClick: editingKey === record._id ? undefined : () => navigate(`/projects/sharepoint/version-3/${record._id}`),
           style: { cursor: editingKey === record._id ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           ...(isNonEditable ? {} : { editable: true, isEditing: editingKey === record._id, dataIndex: key, initialValue: record[key as keyof MetadataDocument], onValueChange: handleCellChange }),
         }),
@@ -630,7 +630,7 @@ export default function SharepointVersion3() {
           </div>
         )
         col.onCell = (record: MetadataDocument) => ({
-          onClick: editingKey === record._id ? undefined : () => navigate(`/my-documents/sharepoint/version-3/${record._id}`),
+          onClick: editingKey === record._id ? undefined : () => navigate(`/projects/sharepoint/version-3/${record._id}`),
           style: { cursor: editingKey === record._id ? 'default' : 'pointer', verticalAlign: 'top', maxWidth: 0, backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
         })
       }
@@ -638,7 +638,7 @@ export default function SharepointVersion3() {
       if (key === 'documentType') {
         col.width = 160
         col.onCell = (record: MetadataDocument) => ({
-          onClick: editingKey === record._id ? undefined : () => navigate(`/my-documents/sharepoint/version-3/${record._id}`),
+          onClick: editingKey === record._id ? undefined : () => navigate(`/projects/sharepoint/version-3/${record._id}`),
           style: { cursor: editingKey === record._id ? 'default' : 'pointer', verticalAlign: 'top', backgroundColor: editingKey === record._id ? '#F5F9FF' : selectedKeys.has(record._id) ? '#EEF4FF' : undefined },
           editable: true, isEditing: editingKey === record._id, dataIndex: key, initialValue: record[key as keyof MetadataDocument], onValueChange: handleCellChange,
         })
@@ -735,7 +735,7 @@ export default function SharepointVersion3() {
                       <div key={doc._id} style={{ padding: '12px 16px', cursor: 'pointer', borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none' }}
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                        onClick={() => { navigate(`/my-documents/sharepoint/version-3/${doc._id}`); setShowDropdown(false) }}
+                        onClick={() => { navigate(`/projects/sharepoint/version-3/${doc._id}`); setShowDropdown(false) }}
                       >
                         <Typography size="base" color="neutral-darken5">{highlightAll(stripYear(doc.name), q)}</Typography>
                         <div style={{ marginTop: 4 }}><Typography size="base-sm" color="neutral-darken5" maxLines={2}>{excerpt}</Typography></div>
@@ -800,7 +800,7 @@ export default function SharepointVersion3() {
                 leftIcon={iconType.FolderFilled}
                 onClick={() => {
                   if (connectedSiteIds.length > 0) setViewMode('sharepoint')
-                  else navigate('/my-documents/sharepoint/version-3/connections')
+                  else navigate('/projects/sharepoint/version-3/connections')
                 }}
               >
                 Import from SharePoint

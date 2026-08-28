@@ -428,7 +428,7 @@ export default function MetadataUserTestingV6() {
       if (key === 'name') {
         col.width = '25%'
         col.onCell = (record: MetadataDocument) => ({
-          onClick: record._id.startsWith('temp-') ? undefined : () => navigate(`/my-documents/metadata/version-6/${record._id}`),
+          onClick: record._id.startsWith('temp-') ? undefined : () => navigate(`/projects/metadata/version-6/${record._id}`),
           style: {
             cursor: record._id.startsWith('temp-') ? 'default' : 'pointer',
             verticalAlign: 'top',
@@ -746,7 +746,7 @@ export default function MetadataUserTestingV6() {
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                       onClick={() => {
-                        navigate(`/my-documents/metadata/version-6/${doc._id}`)
+                        navigate(`/projects/metadata/version-6/${doc._id}`)
                         setShowDropdown(false)
                       }}
                     >

@@ -37,7 +37,7 @@ export default function DocumentPreviewV2() {
   )
 
   const onRowCell = (record: DocumentRecord) => ({
-    onClick: () => navigate(`/my-documents/document-preview/version-2/${record._id}`),
+    onClick: () => navigate(`/projects/document-preview/version-2/${record._id}`),
     style: { cursor: 'pointer' },
   })
 

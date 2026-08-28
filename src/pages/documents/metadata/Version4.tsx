@@ -413,7 +413,7 @@ export default function MetadataVersion4() {
         ellipsis: needsEllipsis,
         sorter: key !== 'tags' ? makeSorter(key) : undefined,
         onCell: (record: MetadataDocument) => ({
-          onClick: () => navigate(`/my-documents/metadata/version-4/${record._id}`),
+          onClick: () => navigate(`/projects/metadata/version-4/${record._id}`),
           style: { cursor: 'pointer', verticalAlign: 'top' },
         }),
       }
@@ -437,7 +437,7 @@ export default function MetadataVersion4() {
           </div>
         )
         col.onCell = (record: MetadataDocument) => ({
-          onClick: () => navigate(`/my-documents/metadata/version-4/${record._id}`),
+          onClick: () => navigate(`/projects/metadata/version-4/${record._id}`),
           style: { cursor: 'pointer', verticalAlign: 'top', maxWidth: 0 },
         })
       }
@@ -445,7 +445,7 @@ export default function MetadataVersion4() {
       if (key === 'documentType') {
         col.width = 160
         col.onCell = (record: MetadataDocument) => ({
-          onClick: () => navigate(`/my-documents/metadata/version-4/${record._id}`),
+          onClick: () => navigate(`/projects/metadata/version-4/${record._id}`),
           style: { cursor: 'pointer', verticalAlign: 'top' },
         })
       }
@@ -543,7 +543,7 @@ export default function MetadataVersion4() {
                       style={{ padding: '12px 16px', cursor: 'pointer', borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none', transition: 'background-color 0.15s ease' }}
                       onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F5F9FF')}
                       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      onClick={() => { navigate(`/my-documents/metadata/version-4/${doc._id}`); setShowDropdown(false) }}
+                      onClick={() => { navigate(`/projects/metadata/version-4/${doc._id}`); setShowDropdown(false) }}
                     >
                       <Typography size="base" weight="semibold" color="neutral-darken5">{highlightAll(stripYear(doc.name), q)}</Typography>
                       <div style={{ marginTop: 4 }}>

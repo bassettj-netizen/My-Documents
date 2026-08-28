@@ -12,7 +12,8 @@
   "dependencies": {
     "@goat-ui/goat-ui-core": "^24.13.0",
     "react": "^18.2.4",
-    "react-dom": "^18.2.4"
+    "react-dom": "^18.2.4",
+    "react-router-dom": "^6.30.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

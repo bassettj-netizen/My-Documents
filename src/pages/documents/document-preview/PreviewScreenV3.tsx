@@ -45,7 +45,7 @@ export default function PreviewScreenV3() {
     return () => clearTimeout(t)
   }, [id])
 
-  if (!doc) return <Navigate to="/my-documents/document-preview/version-3" replace />
+  if (!doc) return <Navigate to="/projects/document-preview/version-3" replace />
 
   const openPanel = () => setPanelOpen(true)
 

@@ -234,7 +234,7 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
         <div style={gap8}>
           {related.length === 0 && <Typography size="base" color="neutral-darken2">No closely related documents found.</Typography>}
           {related.map(r => (
-            <div key={r._id} onClick={() => window.open(`/my-documents/preview-tasks/version-13/${r._id}`, '_blank', 'noopener,noreferrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <div key={r._id} onClick={() => window.open(`/projects/preview-tasks/version-13/${r._id}`, '_blank', 'noopener,noreferrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <Typography size="base" color="primary-base">{r.name}</Typography>
               <Icon type={iconType.ExternalLinkOutlined} size={12} color="primary-base" />
             </div>
@@ -524,7 +524,7 @@ export default function PreviewTasksPreviewScreenV13() {
     return () => document.removeEventListener('mouseup', onMouseUp)
   }, [])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-13" replace />
+  if (!foundDoc) return <Navigate to="/projects/preview-tasks/version-13" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`
@@ -579,7 +579,7 @@ export default function PreviewTasksPreviewScreenV13() {
     const copyDoc: MetadataDocument = { ...displayDoc, _id: copyId, name: `${displayDoc.name} (Copy)`, uploadedDate: new Date().toISOString().slice(0, 10) }
     addCopiedDoc(copyDoc, html)
     notification.success({ title: 'Copy saved', content: <Typography size="base" color="neutral-darken5">{copyDoc.name}</Typography>, placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
-    navigate(`/my-documents/preview-tasks/version-13/${copyId}`, { replace: true })
+    navigate(`/projects/preview-tasks/version-13/${copyId}`, { replace: true })
   }
 
   // ─── AI popup handlers ────────────────────────────────────────────────────
@@ -1119,7 +1119,7 @@ const AiEditPopup = React.forwardRef<HTMLDivElement, {
                       <ButtonGhost
                         shape={buttonShapes.SQUARE}
                         leftIcon={iconType.ExternalLinkOutlined}
-                        onClick={() => window.open(`/my-documents/preview-tasks/version-13/${doc._id}`, '_blank', 'noopener,noreferrer')}
+                        onClick={() => window.open(`/projects/preview-tasks/version-13/${doc._id}`, '_blank', 'noopener,noreferrer')}
                       />
                     </div>
                   ))}

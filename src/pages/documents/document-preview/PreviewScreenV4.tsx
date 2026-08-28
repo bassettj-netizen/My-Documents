@@ -48,7 +48,7 @@ export default function PreviewScreenV4() {
     return () => clearTimeout(t)
   }, [id])
 
-  if (!doc) return <Navigate to="/my-documents/document-preview/version-4" replace />
+  if (!doc) return <Navigate to="/projects/document-preview/version-4" replace />
 
   const handleQuickPrompt = async (prompt: string) => {
     if (!isExpanded) setActiveKeys(['copilot'])

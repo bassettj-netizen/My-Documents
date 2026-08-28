@@ -160,7 +160,7 @@ function getMockResult(taskId: TaskId, doc: MetadataDocument): ReactNode {
           {related.map(r => (
             <div
               key={r._id}
-              onClick={() => window.open(`/my-documents/preview-tasks/version-2/${r._id}`, '_blank', 'noopener,noreferrer')}
+              onClick={() => window.open(`/projects/preview-tasks/version-2/${r._id}`, '_blank', 'noopener,noreferrer')}
               style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
             >
               <Typography size="base" color="primary-base">{r.name}</Typography>
@@ -312,7 +312,7 @@ export default function PreviewTasksPreviewScreenV2() {
     return () => { document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('mousedown', onMouseDown) }
   }, [inlineEditOpen])
 
-  if (!foundDoc) return <Navigate to="/my-documents/preview-tasks/version-2" replace />
+  if (!foundDoc) return <Navigate to="/projects/preview-tasks/version-2" replace />
 
   const displayDoc = (localDoc?._id === foundDoc._id ? localDoc : null) ?? foundDoc
   const displaySummary = localSummary ?? DOCUMENT_SNIPPETS[displayDoc._id] ?? `${displayDoc.documentType} — ${displayDoc.domain}`
