@@ -27,6 +27,11 @@ import MetadataVersion4 from './pages/documents/metadata/Version4'
 import MetadataVersion5 from './pages/documents/metadata/Version5'
 import MetadataVersion6 from './pages/documents/metadata/Version6'
 import MetadataVersion7 from './pages/documents/metadata/Version7'
+import MetadataVersion8 from './pages/documents/metadata/Version8'
+import MetadataVersion9 from './pages/documents/metadata/Version9'
+import MetadataVersion10 from './pages/documents/metadata/Version10'
+import MetadataVersion11 from './pages/documents/metadata/Version11'
+import MetadataVersion12 from './pages/documents/metadata/Version12'
 import MetadataPreviewScreenV2 from './pages/documents/metadata/PreviewScreenV2'
 import MetadataPreviewV6 from './pages/documents/metadata/PreviewScreenV6'
 import BulkEditV1 from './pages/documents/bulk-edit/Version1'
@@ -126,21 +131,30 @@ const COPILOT_URL = 'https://example.com/copilot-placeholder'
 
 const WORKSPACES_NUVIO_BASE = '/projects/workspaces/nuvio'
 const WORKSPACES_BASIC_BASE = '/projects/workspaces/workspaces-basic'
+// Metadata V8 and V9 reuse Workspaces Basic's nested spaces routing under their own prefixes.
+const METADATA_V8_BASE = '/projects/metadata/version-8'
+const METADATA_V9_BASE = '/projects/metadata/version-9'
+const METADATA_V10_BASE = '/projects/metadata/version-10'
+const METADATA_V11_BASE = '/projects/metadata/version-11'
+const METADATA_V12_BASE = '/projects/metadata/version-12'
 
 function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE)
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const inMetadataV8 = !!metadataAppBase
+  // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
+  const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
   // Whichever nested-routing workspaces app (if any) the sidebar's own links
   // should stay inside of, rather than jumping out to an unrelated top-level page.
-  const workspacesAppBase = inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
+  const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   const activeKey =
-    location.pathname === '/connectors' || location.pathname === `${WORKSPACES_NUVIO_BASE}/connectors` || location.pathname === `${WORKSPACES_BASIC_BASE}/connectors` ? 'connectors' :
-    location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` || location.pathname === `${WORKSPACES_BASIC_BASE}/my-documents` ? 'documents' :
-    location.pathname.startsWith('/projects/workspaces') ? 'workspaces' :
+    location.pathname === '/connectors' || location.pathname === `${WORKSPACES_NUVIO_BASE}/connectors` || location.pathname === `${WORKSPACES_BASIC_BASE}/connectors` || location.pathname === `${metadataAppBase}/connectors` ? 'connectors' :
+    location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` || location.pathname === `${WORKSPACES_BASIC_BASE}/my-documents` || location.pathname === `${metadataAppBase}/my-documents` ? 'documents' :
+    location.pathname.startsWith('/projects/workspaces') || (!!metadataAppBase && location.pathname.startsWith(`${metadataAppBase}/workspaces`)) ? 'workspaces' :
     location.pathname.startsWith('/projects') ? 'documents' :
     ''
 
@@ -234,6 +248,17 @@ function App() {
           <Route path="/projects/metadata/version-5" element={<MetadataVersion5 />} />
           <Route path="/projects/metadata/version-6" element={<MetadataVersion6 />} />
           <Route path="/projects/metadata/version-7" element={<MetadataVersion7 />} />
+          {/* Workspaces Basic's spaces → documents routing, with the reduced
+              four-field metadata model and its own in-layout document preview. */}
+          <Route path="/projects/metadata/version-8/*" element={<MetadataVersion8 />} />
+          {/* V9: V8 with the documents table reworked to the Metadata Figma (tooltips, popover editors, status/size columns). */}
+          <Route path="/projects/metadata/version-9/*" element={<MetadataVersion9 />} />
+          {/* V10: V9 with a label/value Dates column coloured by state, and file size under the name. */}
+          <Route path="/projects/metadata/version-10/*" element={<MetadataVersion10 />} />
+          {/* V11: V9 without the Summary column (summary lives in the preview only). */}
+          <Route path="/projects/metadata/version-11/*" element={<MetadataVersion11 />} />
+          {/* V12: V9 with rows as tall as their content — nothing in the table is cut off. */}
+          <Route path="/projects/metadata/version-12/*" element={<MetadataVersion12 />} />
           <Route path="/projects/sharepoint/version-1" element={<SharepointV1 />} />
           <Route path="/projects/sharepoint/version-1/connections" element={<ConnectionsPage />} />
           <Route path="/projects/sharepoint/version-2" element={<SharepointV2 />} />
