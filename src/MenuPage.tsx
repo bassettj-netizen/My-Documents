@@ -58,6 +58,16 @@ const groups = [
     ],
   },
   {
+    title: 'History',
+    items: [
+      { label: 'Version 1', path: '/projects/history/version-1' },
+      { label: 'Version 2', path: '/projects/history/version-2' },
+      { label: 'Version 3', path: '/projects/history/version-3' },
+      { label: 'Version 4', path: '/projects/history/version-4' },
+      { label: 'Version 5', path: '/projects/history/version-5' },
+    ],
+  },
+  {
     title: 'Bulk Edit',
     items: [
       { label: 'Version 1', path: '/projects/bulk-edit/version-1' },

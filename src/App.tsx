@@ -73,6 +73,11 @@ import WorkspacesV5 from './pages/documents/workspaces/Version5'
 import WorkspacesV6 from './pages/documents/workspaces/Version6'
 import WorkspacesBasic from './pages/documents/workspaces/WorkspacesBasic'
 import LaunchPad from './pages/documents/workspaces/LaunchPad'
+import HistoryV1 from './pages/documents/history/Version1'
+import HistoryV2 from './pages/documents/history/Version2'
+import HistoryV3 from './pages/documents/history/Version3'
+import HistoryV4 from './pages/documents/history/Version4'
+import HistoryV5 from './pages/documents/history/Version5'
 import LaunchPad2 from './pages/documents/workspaces/LaunchPad2'
 import ConnectionsPage from './pages/connections/ConnectionsPage'
 import MyDocumentsV1 from './pages/documents/my-documents/Version1'
@@ -137,13 +142,19 @@ const METADATA_V9_BASE = '/projects/metadata/version-9'
 const METADATA_V10_BASE = '/projects/metadata/version-10'
 const METADATA_V11_BASE = '/projects/metadata/version-11'
 const METADATA_V12_BASE = '/projects/metadata/version-12'
+// History V1–V5 are Workspaces Basic plus a History panel, so they get the same nested-app sidebar treatment.
+const HISTORY_V1_BASE = '/projects/history/version-1'
+const HISTORY_V2_BASE = '/projects/history/version-2'
+const HISTORY_V3_BASE = '/projects/history/version-3'
+const HISTORY_V4_BASE = '/projects/history/version-4'
+const HISTORY_V5_BASE = '/projects/history/version-5'
 
 function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -282,6 +293,16 @@ function App() {
           {/* Same spaces list/detail routing as Workspaces V6, but a space's
               detail route lands straight on its documents table — no chat. */}
           <Route path="/projects/workspaces/workspaces-basic/*" element={<WorkspacesBasic />} />
+          {/* Workspaces Basic with a History button/panel for a space's uploads and connector changes. */}
+          <Route path="/projects/history/version-1/*" element={<HistoryV1 />} />
+          {/* V2: V1 with every file of an event listed — no "+ N" cut-off. */}
+          <Route path="/projects/history/version-2/*" element={<HistoryV2 />} />
+          {/* V3: V2's data in a panel built only from design-system components, with filters and a file table. */}
+          <Route path="/projects/history/version-3/*" element={<HistoryV3 />} />
+          {/* V4: V3 with an entry's files as a plain paged list, alert icons instead of status chips. */}
+          <Route path="/projects/history/version-4/*" element={<HistoryV4 />} />
+          {/* V5: V4 with long file lists scrolling inside the card instead of paging. */}
+          <Route path="/projects/history/version-5/*" element={<HistoryV5 />} />
           <Route path="/projects/bulk-edit/version-1" element={<BulkEditV1 />} />
           <Route path="/projects/bulk-edit/version-2" element={<BulkEditV2 />} />
           <Route path="/projects/bulk-edit/version-3" element={<BulkEditV3 />} />
