@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import MyDocumentsV1 from '../my-documents/Version1'
 import ConnectionsPage from '../../connections/ConnectionsPage'
@@ -10,6 +10,9 @@ import {
   ButtonTertiary,
   buttonVariants,
   Checkbox,
+  Chip,
+  chipStyles,
+  chipVariants,
   DatePicker,
   Dropdown,
   dropdownPlacement,
@@ -27,12 +30,11 @@ import {
   popOverTriggers,
   SearchBar,
   searchbarWidth,
-  Table,
+  Segmented,
   TextArea,
   toastPlacements,
   Tooltip,
   tooltipPlacements,
-  tooltipSizes,
   Typography,
   useNotifications,
 } from '@goat-ui/goat-ui-core'
@@ -40,7 +42,6 @@ import {
   colorPalette,
   computeDocSourceMap,
   formatDate,
-  PAGE_SIZE,
   Skeleton,
   skeletonVariants,
   SpaceAvatar,
@@ -63,23 +64,30 @@ import { BasicUploadModal, CopilotIcon } from '../workspaces/WorkspacesBasic'
 import { seedShortSummary, seedSummaryDetail } from './summaries'
 
 /**
- * Metadata — Version 12: Version 9 with rows as tall as their content, and a short
- * matter reference in the table instead of the summary.
+ * Metadata — Version 13: Version 12's data without the table. A space's documents are a
+ * list of cards, grouped by matter:
  *
- *   file icon · Name (+ size) · Status · Source · Type · Matter reference · Parties · Dates · Updated
+ *   ☐ Tax audit 2022–2024  11 documents                       [2 overdue] [1 due soon]  ⌃
+ *   ┌───────────────────────────────────────────────────────────────────────────────────┐
+ *   │ ☐ [xlsx] Q4 Filing — Tax Return.xlsx   Type         Parties            Dates     ✓ ▣ ⋯ │
+ *   │          80 KB · Updated Aug 9, 2026    Tax Return   Acme Holdings …    Filing deadline: … │
+ *   │          [⏱ Overdue by 30 days]                                         Period: Q2 2026    │
+ *   └───────────────────────────────────────────────────────────────────────────────────┘
  *
- * - Matter reference: the matter a document belongs to, in as few words as possible
- *   ("VAT return Q2 2026"), edited from the table popover and shown in the preview.
- *   The longer summary lives in the preview only.
- * - Nothing in the table is cut off: Name, Type and Matter reference wrap onto as many lines as they need,
- *   and Parties and Dates list every entry, one per line (no "+N").
- * - The Parties tooltip still adds each party's role; other cells have nothing hidden to show.
- * - Column widths: Name 16%, Type 120px, Matter reference 13%; Parties and Dates split the rest equally.
- * - Everything else — the other column widths, popover editors, key-dates-only Dates, the preview —
- *   is as in Version 9.
+ * Why:
+ * - Matter is how people look for work, so it becomes the structure: one header per matter
+ *   with its document count and how many deadlines are overdue or due soon.
+ * - Each card puts a label next to every value, so no column headers are needed and empty
+ *   fields don't leave wide blank columns; values wrap — nothing is cut off.
+ * - Urgency is visible without reading dates: a chip in the card header for the most pressing
+ *   deadline, and overdue / due-soon dates coloured in the Dates field.
+ * - Group by Matter / Type / None and sort by Next deadline / Recently updated / Name replace
+ *   the table's column sorting. Groups collapse; ungrouped, the list pages (20 per page).
+ * - Every field is still edited in place through the same popover editors as Version 12;
+ *   selection (per card, per group, all), bulk actions and the preview are unchanged.
  */
 
-const BASE = '/projects/metadata/version-12'
+const BASE = '/projects/metadata/version-13'
 
 /** Same slug rule as Workspaces Basic, so space URLs match between the two versions. */
 function slugify(name: string): string {
@@ -366,7 +374,7 @@ function useMetadataStore(workspace: WorkspaceState): MetadataStore {
   return { get, getOriginal, update }
 }
 
-export default function MetadataVersion12() {
+export default function MetadataVersion13() {
   const workspace = useWorkspaceState()
   const store = useMetadataStore(workspace)
 
@@ -421,7 +429,7 @@ function SpaceDetailRoute({ workspace, store }: { workspace: WorkspaceState; sto
   }
 
   return (
-    <SpaceDocumentsTable
+    <SpaceDocumentsList
       space={space}
       docs={workspace.getSpaceDocs(space.id)}
       store={store}
@@ -667,33 +675,6 @@ function FileTypeIcon({ format, size = 24 }: { format: string; size?: 20 | 24 })
 
 const fileName = (doc: MetadataDocument) => `${stripYear(doc.name)}.${doc.fileFormat.toLowerCase()}`
 
-/**
- * Wraps a one- or two-line clamped value and shows its full text in a tooltip
- * on hover — only when the text is actually cut off, unless `always` is set
- * (for values like parties, whose tooltip adds roles the cell doesn't show).
- */
-function TruncationTooltip({ title, always = false, disabled = false, children }: {
-  title: string
-  always?: boolean
-  disabled?: boolean
-  children: ReactNode
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [show, setShow] = useState(false)
-  const onEnter = () => {
-    const el = ref.current?.firstElementChild as HTMLElement | null
-    // The cell itself or any line inside it (e.g. one party or date) being cut off counts.
-    const nodes = el ? [el, ...Array.from(el.querySelectorAll<HTMLElement>('*'))] : []
-    const truncated = nodes.some(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1)
-    setShow(always || truncated)
-  }
-  return (
-    <Tooltip title={title} size={title.length > 60 ? tooltipSizes.LARGE : tooltipSizes.SMALL} placement={tooltipPlacements.TOP} visible={show && !disabled && !!title}>
-      <div ref={ref} onMouseEnter={onEnter} onMouseLeave={() => setShow(false)} style={{ minWidth: 0 }}>{children}</div>
-    </Tooltip>
-  )
-}
-
 /** Every item, one per line; a long item wraps onto further lines rather than being cut off. */
 function FullList({ items }: { items: { key: string; content: ReactNode }[] }) {
   return (
@@ -703,10 +684,10 @@ function FullList({ items }: { items: { key: string; content: ReactNode }[] }) {
   )
 }
 
-// ─── Table cell with popover editor ───────────────────────────────────────────
+// ─── Field with popover editor ────────────────────────────────────────────────
 
 /**
- * An editable metadata cell: hovering outlines it, clicking opens the field's
+ * An editable metadata field: hovering outlines it, clicking opens the field's
  * editor in a popover anchored below it; while open the outline turns primary.
  */
 function EditableCell({ open, onOpenChange, editor, children, width }: {
@@ -725,27 +706,91 @@ function EditableCell({ open, onOpenChange, editor, children, width }: {
       maxWidth={600}
       content={open ? <div onClick={e => e.stopPropagation()} style={{ width }}>{editor}</div> : null}
     >
-      <div className={`v12-editable${open ? ' is-open' : ''}`}>{children}</div>
+      <div className={`v13-editable${open ? ' is-open' : ''}`}>{children}</div>
     </PopOver>
   )
 }
 
-const TABLE_CSS = `
-  .v12-editable {
+const LIST_CSS = `
+  .v13-editable {
     cursor: pointer; min-height: 24px; border-radius: 8px; border: 1px solid transparent;
     margin: -3px -7px; padding: 2px 6px; transition: border-color 0.12s, background-color 0.12s;
   }
-  .v12-editable:hover { border-color: ${colorPalette.neutral.lighten2}; background-color: ${colorPalette.white}; }
-  .v12-editable.is-open { border-color: ${colorPalette.blue.base}; background-color: ${colorPalette.neutral.lighten5}; }
-  .v12-doc-link { color: ${colorPalette.neutral.darken5}; cursor: pointer; }
-  .v12-doc-link:hover { color: ${colorPalette.blue.base}; text-decoration: underline; }
+  .v13-editable:hover { border-color: ${colorPalette.neutral.lighten2}; background-color: ${colorPalette.white}; }
+  .v13-editable.is-open { border-color: ${colorPalette.blue.base}; background-color: ${colorPalette.neutral.lighten5}; }
+  .v13-doc-link { color: ${colorPalette.neutral.darken5}; cursor: pointer; }
+  .v13-doc-link:hover { color: ${colorPalette.blue.base}; text-decoration: underline; }
   .goat-tooltip-inner p { white-space: pre-line; }
-  .v12-table thead th { text-transform: none !important; white-space: nowrap; }
+  .v13-card {
+    display: flex; align-items: flex-start; gap: ${spacing(3)}px; padding: ${spacing(3)}px ${spacing(4)}px;
+    border: 1px solid ${colorPalette.neutral.lighten2}; border-radius: 8px; background: ${colorPalette.white};
+    transition: border-color 0.12s;
+  }
+  .v13-card:hover { border-color: ${colorPalette.neutral.lighten1}; }
+  .v13-card.is-selected { background: #EEF4FF; border-color: ${colorPalette.blue.lighten3}; }
+  .v13-group-header {
+    display: flex; align-items: center; gap: ${spacing(3)}px; position: sticky; top: 0; z-index: 2;
+    background: ${colorPalette.white}; padding: ${spacing(1)}px 17px;
+  }
 `
 
-// ─── Documents table ──────────────────────────────────────────────────────────
+// ─── Document list: grouping, sorting, deadline summaries ─────────────────────
 
-function SpaceDocumentsTable({ space, docs, store, onDocsChange, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace }: {
+type GroupKey = 'matter' | 'type' | 'none'
+const GROUP_OPTIONS: { label: string; value: GroupKey }[] = [
+  { label: 'Matter', value: 'matter' },
+  { label: 'Type', value: 'type' },
+  { label: 'None', value: 'none' },
+]
+
+type DocGroup = { key: string; label: string; docs: MetadataDocument[]; missing?: boolean }
+
+/** Groups in first-seen order (so the chosen sort decides which group comes first); the "missing" group always goes last. */
+function groupDocs(docs: MetadataDocument[], keyOf: (d: MetadataDocument) => string, missingLabel: string): DocGroup[] {
+  const map = new Map<string, DocGroup>()
+  docs.forEach(d => {
+    const k = keyOf(d).trim()
+    const key = k || '__missing'
+    if (!map.has(key)) map.set(key, { key, label: k || missingLabel, docs: [], missing: !k })
+    map.get(key)!.docs.push(d)
+  })
+  return [...map.values()].sort((a, b) => Number(!!a.missing) - Number(!!b.missing))
+}
+
+/** The deadline that most needs attention: the earliest overdue one, else the soonest due within two weeks. */
+function nextUrgentDeadline(dates: KeyDate[]): { date: KeyDate; state: DeadlineState } | null {
+  const urgent = dates
+    .filter(d => d.isDeadline && !isPeriod(d))
+    .map(d => ({ date: d, state: deadlineState(d) }))
+    .filter(x => x.state.tone === 'overdue' || x.state.tone === 'soon')
+    .sort((a, b) => a.date.date.localeCompare(b.date.date))
+  return urgent[0] ?? null
+}
+
+function groupDeadlineSummary(metas: ExtractedMetadata[]) {
+  const tones = metas.map(m => nextUrgentDeadline(m.dates)?.state.tone)
+  return { overdue: tones.filter(t => t === 'overdue').length, soon: tones.filter(t => t === 'soon').length }
+}
+
+/** Earliest open deadline, for sorting; documents without one sort last. */
+const nextDeadlineIso = (m: ExtractedMetadata) =>
+  m.dates.filter(d => d.isDeadline && !isPeriod(d)).map(d => d.date).sort()[0] ?? '9999'
+
+type SortKey = 'deadline' | 'updated' | 'name'
+const DOC_SORTS: Record<SortKey, { label: string; compare: (store: MetadataStore) => (a: MetadataDocument, b: MetadataDocument) => number }> = {
+  deadline: { label: 'Next deadline', compare: store => (a, b) => nextDeadlineIso(store.get(a)).localeCompare(nextDeadlineIso(store.get(b))) || b.uploadedDate.localeCompare(a.uploadedDate) },
+  updated: { label: 'Recently updated', compare: () => (a, b) => b.uploadedDate.localeCompare(a.uploadedDate) },
+  name: { label: 'Name', compare: () => (a, b) => stripYear(a.name).localeCompare(stripYear(b.name)) },
+}
+
+// Ungrouped, the list pages; grouped, every group shows in full and can be collapsed instead.
+const LIST_PAGE_SIZE = 20
+
+const fieldLabel: React.CSSProperties = { fontSize: 12, lineHeight: '18px', color: colorPalette.neutral.darken2 }
+
+// ─── Documents list ───────────────────────────────────────────────────────────
+
+function SpaceDocumentsList({ space, docs, store, onDocsChange, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace }: {
   space: Space
   docs: MetadataDocument[]
   store: MetadataStore
@@ -766,6 +811,9 @@ function SpaceDocumentsTable({ space, docs, store, onDocsChange, onBack, onOpenD
   const [editing, setEditing] = useState<{ id: string; field: FieldKey } | null>(null)
   const [editSpaceOpen, setEditSpaceOpen] = useState(false)
   const [deleteSpaceOpen, setDeleteSpaceOpen] = useState(false)
+  const [groupBy, setGroupBy] = useState<GroupKey>('matter')
+  const [sortBy, setSortBy] = useState<SortKey>('deadline')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const sourceMap = useMemo(() => computeDocSourceMap(docs, space), [docs, space])
   const presentConnectors = useMemo(() => {
@@ -784,7 +832,6 @@ function SpaceDocumentsTable({ space, docs, store, onDocsChange, onBack, onOpenD
     })
   }, [docs, search, store])
 
-  const pagedDocs = filteredDocs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
   const allSelected = filteredDocs.length > 0 && filteredDocs.every(d => selectedKeys.has(d._id))
   const someSelected = filteredDocs.some(d => selectedKeys.has(d._id))
   const selectedDocs = docs.filter(d => selectedKeys.has(d._id))
@@ -801,220 +848,101 @@ function SpaceDocumentsTable({ space, docs, store, onDocsChange, onBack, onOpenD
     close()
   }
 
-  const rowStyle = (record: MetadataDocument) => ({ style: { verticalAlign: 'top' as const, height: 64, backgroundColor: selectedKeys.has(record._id) ? '#EEF4FF' : undefined } })
+  const toggleSelected = (ids: string[], on: boolean) => setSelectedKeys(prev => {
+    const next = new Set(prev)
+    ids.forEach(id => { if (on) next.add(id); else next.delete(id) })
+    return next
+  })
 
-  const columns = [
-    {
-      title: (
-        <Checkbox
-          checked={allSelected}
-          indeterminate={someSelected && !allSelected}
-          onChange={e => setSelectedKeys(new Set(e.target.checked ? filteredDocs.map(d => d._id) : []))}
-        />
-      ),
-      key: 'checkbox',
-      width: 32,
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => (
-        <Checkbox
-          checked={selectedKeys.has(record._id)}
-          onChange={e => setSelectedKeys(prev => {
-            const next = new Set(prev)
-            if (e.target.checked) next.add(record._id); else next.delete(record._id)
-            return next
-          })}
-        />
-      ),
-    },
-    {
-      title: '',
-      key: 'fileType',
-      width: 32,
-      sorter: (a: MetadataDocument, b: MetadataDocument) => a.fileFormat.localeCompare(b.fileFormat),
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => <div style={{ display: 'flex', justifyContent: 'center' }}><FileTypeIcon format={record.fileFormat} /></div>,
-    },
-    {
-      title: 'Name',
-      key: 'name',
-      width: '16%',
-      sorter: (a: MetadataDocument, b: MetadataDocument) => stripYear(a.name).localeCompare(stripYear(b.name)),
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => (
-        <>
-          <TruncationTooltip title={fileName(record)}>
-            <div style={{ ...wrap, fontWeight: 500 }}><span className="v12-doc-link" onClick={() => onOpenDoc(record)}>{fileName(record)}</span></div>
-          </TruncationTooltip>
-          <div style={{ ...cellText, color: colorPalette.neutral.darken2 }}>{record.fileSize}</div>
-        </>
-      ),
-    },
-    {
-      title: 'Status',
-      key: 'status',
-      width: 64,
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => {
-        const synced = (sourceMap.get(record._id) ?? 'local') !== 'local'
-        const hours = (docs.indexOf(record) % 5) + 1
-        return (
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <Tooltip title={synced ? `Up to date • synced ${hours} hour${hours === 1 ? '' : 's'} ago` : 'Up to date'} placement={tooltipPlacements.TOP}>
-              <div style={{ display: 'inline-flex' }}><Icon type={iconType.CheckCircleFilled} size={20} color="success-base" /></div>
-            </Tooltip>
-          </div>
-        )
-      },
-    },
-    {
-      title: 'Source',
-      key: 'source',
-      width: 64,
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => {
-        const src = sourceMap.get(record._id) ?? 'local'
-        return <div style={{ display: 'flex', justifyContent: 'center' }}>{sourceIcon(src, 18, src !== 'local' ? spaceConnectorLabel(space, src) : undefined)}</div>
-      },
-    },
-    {
-      title: FIELD_LABELS.documentType,
-      key: 'documentType',
-      width: 120,
-      sorter: (a: MetadataDocument, b: MetadataDocument) => store.get(a).documentType.localeCompare(store.get(b).documentType),
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => {
-        const m = store.get(record)
-        const open = isEditing(record._id, 'documentType')
-        return (
-          <EditableCell
-            open={open}
-            onOpenChange={openChange(record._id, 'documentType')}
-            width={232}
-            editor={<DocumentTypeEditor value={m.documentType} onCancel={close} onSave={v => saveField(record._id, 'documentType', { documentType: v })} />}
-          >
-            {m.documentType
-              ? <TruncationTooltip title={m.documentType} disabled={open}><div style={wrap}>{m.documentType}</div></TruncationTooltip>
-              : <Dash />}
-          </EditableCell>
-        )
-      },
-    },
-    {
-      title: FIELD_LABELS.matterReference,
-      key: 'matterReference',
-      // A few words at most, so a modest share — it no longer soaks up the spare width the summary needed.
-      width: '13%',
-      sorter: (a: MetadataDocument, b: MetadataDocument) => store.get(a).matterReference.localeCompare(store.get(b).matterReference),
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => {
-        const text = store.get(record).matterReference
-        const open = isEditing(record._id, 'matterReference')
-        return (
-          <EditableCell
-            open={open}
-            onOpenChange={openChange(record._id, 'matterReference')}
-            width={280}
-            editor={<MatterEditor value={text} onCancel={close} onSave={v => saveField(record._id, 'matterReference', { matterReference: v })} />}
-          >
-            {text
-              ? <TruncationTooltip title={text} disabled={open}><div style={wrap}>{text}</div></TruncationTooltip>
-              : <Dash />}
-          </EditableCell>
-        )
-      },
-    },
-    {
-      title: FIELD_LABELS.parties,
-      key: 'parties',
-      // No width on Parties or Dates: they split whatever is left equally, so they stay the same
-      // width and get the most room — long party names and multi-date cells need it most.
-      sorter: (a: MetadataDocument, b: MetadataDocument) => (store.get(a).parties[0]?.name ?? '').localeCompare(store.get(b).parties[0]?.name ?? ''),
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => {
-        const { parties } = store.get(record)
-        const open = isEditing(record._id, 'parties')
-        const tooltip = parties.map(p => p.role ? `${p.name} (${p.role})` : p.name).join('\n')
-        return (
-          <EditableCell
-            open={open}
-            onOpenChange={openChange(record._id, 'parties')}
-            width={446}
-            editor={<PartiesEditor value={parties} onCancel={close} onSave={v => saveField(record._id, 'parties', { parties: v })} />}
-          >
-            {parties.length
-              ? (
-                <TruncationTooltip title={tooltip} always disabled={open}>
-                  <FullList items={parties.map(p => ({ key: p.id, content: p.name }))} />
-                </TruncationTooltip>
-              )
-              : <Dash />}
-          </EditableCell>
-        )
-      },
-    },
-    {
-      title: FIELD_LABELS.dates,
-      key: 'dates',
-      sorter: (a: MetadataDocument, b: MetadataDocument) => (tableDates(store.get(a).dates)[0]?.date ?? '9999').localeCompare(tableDates(store.get(b).dates)[0]?.date ?? '9999'),
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => {
-        const all = store.get(record).dates
-        const dates = tableDates(all)
-        const open = isEditing(record._id, 'dates')
-        const tooltip = dates.map(d => {
-          const state = deadlineState(d)
-          return `${d.label}: ${formatKeyDate(d)}${d.isDeadline && state.tone !== 'later' ? ` (${state.text})` : ''}`
-        }).join('\n')
-        return (
-          <EditableCell
-            open={open}
-            onOpenChange={openChange(record._id, 'dates')}
-            width={446}
-            editor={
-              // Edits only the key dates; reference dates (document date etc.) are kept as they are.
-              <DatesEditor
-                value={dates}
-                onCancel={close}
-                onSave={v => saveField(record._id, 'dates', {
-                  dates: sortDates([...all.filter(d => !isKeyDate(d)), ...v.map(d => d.isDeadline || isPeriod(d) ? d : { ...d, isAction: true })]),
-                })}
-              />
-            }
-          >
-            {dates.length
-              ? (
-                <TruncationTooltip title={tooltip} disabled={open}>
-                  <FullList items={dates.map(d => ({
-                    key: d.id,
-                    // Wraps after the label if needed, never inside the date.
-                    content: <>{d.label}: <span style={{ whiteSpace: 'nowrap' }}>{formatKeyDate(d)}</span></>,
-                  }))} />
-                </TruncationTooltip>
-              )
-              : <Dash />}
-          </EditableCell>
-        )
-      },
-    },
-    {
-      title: 'Updated',
-      key: 'uploadedDate',
-      dataIndex: 'uploadedDate',
-      width: 108,
-      // Any ellipsis column switches antd to a fixed table layout, so the widths are honoured. It lives on
-      // this always-one-line column so it doesn't stop the other cells from wrapping.
-      ellipsis: { showTitle: false },
-      sorter: (a: MetadataDocument, b: MetadataDocument) => a.uploadedDate.localeCompare(b.uploadedDate),
-      onCell: rowStyle,
-      render: (val: string) => <div style={{ ...cellText, whiteSpace: 'nowrap' }}>{formatDate(val)}</div>,
-    },
-    {
-      title: '',
-      key: 'actions',
-      width: 40,
-      onCell: rowStyle,
-      render: (_: unknown, record: MetadataDocument) => (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: -6 }}>
+  // ── Grouping and ordering ──
+  const sorted = [...filteredDocs].sort(DOC_SORTS[sortBy].compare(store))
+  const groups: DocGroup[] = groupBy === 'none'
+    ? [{ key: 'all', label: '', docs: sorted.slice((currentPage - 1) * LIST_PAGE_SIZE, currentPage * LIST_PAGE_SIZE) }]
+    : groupDocs(sorted, d => groupBy === 'matter' ? store.get(d).matterReference : store.get(d).documentType, groupBy === 'matter' ? 'No matter reference' : 'No type')
+
+  const toggleGroup = (key: string) => setCollapsed(prev => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key); else next.add(key)
+    return next
+  })
+
+  /** One labelled, editable field in a document card — label on top, value wraps, nothing is cut off. */
+  const field = (record: MetadataDocument, key: Exclude<FieldKey, 'summary'>, value: ReactNode, editor: ReactNode, editorWidth: number) => (
+    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <span style={fieldLabel}>{FIELD_LABELS[key]}</span>
+      <EditableCell open={isEditing(record._id, key)} onOpenChange={openChange(record._id, key)} width={editorWidth} editor={editor}>
+        {value}
+      </EditableCell>
+    </div>
+  )
+
+  const renderCard = (record: MetadataDocument) => {
+    const m = store.get(record)
+    const src = sourceMap.get(record._id) ?? 'local'
+    const hours = (docs.indexOf(record) % 5) + 1
+    const dates = tableDates(m.dates)
+    const urgent = nextUrgentDeadline(m.dates)
+    const selected = selectedKeys.has(record._id)
+    const showMatter = groupBy !== 'matter'
+    const showType = groupBy !== 'type'
+
+    return (
+      <div key={record._id} className={`v13-card${selected ? ' is-selected' : ''}`}>
+        <div style={{ paddingTop: 2 }}><Checkbox checked={selected} onChange={e => toggleSelected([record._id], e.target.checked)} /></div>
+        <FileTypeIcon format={record.fileFormat} />
+
+        {/* What the file is, and whether anything needs attention. */}
+        <div style={{ width: '26%', flexShrink: 0, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ ...wrap, fontWeight: 600 }}><span className="v13-doc-link" onClick={() => onOpenDoc(record)}>{fileName(record)}</span></div>
+          <div style={fieldLabel}>{record.fileSize} · Updated {formatDate(record.uploadedDate)}</div>
+          {urgent && (
+            <div style={{ marginTop: spacing(1) }}>
+              <Tooltip title={`${urgent.date.label}: ${formatKeyDate(urgent.date)}`} placement={tooltipPlacements.TOP}>
+                <span style={{ display: 'inline-flex' }}>
+                  <Chip label={urgent.state.text} chipStyle={urgent.state.tone === 'overdue' ? chipStyles.SEMANTIC_DANGER : chipStyles.SEMANTIC_WARNING} variant={chipVariants.SUBTLE} leftIcon={iconType.ClockOutlined} />
+                </span>
+              </Tooltip>
+            </div>
+          )}
+        </div>
+
+        {/* Fields: labelled, editable in place. The field the list is grouped by lives in the group header instead. */}
+        <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: `${showMatter ? 'minmax(0, 1fr) ' : ''}${showType ? 'minmax(0, 0.8fr) ' : ''}minmax(0, 1.2fr) minmax(0, 1.4fr)`, columnGap: spacing(6) }}>
+          {showMatter && field(record, 'matterReference',
+            m.matterReference ? <div style={wrap}>{m.matterReference}</div> : <Dash />,
+            <MatterEditor value={m.matterReference} onCancel={close} onSave={v => saveField(record._id, 'matterReference', { matterReference: v })} />, 280)}
+          {showType && field(record, 'documentType',
+            m.documentType ? <div style={wrap}>{m.documentType}</div> : <Dash />,
+            <DocumentTypeEditor value={m.documentType} onCancel={close} onSave={v => saveField(record._id, 'documentType', { documentType: v })} />, 232)}
+          {field(record, 'parties',
+            m.parties.length
+              ? <FullList items={m.parties.map(p => ({ key: p.id, content: <>{p.name}{p.role && <span style={{ color: colorPalette.neutral.darken2 }}> · {p.role}</span>}</> }))} />
+              : <Dash />,
+            <PartiesEditor value={m.parties} onCancel={close} onSave={v => saveField(record._id, 'parties', { parties: v })} />, 446)}
+          {field(record, 'dates',
+            dates.length
+              ? <FullList items={dates.map(d => {
+                  const state = deadlineState(d)
+                  const color = state.tone === 'overdue' ? colorPalette.danger.darken1 : state.tone === 'soon' ? colorPalette.warning.darken2 : undefined
+                  // Wraps after the label if needed, never inside the date.
+                  return { key: d.id, content: <>{d.label}: <span style={{ whiteSpace: 'nowrap', color, fontWeight: color ? 600 : undefined }}>{formatKeyDate(d)}</span></> }
+                })} />
+              : <Dash />,
+            // Edits only the key dates; reference dates (document date etc.) are kept as they are.
+            <DatesEditor
+              value={dates}
+              onCancel={close}
+              onSave={v => saveField(record._id, 'dates', {
+                dates: sortDates([...m.dates.filter(d => !isKeyDate(d)), ...v.map(d => d.isDeadline || isPeriod(d) ? d : { ...d, isAction: true })]),
+              })}
+            />, 446)}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3), flexShrink: 0 }}>
+          <Tooltip title={src !== 'local' ? `Up to date • synced ${hours} hour${hours === 1 ? '' : 's'} ago` : 'Up to date'} placement={tooltipPlacements.TOP}>
+            <div style={{ display: 'inline-flex' }}><Icon type={iconType.CheckCircleFilled} size={20} color="success-base" /></div>
+          </Tooltip>
+          {sourceIcon(src, 18, src !== 'local' ? spaceConnectorLabel(space, src) : undefined)}
           <Dropdown
             items={[
               { key: 'open', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.ArticleOutlined} size={16} />Open preview</span>, onClick: () => onOpenDoc(record) },
@@ -1027,13 +955,13 @@ function SpaceDocumentsTable({ space, docs, store, onDocsChange, onBack, onOpenD
             <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ThreeDotsHorFilled} />
           </Dropdown>
         </div>
-      ),
-    },
-  ]
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: `${spacing(6)}px ${spacing(10)}px`, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: colorPalette.white, height: '100%', overflow: 'hidden' }}>
-      <style>{TABLE_CSS}</style>
+      <style>{LIST_CSS}</style>
       <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
           <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ChevronLeftOutlined} onClick={onBack} />
@@ -1062,18 +990,75 @@ function SpaceDocumentsTable({ space, docs, store, onDocsChange, onBack, onOpenD
         <Typography size="base" color="neutral-darken2">{space.description}</Typography>
       </div>
 
-      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography size="base" color="neutral-darken2">{filteredDocs.length} document{filteredDocs.length !== 1 ? 's' : ''}</Typography>
-        <ButtonPrimary leftIcon={iconType.UploadOutlined} onClick={() => setUploadOpen(true)}>Upload or sync</ButtonPrimary>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(4) }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
+          <Checkbox
+            checked={allSelected}
+            indeterminate={someSelected && !allSelected}
+            onChange={e => setSelectedKeys(new Set(e.target.checked ? filteredDocs.map(d => d._id) : []))}
+          />
+          <Typography size="base" color="neutral-darken2">{filteredDocs.length} document{filteredDocs.length !== 1 ? 's' : ''}</Typography>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing(4) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+            <Typography size="base-sm" color="neutral-darken2">Group by</Typography>
+            <Segmented options={GROUP_OPTIONS} value={groupBy} onChange={v => { setGroupBy(v as GroupKey); setCurrentPage(1) }} />
+          </div>
+          <Dropdown
+            items={(Object.keys(DOC_SORTS) as SortKey[]).map(k => ({
+              key: k,
+              label: <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(4), minWidth: 160 }}>{DOC_SORTS[k].label}{k === sortBy && <Icon type={iconType.CheckOutlined} size={16} />}</span>,
+              onClick: () => setSortBy(k),
+            }))}
+            trigger={dropdownTriggers.CLICK}
+            placement={dropdownPlacement.BOTTOM_RIGHT}
+          >
+            <ButtonTertiary leftIcon={iconType.ArrowSwapOutlined}>{DOC_SORTS[sortBy].label}</ButtonTertiary>
+          </Dropdown>
+          <ButtonPrimary leftIcon={iconType.UploadOutlined} onClick={() => setUploadOpen(true)}>Upload or sync</ButtonPrimary>
+        </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <div className="v12-table" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          <Table dataSource={pagedDocs} rowKey="_id" columns={columns as never} pagination={false} rowHoverable />
-        </div>
-        {filteredDocs.length > PAGE_SIZE && (
-          <div style={{ flexShrink: 0 }}>
-            <Pagination current={currentPage} total={filteredDocs.length} pageSize={PAGE_SIZE} onChange={setCurrentPage} />
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: spacing(6), paddingBottom: selectedKeys.size > 0 ? 72 : 0 }}>
+        {filteredDocs.length === 0 && (
+          <Typography size="base" color="neutral-darken2">No documents match your search.</Typography>
+        )}
+        {groups.map(g => {
+          const isCollapsed = collapsed.has(g.key)
+          const ids = g.docs.map(d => d._id)
+          const groupSelected = ids.filter(id => selectedKeys.has(id)).length
+          const summary = groupDeadlineSummary(g.docs.map(d => store.get(d)))
+          return (
+            <section key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+              {groupBy !== 'none' && (
+                <div className="v13-group-header">
+                  <Checkbox
+                    checked={groupSelected === ids.length}
+                    indeterminate={groupSelected > 0 && groupSelected < ids.length}
+                    onChange={e => toggleSelected(ids, e.target.checked)}
+                  />
+                  <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'baseline', gap: spacing(2), minWidth: 0 }} onClick={() => toggleGroup(g.key)}>
+                    <Typography size="base-lg" weight="semibold" color={g.missing ? 'neutral-darken2' : 'neutral-darken5'}>{g.label}</Typography>
+                    <Typography size="base-sm" color="neutral-darken2">{g.docs.length} document{g.docs.length !== 1 ? 's' : ''}</Typography>
+                  </span>
+                  <div style={{ display: 'flex', gap: spacing(2), marginLeft: 'auto' }}>
+                    {summary.overdue > 0 && <Chip label={`${summary.overdue} overdue`} chipStyle={chipStyles.SEMANTIC_DANGER} variant={chipVariants.SUBTLE} leftIcon={iconType.ClockOutlined} />}
+                    {summary.soon > 0 && <Chip label={`${summary.soon} due soon`} chipStyle={chipStyles.SEMANTIC_WARNING} variant={chipVariants.SUBTLE} leftIcon={iconType.ClockOutlined} />}
+                  </div>
+                  <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={isCollapsed ? iconType.ChevronDownOutlined : iconType.ChevronUpOutlined} onClick={() => toggleGroup(g.key)} />
+                </div>
+              )}
+              {!isCollapsed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                  {g.docs.map(renderCard)}
+                </div>
+              )}
+            </section>
+          )
+        })}
+        {groupBy === 'none' && filteredDocs.length > LIST_PAGE_SIZE && (
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <Pagination current={currentPage} total={filteredDocs.length} pageSize={LIST_PAGE_SIZE} onChange={setCurrentPage} />
           </div>
         )}
       </div>

@@ -32,6 +32,8 @@ import MetadataVersion9 from './pages/documents/metadata/Version9'
 import MetadataVersion10 from './pages/documents/metadata/Version10'
 import MetadataVersion11 from './pages/documents/metadata/Version11'
 import MetadataVersion12 from './pages/documents/metadata/Version12'
+import MetadataVersion13 from './pages/documents/metadata/Version13'
+import MetadataVersion14 from './pages/documents/metadata/Version14'
 import MetadataPreviewScreenV2 from './pages/documents/metadata/PreviewScreenV2'
 import MetadataPreviewV6 from './pages/documents/metadata/PreviewScreenV6'
 import BulkEditV1 from './pages/documents/bulk-edit/Version1'
@@ -142,6 +144,8 @@ const METADATA_V9_BASE = '/projects/metadata/version-9'
 const METADATA_V10_BASE = '/projects/metadata/version-10'
 const METADATA_V11_BASE = '/projects/metadata/version-11'
 const METADATA_V12_BASE = '/projects/metadata/version-12'
+const METADATA_V13_BASE = '/projects/metadata/version-13'
+const METADATA_V14_BASE = '/projects/metadata/version-14'
 // History V1–V5 are Workspaces Basic plus a History panel, so they get the same nested-app sidebar treatment.
 const HISTORY_V1_BASE = '/projects/history/version-1'
 const HISTORY_V2_BASE = '/projects/history/version-2'
@@ -154,7 +158,7 @@ function AppShell() {
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -270,6 +274,10 @@ function App() {
           <Route path="/projects/metadata/version-11/*" element={<MetadataVersion11 />} />
           {/* V12: V9 with rows as tall as their content — nothing in the table is cut off. */}
           <Route path="/projects/metadata/version-12/*" element={<MetadataVersion12 />} />
+          {/* V13: V12's data without the table — document cards grouped by matter, with deadline cues. */}
+          <Route path="/projects/metadata/version-13/*" element={<MetadataVersion13 />} />
+          {/* V14: V13's cards in one sorted list — no grouping, matter reference on every card. */}
+          <Route path="/projects/metadata/version-14/*" element={<MetadataVersion14 />} />
           <Route path="/projects/sharepoint/version-1" element={<SharepointV1 />} />
           <Route path="/projects/sharepoint/version-1/connections" element={<ConnectionsPage />} />
           <Route path="/projects/sharepoint/version-2" element={<SharepointV2 />} />
