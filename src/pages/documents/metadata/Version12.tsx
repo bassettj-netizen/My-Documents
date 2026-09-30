@@ -72,7 +72,8 @@ import { seedShortSummary, seedSummaryDetail } from './summaries'
  *   ("VAT return Q2 2026"), edited from the table popover and shown in the preview.
  *   The longer summary lives in the preview only.
  * - Nothing in the table is cut off: Name, Type and Matter reference wrap onto as many lines as they need,
- *   and Parties and Dates list every entry, one per line (no "+N").
+ *   and Dates lists every entry, one per line. Parties lists up to five, then "+N" for the rest; the
+ *   cell's tooltip always lists every party with its role. Two documents per space have ten parties.
  * - The Parties tooltip still adds each party's role; other cells have nothing hidden to show.
  * - Column widths: Name 16%, Type 120px, Matter reference 13%; Parties and Dates split the rest equally.
  * - Everything else — the other column widths, popover editors, key-dates-only Dates, the preview —
@@ -228,6 +229,43 @@ function pick<T>(pool: T[], n: number): T {
   return pool[((n % pool.length) + pool.length) % pool.length]
 }
 
+// Seed positions (per space) of the documents that list ten parties.
+const MANY_PARTY_DOCS = [0, 4]
+
+/** More people and organisations per space, so a document can plausibly involve ten parties. */
+const EXTRA_PARTIES: Record<string, { name: string; role: string }[]> = {
+  'space-acme': [
+    { name: 'Deutsche Bank AG', role: 'Lender' },
+    { name: 'Hengeler Mueller', role: 'Legal counsel' },
+    { name: 'Bundeszentralamt für Steuern', role: 'Tax authority' },
+    { name: 'Acme Logistics GmbH', role: 'Subsidiary' },
+    { name: 'Acme Services GmbH', role: 'Subsidiary' },
+    { name: 'Thomas Richter', role: 'Managing director' },
+    { name: 'Sabine Keller', role: 'CFO' },
+    { name: 'IHK München', role: 'Chamber of commerce' },
+  ],
+  'space-alpha': [
+    { name: 'Cloudwerk GmbH', role: 'Hosting provider' },
+    { name: 'Datenschutz Nord GmbH', role: 'Data protection officer' },
+    { name: 'Lukas Hartmann', role: 'Engineering lead' },
+    { name: 'Procurement Office', role: 'Buyer' },
+    { name: 'Customer Team North', role: 'Pilot customer' },
+    { name: 'Customer Team South', role: 'Pilot customer' },
+    { name: 'Customer Team West', role: 'Pilot customer' },
+    { name: 'Legal Department', role: 'Reviewer' },
+  ],
+  'space-hr': [
+    { name: 'Deutsche Rentenversicherung', role: 'Pension insurer' },
+    { name: 'AOK Bayern', role: 'Health insurer' },
+    { name: 'JobRad GmbH', role: 'Benefits provider' },
+    { name: 'Allianz Lebensversicherungs-AG', role: 'Pension provider' },
+    { name: 'Freiburg Office Management', role: 'Site management' },
+    { name: 'Anna Schneider', role: 'Payroll specialist' },
+    { name: 'Data Protection Officer', role: 'Reviewer' },
+    { name: 'Staff Representatives', role: 'Employee body' },
+  ],
+}
+
 /** What the extraction "found" for a seeded document. Deliberately leaves gaps so every empty state shows up. */
 function seedMetadata(doc: MetadataDocument, spaceId: string, index: number): ExtractedMetadata {
   const theme = META_THEMES[spaceId]
@@ -237,7 +275,8 @@ function seedMetadata(doc: MetadataDocument, spaceId: string, index: number): Ex
   if (index % 13 === 6) return { ...EMPTY_METADATA }
 
   const noMatter = index % 11 === 4
-  const noParties = index % 7 === 3
+  const manyParties = MANY_PARTY_DOCS.includes(index)
+  const noParties = index % 7 === 3 && !manyParties
   const noDates = index % 5 === 2
 
   const parties: Party[] = noParties ? [] : [
@@ -247,6 +286,11 @@ function seedMetadata(doc: MetadataDocument, spaceId: string, index: number): Ex
       return { id: `${doc._id}-p${k + 1}`, ...cp }
     }),
   ].filter((p, i, arr) => arr.findIndex(q => q.name === p.name) === i)
+  if (manyParties) {
+    // Top up to ten from the space's counterparties and its wider circle of contacts.
+    const pool = [...theme.counterparties, ...(EXTRA_PARTIES[spaceId] ?? [])].filter(cp => !parties.some(p => p.name === cp.name))
+    pool.slice(0, 10 - parties.length).forEach((cp, k) => parties.push({ id: `${doc._id}-px${k}`, ...cp }))
+  }
 
   // Every document with dates keeps its document date (a reference date — shown in the
   // preview, not the table). On top of that it gets ONE key item: a period, a deadline or an
@@ -551,13 +595,14 @@ const cleanDates = (rows: KeyDate[]) => sortDates(rows
 const toIso = (d: Date | null) => d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) : ''
 
 /** Controlled list of party rows — wrapped with its own Save/Cancel in the table popover, bare in the preview's edit panel. */
-function PartiesFields({ rows, onChange }: { rows: Party[]; onChange: (rows: Party[]) => void }) {
+/** `maxRowsHeight` caps the rows and scrolls them — for the table popover, where ten parties would push Save off-screen. */
+function PartiesFields({ rows, onChange, maxRowsHeight }: { rows: Party[]; onChange: (rows: Party[]) => void; maxRowsHeight?: number }) {
   const setRow = (id: string, patch: Partial<Party>) => onChange(rows.map(r => r.id === id ? { ...r, ...patch } : r))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
       <Typography size="base" weight="semibold" color="neutral-darken5">{FIELD_LABELS.parties}</Typography>
       {rows.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 32px', gap: spacing(2), alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 32px', gap: spacing(2), alignItems: 'center', maxHeight: maxRowsHeight, overflowY: maxRowsHeight ? 'auto' : undefined, overscrollBehavior: 'contain', paddingRight: maxRowsHeight ? 4 : undefined }}>
           {rows.map(r => (
             <PartyRow key={r.id} party={r} onChange={patch => setRow(r.id, patch)} onRemove={() => onChange(rows.filter(x => x.id !== r.id))} />
           ))}
@@ -574,7 +619,8 @@ function PartiesEditor({ value, onSave, onCancel }: { value: Party[]; onSave: (v
   const [rows, setRows] = useState<Party[]>(value.length ? value : [blankParty()])
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
-      <PartiesFields rows={rows} onChange={setRows} />
+      {/* Six rows (40px + 8px gap each) before the list scrolls. */}
+      <PartiesFields rows={rows} onChange={setRows} maxRowsHeight={6 * 48 - 8} />
       <EditorActions onSave={() => onSave(cleanParties(rows))} onCancel={onCancel} />
     </div>
   )
@@ -694,6 +740,9 @@ function TruncationTooltip({ title, always = false, disabled = false, children }
   )
 }
 
+// Past this many, the Parties cell lists the first few and sums up the rest as "+N" (all of them are in its tooltip).
+const VISIBLE_PARTIES = 5
+
 /** Every item, one per line; a long item wraps onto further lines rather than being cut off. */
 function FullList({ items }: { items: { key: string; content: ReactNode }[] }) {
   return (
@@ -740,6 +789,9 @@ const TABLE_CSS = `
   .v12-doc-link { color: ${colorPalette.neutral.darken5}; cursor: pointer; }
   .v12-doc-link:hover { color: ${colorPalette.blue.base}; text-decoration: underline; }
   .goat-tooltip-inner p { white-space: pre-line; }
+  /* goat-ui's Tooltip has no width prop and caps at ~200px, which breaks the all-parties
+     tooltip's "Name (Role)" lines mid-name; wider is fine for this page's other tooltips too. */
+  .goat-tooltip { max-width: 400px !important; }
   .v12-table thead th { text-transform: none !important; white-space: nowrap; }
 `
 
@@ -944,7 +996,12 @@ function SpaceDocumentsTable({ space, docs, store, onDocsChange, onBack, onOpenD
             {parties.length
               ? (
                 <TruncationTooltip title={tooltip} always disabled={open}>
-                  <FullList items={parties.map(p => ({ key: p.id, content: p.name }))} />
+                  <FullList items={[
+                    ...parties.slice(0, VISIBLE_PARTIES).map(p => ({ key: p.id, content: p.name })),
+                    ...(parties.length > VISIBLE_PARTIES
+                      ? [{ key: 'more', content: <span style={{ color: colorPalette.neutral.darken2 }}>+{parties.length - VISIBLE_PARTIES}</span> }]
+                      : []),
+                  ]} />
                 </TruncationTooltip>
               )
               : <Dash />}
