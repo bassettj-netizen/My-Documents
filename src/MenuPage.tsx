@@ -69,6 +69,7 @@ const groups = [
       { label: 'Version 3', path: '/projects/history/version-3' },
       { label: 'Version 4', path: '/projects/history/version-4' },
       { label: 'Version 5', path: '/projects/history/version-5' },
+      { label: 'Version 6', path: '/projects/history/version-6' },
     ],
   },
   {
