@@ -22,9 +22,12 @@ import {
   Modal,
   modalVariants,
   Pagination,
+  PropertyItem,
+  propertyItemVariants,
   SearchBar,
   searchbarWidth,
   Table,
+  TextArea,
   toastPlacements,
   Typography,
   useNotifications,
@@ -52,9 +55,11 @@ import {
   useSidebarWidth,
   useWorkspaceState,
   type Connector,
+  type DocSource,
   type MetadataDocument,
   type Space,
 } from './shared'
+import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
 
 const WORKSPACES_BASIC_BASE = '/projects/workspaces/workspaces-basic'
 
@@ -85,9 +90,21 @@ export function CopilotIcon() {
  * "Microsoft Integration" Figma mock: a back/avatar/title row with the search
  * bar on the same line, a plain description underneath, and a document count
  * + upload action row above the table (no status column, no per-row file icon).
+ * Clicking a document's name (or "Open preview" in its menu) opens the document preview —
+ * the Metadata versions' layout with this version's Type and Tags. Its details card has an
+ * edit mode for Type, Summary and Tags; Type and Tags save to the same document the table shows.
  */
 export default function WorkspacesBasic() {
   const workspace = useWorkspaceState()
+  // Summaries edited in the document preview, by document id (the rest fall back to the seeded one).
+  const [summaries, setSummaries] = useState<Record<string, string>>({})
+  // Every document as first loaded: the preview writes the file's body (and its default summary)
+  // from this, so editing Type or Tags doesn't rewrite what the document itself says.
+  const [originalDocs] = useState<Record<string, MetadataDocument>>(() => {
+    const map: Record<string, MetadataDocument> = {}
+    workspace.spaces.forEach(sp => workspace.getSpaceDocs(sp.id).forEach(d => { map[d._id] = d }))
+    return map
+  })
 
   return (
     <Routes>
@@ -95,6 +112,7 @@ export default function WorkspacesBasic() {
       <Route path="workspaces">
         <Route index element={<SpacesListRoute workspace={workspace} />} />
         <Route path=":workspaceSlug" element={<SpaceDetailRoute workspace={workspace} />} />
+        <Route path=":workspaceSlug/:docId" element={<DocumentPreviewRoute workspace={workspace} originalDocs={originalDocs} summaries={summaries} onSummaryChange={(id, text) => setSummaries(prev => ({ ...prev, [id]: text }))} />} />
       </Route>
       <Route path="my-documents" element={<MyDocumentsV1 showTitleIcon={false} />} />
       <Route path="connectors" element={<ConnectionsPage />} />
@@ -145,6 +163,7 @@ function SpaceDetailRoute({ workspace }: { workspace: WorkspaceState }) {
       docs={getSpaceDocs(selectedSpace.id)}
       onDocsChange={docs => setSpaceDocs(selectedSpace.id, docs)}
       onBack={() => navigate(`${WORKSPACES_BASIC_BASE}/workspaces`)}
+      onOpenDoc={doc => navigate(`${WORKSPACES_BASIC_BASE}/workspaces/${workspaceSlug}/${encodeURIComponent(doc._id)}`)}
     />
   )
 }
@@ -207,11 +226,12 @@ function InlineTagInput({ tags, onTagsChange, onSave, onCancel, containerRef }: 
   )
 }
 
-function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
+function BasicSpaceDetail({ space, docs, onDocsChange, onBack, onOpenDoc }: {
   space: Space
   docs: MetadataDocument[]
   onDocsChange: (docs: MetadataDocument[]) => void
   onBack: () => void
+  onOpenDoc: (doc: MetadataDocument) => void
 }) {
   const { notification } = useNotifications()
   const sidebarWidth = useSidebarWidth()
@@ -312,7 +332,7 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
       ellipsis: true,
       sorter: (a: MetadataDocument, b: MetadataDocument) => stripYear(a.name).localeCompare(stripYear(b.name)),
       onCell: (record: MetadataDocument) => ({ style: { verticalAlign: 'top', backgroundColor: selectedKeys.has(record._id) ? '#EEF4FF' : undefined } }),
-      render: (name: string) => stripYear(name),
+      render: (name: string, record: MetadataDocument) => <span className="basic-doc-link" onClick={() => onOpenDoc(record)}>{stripYear(name)}</span>,
     },
     {
       title: 'Source',
@@ -442,6 +462,7 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Dropdown
             items={[
+              { key: 'open', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.ArticleOutlined} size={16} />Open preview</span>, onClick: () => onOpenDoc(record) },
               { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => {} },
               { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: () => setPendingDelete(new Set([record._id])) },
             ]}
@@ -457,6 +478,10 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
 
   return (
     <div style={{ padding: `${spacing(6)}px ${spacing(10)}px`, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: colorPalette.white, height: '100%', overflow: 'hidden' }}>
+      <style>{`
+        .basic-doc-link { cursor: pointer; }
+        .basic-doc-link:hover { color: ${colorPalette.blue.base}; text-decoration: underline; }
+      `}</style>
       <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
           <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ChevronLeftOutlined} onClick={onBack} />
@@ -544,6 +569,273 @@ function BasicSpaceDetail({ space, docs, onDocsChange, onBack }: {
           notification.success({ title: `${newDocs.length} document${newDocs.length !== 1 ? 's' : ''} uploaded`, placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
         }}
       />
+    </div>
+  )
+}
+
+// ─── Document preview ─────────────────────────────────────────────────────────
+// Same layout as the Metadata versions' preview (Figma node 2352:49615): dark top bar, the
+// document in a card on the left, a 512px "Document Details" card on the right — here with
+// Workspaces Basic's own fields (Type and Tags) rather than the metadata model.
+
+const PREVIEW_TOP_BAR_BG = '#2f384a'
+
+const FILE_ICON_SRC: Partial<Record<string, string>> = {
+  DOCX: '/metadata-v9/file-word.png',
+  PDF: '/metadata-v9/file-pdf.png',
+  XLSX: '/metadata-v9/file-excel.png',
+  PPTX: '/metadata-v9/file-pptx.png',
+}
+
+function FileTypeIcon({ format, size = 20 }: { format: string; size?: number }) {
+  return <img src={FILE_ICON_SRC[format] ?? '/metadata-v9/file-generic.png'} alt={format} width={size} height={size} style={{ display: 'block', objectFit: 'contain' }} />
+}
+
+function DocumentPreviewRoute({ workspace, originalDocs, summaries, onSummaryChange }: {
+  workspace: WorkspaceState
+  originalDocs: Record<string, MetadataDocument>
+  summaries: Record<string, string>
+  onSummaryChange: (docId: string, summary: string) => void
+}) {
+  const navigate = useNavigate()
+  const { workspaceSlug, docId } = useParams<{ workspaceSlug: string; docId: string }>()
+  const space = workspace.spaces.find(s => slugify(s.name) === workspaceSlug) ?? null
+  const docs = space ? workspace.getSpaceDocs(space.id) : []
+  const doc = docs.find(d => d._id === docId) ?? null
+
+  if (!space) return <Navigate to={`${WORKSPACES_BASIC_BASE}/workspaces`} replace />
+  if (!doc) return <Navigate to={`${WORKSPACES_BASIC_BASE}/workspaces/${workspaceSlug}`} replace />
+
+  const back = () => navigate(`${WORKSPACES_BASIC_BASE}/workspaces/${workspaceSlug}`)
+  return (
+    <BasicDocumentPreview
+      key={doc._id}
+      space={space}
+      doc={doc}
+      // Freshly uploaded files weren't there at load, so they are their own original.
+      originalDoc={originalDocs[doc._id] ?? doc}
+      docIndex={docs.indexOf(doc)}
+      source={computeDocSourceMap(docs, space).get(doc._id) ?? 'local'}
+      summary={summaries[doc._id]}
+      onSave={(updated, summary) => {
+        workspace.setSpaceDocs(space.id, docs.map(d => d._id === updated._id ? updated : d))
+        onSummaryChange(updated._id, summary)
+      }}
+      onBack={back}
+      onDelete={() => { workspace.setSpaceDocs(space.id, docs.filter(d => d._id !== doc._id)); back() }}
+    />
+  )
+}
+
+const PREVIEW_LABEL = { size: 'base' as const, color: 'neutral-darken2' as const, width: '124px' }
+const PREVIEW_VALUE = { size: 'base' as const, color: 'neutral-darken5' as const }
+
+function PreviewDetail({ label, children }: { label: string; children: React.ReactNode }) {
+  return <PropertyItem label={label} value={children} variant={propertyItemVariants.HORIZONTAL} labelProps={PREVIEW_LABEL} valueProps={PREVIEW_VALUE} />
+}
+
+const PREVIEW_SUMMARY_MAX = 500
+const TYPE_REQUIRED = 'Type is required'
+
+/**
+ * Tags in the details form: the domain chip (fixed, as in the table), the document's own tags as
+ * closable chips, and a field that adds a tag on Enter or comma.
+ */
+function TagsField({ domain, tags, onChange }: { domain?: string; tags: string[]; onChange: (tags: string[]) => void }) {
+  const [input, setInput] = useState('')
+  const add = () => {
+    const t = input.trim().replace(/,$/, '')
+    if (t && !tags.includes(t) && t !== domain) onChange([...tags, t])
+    setInput('')
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+      <Typography size="base" weight="semibold" color="neutral-darken5">Tags</Typography>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(1) }}>
+        {domain && <Chip label={domain} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.HIGHLIGHT} />}
+        {tags.map(t => (
+          <Chip key={t} label={t} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.HIGHLIGHT} closable onClose={() => onChange(tags.filter(x => x !== t))} />
+        ))}
+      </div>
+      <Input
+        name="newTag"
+        value={input}
+        placeholder="Add a tag and press Enter"
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add() }
+          if (e.key === 'Backspace' && !input && tags.length) onChange(tags.slice(0, -1))
+        }}
+        onBlur={add}
+      />
+    </div>
+  )
+}
+
+function BasicDocumentPreview({ space, doc, originalDoc, docIndex, source, summary: editedSummary, onSave, onBack, onDelete }: {
+  space: Space
+  doc: MetadataDocument
+  /** The document as first loaded — the body and the default summary come from this, not from later edits. */
+  originalDoc: MetadataDocument
+  docIndex: number
+  source: DocSource
+  /** Set once the summary has been edited here; otherwise the seeded one is shown. */
+  summary?: string
+  onSave: (doc: MetadataDocument, summary: string) => void
+  onBack: () => void
+  onDelete: () => void
+}) {
+  const isLoading = useMountLoading(1500)
+  const filename = `${stripYear(doc.name)}.${doc.fileFormat.toLowerCase()}`
+  // The document body keeps what the file says; the details card shows (and edits) the current summary.
+  const seededSummary = `${seedShortSummary(originalDoc, docIndex)} ${seedSummaryDetail(originalDoc, docIndex)}`.trim()
+  const summary = editedSummary ?? seededSummary
+  // Non-null while the details card is in edit mode.
+  const [draft, setDraft] = useState<{ documentType: string; summary: string; tags: string[] } | null>(null)
+  const [triedSave, setTriedSave] = useState(false)
+  // Only the document's own tags are editable — the first chip is its domain, as in the table.
+  const ownTags = getDocumentTags(doc).slice(1).map(t => t.text)
+
+  const startEdit = () => { setTriedSave(false); setDraft({ documentType: doc.documentType, summary, tags: ownTags }) }
+  const saveEdit = () => {
+    if (!draft) return
+    if (!draft.documentType.trim()) { setTriedSave(true); return }
+    const tagsChanged = JSON.stringify(draft.tags) !== JSON.stringify(ownTags)
+    onSave({
+      ...doc,
+      documentType: draft.documentType.trim(),
+      // Same as saving tags from the table: they become the document's own tag list.
+      ...(tagsChanged ? {
+        tagList: draft.tags.map(t => ({ text: t, style: chipStyles.ACCENT_NEUTRAL, variant: chipVariants.SUBTLE })),
+        namedEntity: '—', jurisdiction: '—', lawType: '—',
+      } : {}),
+    }, draft.summary.trim())
+    setDraft(null)
+  }
+  // Tags as the table shows them: the first is the document's domain, the rest are its own tags.
+  const tags = getDocumentTags(doc)
+  const hours = (docIndex % 5) + 1
+  const card: React.CSSProperties = { backgroundColor: colorPalette.white, borderRadius: 16, padding: spacing(4) }
+  const sectionTitle = (t: string) => <Typography size="base-sm" weight="semibold" color="neutral-darken2" uppercase>{t}</Typography>
+  const divider = <div style={{ borderTop: `1px solid ${colorPalette.neutral.lighten3}` }} />
+  const p: React.CSSProperties = { margin: '0 0 16px' }
+  const h: React.CSSProperties = { fontSize: 15, fontWeight: 700, margin: '28px 0 8px' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, overflowY: 'auto', display: 'flex', flexDirection: 'column', backgroundColor: colorPalette.neutral.lighten5 }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: PREVIEW_TOP_BAR_BG, boxShadow: '0 4px 4px rgba(130, 138, 155, 0.2)', padding: `0 ${spacing(4)}px`, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <ButtonGhost mode="contrast" leftIcon={iconType.ChevronLeftOutlined} onClick={onBack}>Back</ButtonGhost>
+        <Typography weight="bold" color="white">{filename}</Typography>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+          <ButtonTertiary mode="contrast">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot<Icon type={iconType.ExternalLinkOutlined} size={16} /></span>
+          </ButtonTertiary>
+          <Dropdown
+            items={[
+              { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => {} },
+              { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: onDelete },
+            ]}
+            trigger={dropdownTriggers.CLICK}
+            placement={dropdownPlacement.BOTTOM_RIGHT}
+          >
+            <ButtonTertiary mode="contrast" shape={buttonShapes.SQUARE} leftIcon={iconType.ThreeDotsHorFilled} />
+          </Dropdown>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, padding: spacing(6), display: 'flex', gap: spacing(4), alignItems: 'flex-start' }}>
+        <div style={{ ...card, flex: 1, minWidth: 0, minHeight: 640 }}>
+          {isLoading ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '60%' }} paragraph={{ rows: 16 }} /> : (
+            // A plausible body for the synthetic document, written from its own data.
+            <div style={{ fontFamily: "'Open Sans', sans-serif", lineHeight: 1.75, color: '#1a1a1a', fontSize: 14, maxWidth: 720 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.25 }}>{stripYear(doc.name)}</div>
+              <div style={{ color: '#555', marginTop: 8, marginBottom: 28, fontSize: 13, fontWeight: 600 }}>{originalDoc.documentType} · {originalDoc.namedEntity !== '—' ? originalDoc.namedEntity : space.name}</div>
+              <p style={p}>{seededSummary}</p>
+              <div style={h}>1. Background</div>
+              <p style={p}>The purpose of this document is to record the facts, obligations and agreed next steps relevant to the matter described above. It should be read together with any related correspondence and prior versions held in this space.</p>
+              <p style={p}>Unless stated otherwise, all amounts are in EUR and all references to statutory provisions refer to the version in force on the date of this document.</p>
+              <div style={h}>2. Closing remarks</div>
+              <p style={p}>Please direct any questions about this document to the responsible contact. Changes to this document are only valid if made in writing.</p>
+            </div>
+          )}
+        </div>
+
+        <div style={{ ...card, width: 512, flexShrink: 0 }}>
+          {isLoading ? <Skeleton variant={skeletonVariants.TEXT} title={{ width: '50%' }} paragraph={{ rows: 10 }} /> : draft ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 32 }}>
+                <Typography size="base" weight="semibold" color="neutral-darken5">Document Details</Typography>
+                <div style={{ display: 'flex', gap: spacing(2) }}>
+                  <ButtonTertiary onClick={() => setDraft(null)}>Cancel</ButtonTertiary>
+                  <ButtonPrimary onClick={saveEdit}>Save</ButtonPrimary>
+                </div>
+              </div>
+              <Input label="Document name" name="name" value={stripYear(doc.name)} disabled />
+              <Input
+                label="Type"
+                name="documentType"
+                isRequired
+                error={triedSave && !draft.documentType.trim() ? TYPE_REQUIRED : undefined}
+                value={draft.documentType}
+                placeholder="e.g. Engagement Letter"
+                onChange={e => setDraft({ ...draft, documentType: e.target.value })}
+              />
+              <TextArea
+                label="Summary"
+                name="summary"
+                value={draft.summary}
+                placeholder="What is this document about?"
+                maxLength={PREVIEW_SUMMARY_MAX}
+                hasCounter
+                autoSize={{ minRows: 4, maxRows: 12 }}
+                onChange={e => setDraft({ ...draft, summary: e.target.value })}
+              />
+              <TagsField domain={getDocumentTags(doc)[0]?.text} tags={draft.tags} onChange={tags => setDraft({ ...draft, tags })} />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+              <div style={{ minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography size="base" weight="semibold" color="neutral-darken5">Document Details</Typography>
+                <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.EditOutlined} ariaLabel="Edit details" onClick={startEdit} />
+              </div>
+              {summary
+                ? <Typography size="base" color="neutral-darken5">{summary}</Typography>
+                : <Typography size="base" color="neutral-darken2">No summary yet. Use the edit button to add one.</Typography>}
+              {divider}
+              <section style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
+                {sectionTitle('Tags')}
+                <TagsCellInner tags={tags} />
+              </section>
+              {divider}
+              <section style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
+                {sectionTitle('File')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                  <PreviewDetail label="Name">{filename}</PreviewDetail>
+                  <PreviewDetail label="Type">{doc.documentType}</PreviewDetail>
+                  <PreviewDetail label="Format">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(1) }}><FileTypeIcon format={doc.fileFormat} />{doc.fileFormat}</span>
+                  </PreviewDetail>
+                  <PreviewDetail label="Size">{doc.fileSize}</PreviewDetail>
+                  <PreviewDetail label="Updated">{formatDate(doc.uploadedDate)}</PreviewDetail>
+                  <PreviewDetail label="Status">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(1) }}>
+                      <Icon type={iconType.CheckCircleFilled} size={16} color="success-base" />
+                      {source === 'local' ? 'Up to date' : `Up to date • Synced ${hours} hour${hours === 1 ? '' : 's'} ago`}
+                    </span>
+                  </PreviewDetail>
+                  <PreviewDetail label="Source">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(1), maxWidth: '100%' }}>
+                      {sourceIcon(source, 16, source !== 'local' ? spaceConnectorLabel(space, source) : undefined)}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{source === 'local' ? 'Manual upload' : spaceConnectorLabel(space, source)}</span>
+                    </span>
+                  </PreviewDetail>
+                  <PreviewDetail label="Space">{space.name}</PreviewDetail>
+                </div>
+              </section>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
