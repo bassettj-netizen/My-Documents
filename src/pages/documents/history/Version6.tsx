@@ -837,8 +837,7 @@ const FILE_LIST_MAX_HEIGHT = VISIBLE_FILE_ROWS * (FILE_ROW_HEIGHT + FILE_ROW_GAP
  *           Q4 Filing — Tax Return.xlsx               ← when there's a single file, or…
  *           View more ⌄                               ← …when there are files to list
  *
- * No card or border: an 8px-padded block with an 8px radius, tinted amber for a disconnect that
- * removed documents. "View more" lists the affected documents below (failed / removed first,
+ * No card or border: an 8px-padded block with an 8px radius. "View more" lists the affected documents below (failed / removed first,
  * with a filled alert icon, then A–Z) one per line, scrolling when long; "View less" hides them.
  */
 function HistoryEventItem({ event, expanded, onToggle }: { event: HistoryEvent; expanded: boolean; onToggle: () => void }) {
@@ -848,10 +847,9 @@ function HistoryEventItem({ event, expanded, onToggle }: { event: HistoryEvent; 
   const singleFile = !isConnectorEvent && files.length === 1 ? files[0] : null
   // A single file is already named above, unless it needs its alert icon shown in the list.
   const hasList = files.length > 1 || (files.length === 1 && !!files[0].status) || (isConnectorEvent && files.length > 0)
-  const warning = event.kind === 'disconnected' && files.length > 0
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(3), padding: spacing(2), borderRadius: 8, backgroundColor: warning ? colorPalette.warning.lighten5 : undefined }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(3), padding: spacing(2), borderRadius: 8 }}>
       <HistoryEventIcon kind={event.kind} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
