@@ -832,10 +832,10 @@ const FILE_LIST_MAX_HEIGHT = VISIBLE_FILE_ROWS * (FILE_ROW_HEIGHT + FILE_ROW_GAP
  * (node 7509:10221) — goat components and icons, plus the Figma's connector marks and the provider's logo:
  *
  *   [icon]  12 documents synced  [⚠ 2 UNSUCCESSFUL]
- *           Q4 Filing — Tax Return.xlsx               ← when there's a single file
  *           👤 Petra Neumann  •  14 Aug, 2026
  *           ⊞ acmecorp.sharepoint.com/sites/tax      ← sync and connector events (provider logo)
- *           View more ⌄                               ← when there are files to list
+ *           Q4 Filing — Tax Return.xlsx               ← when there's a single file, or…
+ *           View more ⌄                               ← …when there are files to list
  *
  * No card or border: an 8px-padded block with an 8px radius, tinted amber for a disconnect that
  * removed documents. "View more" lists the affected documents below (failed / removed first,
@@ -859,7 +859,6 @@ function HistoryEventItem({ event, expanded, onToggle }: { event: HistoryEvent; 
             <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{historyTitle(event)}</Typography>
             {historyChip(event)}
           </div>
-          {singleFile && <Typography size="base-sm" color="neutral-darken2">{singleFile.name}</Typography>}
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
             <Icon type={iconType.UserOutlined} size={12} color="neutral-darken2" />
             <Typography size="base-sm" color="neutral-darken2">{event.actor}&nbsp;&nbsp;•&nbsp;&nbsp;{formatHistoryDate(event.at)}</Typography>
@@ -870,6 +869,7 @@ function HistoryEventItem({ event, expanded, onToggle }: { event: HistoryEvent; 
               <Typography size="base-sm" color="neutral-darken2">{event.connector.label}</Typography>
             </div>
           )}
+          {singleFile && <Typography size="base-sm" color="neutral-darken2">{singleFile.name}</Typography>}
           {hasList && (
             <button type="button" className="history-view-more" onClick={onToggle} aria-expanded={expanded}>
               <Typography size="base-sm" color="primary-base">{expanded ? 'View less' : 'View more'}</Typography>
