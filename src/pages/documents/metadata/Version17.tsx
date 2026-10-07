@@ -121,7 +121,7 @@ import { seedShortSummary, seedSummaryDetail } from './summaries'
  * - Selection, bulk actions and the preview are as in Version 13.
  */
 
-const BASE = '/projects/metadata/version-17'
+const BASE = '/projects/metadata/cards-vertical'
 
 /** Same slug rule as Workspaces Basic, so space URLs match between the two versions. */
 function slugify(name: string): string {

@@ -150,12 +150,12 @@ const METADATA_V8_BASE = '/projects/metadata/version-8'
 const METADATA_V9_BASE = '/projects/metadata/version-9'
 const METADATA_V10_BASE = '/projects/metadata/version-10'
 const METADATA_V11_BASE = '/projects/metadata/version-11'
-const METADATA_V12_BASE = '/projects/metadata/version-12'
+const METADATA_V12_BASE = '/projects/metadata/table'
 const METADATA_V13_BASE = '/projects/metadata/version-13'
 const METADATA_V14_BASE = '/projects/metadata/version-14'
-const METADATA_V15_BASE = '/projects/metadata/version-15'
-const METADATA_V16_BASE = '/projects/metadata/version-16'
-const METADATA_V17_BASE = '/projects/metadata/version-17'
+const METADATA_V15_BASE = '/projects/metadata/cards-horizontal'
+const METADATA_V16_BASE = '/projects/metadata/preview-panel'
+const METADATA_V17_BASE = '/projects/metadata/cards-vertical'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -167,6 +167,12 @@ const HISTORY_V3_BASE = '/projects/history/version-3'
 const HISTORY_V4_BASE = '/projects/history/version-4'
 const HISTORY_V5_BASE = '/projects/history/version-5'
 const HISTORY_V6_BASE = '/projects/history/version-6'
+
+/** Sends an old URL to its renamed one, keeping the rest of the path (space, document) and the query. */
+function RenamedPath({ from, to }: { from: string; to: string }) {
+  const location = useLocation()
+  return <Navigate to={`${to}${location.pathname.slice(from.length)}${location.search}`} replace />
+}
 
 function AppShell() {
   const navigate = useNavigate()
@@ -288,17 +294,21 @@ function App() {
           {/* V11: V9 without the Summary column (summary lives in the preview only). */}
           <Route path="/projects/metadata/version-11/*" element={<MetadataVersion11 />} />
           {/* V12: V9 with rows as tall as their content — nothing in the table is cut off. */}
-          <Route path="/projects/metadata/version-12/*" element={<MetadataVersion12 />} />
+          <Route path="/projects/metadata/table/*" element={<MetadataVersion12 />} />
+          <Route path="/projects/metadata/version-12/*" element={<RenamedPath from="/projects/metadata/version-12" to="/projects/metadata/table" />} />
           {/* V13: V12's data without the table — document cards grouped by matter, with deadline cues. */}
           <Route path="/projects/metadata/version-13/*" element={<MetadataVersion13 />} />
           {/* V14: V13's cards in one sorted list — no grouping, matter reference on every card. */}
           <Route path="/projects/metadata/version-14/*" element={<MetadataVersion14 />} />
           {/* V15: V14 without deadline chips or date colouring; long party lists capped at five, "+N more" tooltip. */}
-          <Route path="/projects/metadata/version-15/*" element={<MetadataVersion15 />} />
+          <Route path="/projects/metadata/cards-horizontal/*" element={<MetadataVersion15 />} />
+          <Route path="/projects/metadata/version-15/*" element={<RenamedPath from="/projects/metadata/version-15" to="/projects/metadata/cards-horizontal" />} />
           {/* V16: list + details — compact two-line rows, the selected document's full details and editing in a side panel. */}
-          <Route path="/projects/metadata/version-16/*" element={<MetadataVersion16 />} />
+          <Route path="/projects/metadata/preview-panel/*" element={<MetadataVersion16 />} />
+          <Route path="/projects/metadata/version-16/*" element={<RenamedPath from="/projects/metadata/version-16" to="/projects/metadata/preview-panel" />} />
           {/* V17: V15's information as a grid of upright cards — chips, parties and a dates footer instead of columns; the whole card opens the preview. */}
-          <Route path="/projects/metadata/version-17/*" element={<MetadataVersion17 />} />
+          <Route path="/projects/metadata/cards-vertical/*" element={<MetadataVersion17 />} />
+          <Route path="/projects/metadata/version-17/*" element={<RenamedPath from="/projects/metadata/version-17" to="/projects/metadata/cards-vertical" />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

@@ -77,7 +77,7 @@ import { seedShortSummary, seedSummaryDetail } from './summaries'
  * - The one trade-off: rows truncate long values with an ellipsis — the panel always has them in full.
  */
 
-const BASE = '/projects/metadata/version-16'
+const BASE = '/projects/metadata/preview-panel'
 
 /** Same slug rule as Workspaces Basic, so space URLs match between the two versions. */
 function slugify(name: string): string {

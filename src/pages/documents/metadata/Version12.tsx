@@ -80,7 +80,7 @@ import { seedShortSummary, seedSummaryDetail } from './summaries'
  *   is as in Version 9.
  */
 
-const BASE = '/projects/metadata/version-12'
+const BASE = '/projects/metadata/table'
 
 /** Same slug rule as Workspaces Basic, so space URLs match between the two versions. */
 function slugify(name: string): string {
