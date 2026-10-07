@@ -37,6 +37,7 @@ import MetadataVersion14 from './pages/documents/metadata/Version14'
 import MetadataVersion15 from './pages/documents/metadata/Version15'
 import MetadataVersion16 from './pages/documents/metadata/Version16'
 import MetadataVersion17 from './pages/documents/metadata/Version17'
+import MetadataVersion18 from './pages/documents/metadata/Version18'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
 import FileSyncVersion3 from './pages/documents/file-sync/Version3'
@@ -156,6 +157,7 @@ const METADATA_V14_BASE = '/projects/metadata/version-14'
 const METADATA_V15_BASE = '/projects/metadata/cards-horizontal'
 const METADATA_V16_BASE = '/projects/metadata/preview-panel'
 const METADATA_V17_BASE = '/projects/metadata/cards-vertical'
+const METADATA_V18_BASE = '/projects/metadata/cards-grouped'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -179,7 +181,7 @@ function AppShell() {
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -309,6 +311,8 @@ function App() {
           {/* V17: V15's information as a grid of upright cards — chips, parties and a dates footer instead of columns; the whole card opens the preview. */}
           <Route path="/projects/metadata/cards-vertical/*" element={<MetadataVersion17 />} />
           <Route path="/projects/metadata/version-17/*" element={<RenamedPath from="/projects/metadata/version-17" to="/projects/metadata/cards-vertical" />} />
+          {/* Cards Grouped: Cards Horizontal restyled — date headings, file-type and source icons, path and parties lines. */}
+          <Route path="/projects/metadata/cards-grouped/*" element={<MetadataVersion18 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

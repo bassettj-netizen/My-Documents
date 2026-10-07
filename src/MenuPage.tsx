@@ -34,6 +34,7 @@ const groups = [
       { label: 'Cards Horizontal', path: '/projects/metadata/cards-horizontal' },
       { label: 'Preview Panel', path: '/projects/metadata/preview-panel' },
       { label: 'Cards Vertical', path: '/projects/metadata/cards-vertical' },
+      { label: 'Cards Grouped', path: '/projects/metadata/cards-grouped' },
     ],
   },
   {
