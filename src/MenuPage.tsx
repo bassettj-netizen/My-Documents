@@ -37,6 +37,14 @@ const groups = [
     ],
   },
   {
+    title: 'File Sync',
+    items: [
+      { label: 'Version 1', path: '/projects/file-sync/version-1' },
+      { label: 'Version 2', path: '/projects/file-sync/version-2' },
+      { label: 'Version 3', path: '/projects/file-sync/version-3' },
+    ],
+  },
+  {
     title: 'SharePoint Sync',
     items: [
       { label: 'Version 1', path: '/projects/sharepoint/version-1' },

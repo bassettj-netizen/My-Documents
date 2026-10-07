@@ -1687,6 +1687,11 @@ export function useWorkspaceState() {
     setDocsBySpace(prev => ({ ...prev, [spaceId]: docs }))
   }, [])
 
+  /** Like setSpaceDocs, but from the latest docs — for updates that land after a delay (e.g. a sync). */
+  const updateSpaceDocs = useCallback((spaceId: string, update: (docs: MetadataDocument[]) => MetadataDocument[]) => {
+    setDocsBySpace(prev => ({ ...prev, [spaceId]: update(prev[spaceId] ?? []) }))
+  }, [])
+
   const addDocsToSpace = useCallback((spaceId: string, newDocs: MetadataDocument[]) => {
     setDocsBySpace(prev => ({ ...prev, [spaceId]: [...newDocs, ...(prev[spaceId] ?? [])] }))
   }, [])
@@ -1783,7 +1788,7 @@ export function useWorkspaceState() {
 
   return {
     spaces, createSpace, updateSpace, updateSpaceContext, deleteSpace,
-    getSpaceDocs, setSpaceDocs, addDocsToSpace,
+    getSpaceDocs, setSpaceDocs, updateSpaceDocs, addDocsToSpace,
     sessionsBySpace, activeSessionBySpace, newChat, selectChat, deleteChat, sendMessage,
   }
 }
