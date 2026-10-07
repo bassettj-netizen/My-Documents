@@ -33,6 +33,7 @@ const groups = [
       { label: 'Version 14', path: '/projects/metadata/version-14' },
       { label: 'Version 15', path: '/projects/metadata/version-15' },
       { label: 'Version 16', path: '/projects/metadata/version-16' },
+      { label: 'Version 17', path: '/projects/metadata/version-17' },
     ],
   },
   {

@@ -10,6 +10,9 @@ import {
   ButtonTertiary,
   buttonVariants,
   Checkbox,
+  Chip,
+  chipStyles,
+  chipVariants,
   DatePicker,
   Dropdown,
   dropdownPlacement,
@@ -58,13 +61,41 @@ import { BasicUploadModal, CopilotIcon } from '../workspaces/WorkspacesBasic'
 import { seedShortSummary, seedSummaryDetail } from './summaries'
 
 /**
- * Metadata — Version 15: Version 14 with quieter cards and a cap on long party lists.
+ * Metadata — Version 17: Version 15's information as a grid of upright document cards.
+ *
+ *   ☐ 100 documents                                          [⇅ Next deadline] [Upload or sync]
+ *   ┌─────────────────────────────────┐ ┌─────────────────────────────────┐ ┌──────────────…
+ *   │ ☐ Q4 Filing — Tax Return.xlsx ▣ ⋯│ │ ☐ Year-End Closing — Engage… ▣ ⋯│ │
+ *   │   XLSX · 80 KB · Updated Aug 9   │ │   PDF · 1.2 MB · Updated Jul 2  │ │
+ *   │ [Tax Return] [▤ Tax audit 2022…] │ │ [Engagement Letter]             │ │
+ *   │ Summary, two lines at most…      │ │ Summary, two lines at most…     │ │
+ *   │ PARTIES                          │ │ PARTIES                         │ │
+ *   │ (AC) Acme GmbH · Client  (FM) …  │ │ (DA) Dr. Anna Weber · Tax adv…  │ │
+ *   │──────────────────────────────────│ │─────────────────────────────────│ │
+ *   │ ⏱ Filing deadline    31 Aug 2026 │ │ ⏱ Payment due        2 Oct 2026 │ │
+ *   │   Period                 Q2 2026 │ │                                 │ │
+ *   └─────────────────────────────────┘ └─────────────────────────────────┘ └──────────────…
+ *
+ * - The whole card opens the preview (click, or Enter when focused); the checkbox and ⋯ menu don't.
+ * - No file-type icon: the checkbox sits beside the file name, and the format is spelled out in the
+ *   details line ("XLSX · 80 KB · Updated …").
+ * - No columns inside a card: it reads top to bottom — what the file is, how it's classified
+ *   (Type and Matter reference as chips), what it's about (two lines of summary), who is
+ *   involved (initials, name and role, no outline, wrapping) and, in a footer, the key dates
+ *   with label and date apart.
+ * - Cards sit in a responsive grid (as many 340px+ columns as fit); cards in a row share a height
+ *   so the date footers line up.
+ * - Cards are read-only, as in Version 15: metadata is edited only in the preview. An empty Type
+ *   or Matter reference simply has no chip.
+ * - Parties still caps at five with "+N more" listing everyone on hover.
+ * - Sorting, search, selection, bulk actions and the preview are as in Version 15; 18 cards per page.
+ *
+ * Version 15: Version 14 with quieter cards and a cap on long party lists.
  *
  * - No deadline chip under the file name, and no colouring of overdue / due-soon dates in the
  *   Dates field — every date reads the same.
  * - Parties shows the first five, then "+N more"; hovering "+N more" lists every party with its
  *   role. Two documents per space are seeded with ten parties so this shows up.
- * - The whole card opens the preview (click, or Enter when focused); the checkbox and ⋯ menu don't.
  * - Cards are read-only: metadata is edited only in the preview's Document Details panel (the
  *   edit button there). Version 14's in-place popover editors are gone.
  * - Everything else — the card layout, the sort options, selection, bulk actions and the
@@ -90,7 +121,7 @@ import { seedShortSummary, seedSummaryDetail } from './summaries'
  * - Selection, bulk actions and the preview are as in Version 13.
  */
 
-const BASE = '/projects/metadata/version-15'
+const BASE = '/projects/metadata/version-17'
 
 /** Same slug rule as Workspaces Basic, so space URLs match between the two versions. */
 function slugify(name: string): string {
@@ -409,7 +440,7 @@ function useMetadataStore(workspace: WorkspaceState): MetadataStore {
   return { get, getOriginal, update }
 }
 
-export default function MetadataVersion15() {
+export default function MetadataVersion17() {
   const workspace = useWorkspaceState()
   const store = useMetadataStore(workspace)
 
@@ -615,9 +646,6 @@ const cellText: React.CSSProperties = { fontSize: 14, lineHeight: '20px', color:
 /** Cell text that wraps onto as many lines as it needs. */
 const wrap: React.CSSProperties = { ...cellText, wordBreak: 'break-word' }
 
-/** Empty metadata value in the table. */
-const Dash = () => <span style={cellText}>-</span>
-
 const FILE_ICON_SRC: Partial<Record<string, string>> = {
   DOCX: '/metadata-v9/file-word.png',
   PDF: '/metadata-v9/file-pdf.png',
@@ -639,13 +667,35 @@ const partyLine = (p: Party) => <>{p.name}{p.role && <span style={{ color: color
 // Past this many, a card lists the first few parties and sums up the rest as "+N more".
 const VISIBLE_PARTIES = 5
 
-/** The first five parties, one per line, then "+N more" — hovering it lists every party with its role. */
+const initials = (name: string) => name.replace(/^(Dr|Prof)\.\s+/, '').split(/\s+/).filter(w => /^[A-Za-zÄÖÜäöü]/.test(w)).slice(0, 2).map(w => w[0].toUpperCase()).join('')
+
+// Initials circles cycle through a few soft tints so neighbouring pills are easy to tell apart.
+const PARTY_TINTS = [
+  { bg: '#E6EEFF', fg: '#2A4FB5' },
+  { bg: '#E3F5EE', fg: '#1F7552' },
+  { bg: '#F3E8FF', fg: '#6B3FA0' },
+  { bg: '#FFF1E0', fg: '#9A5A12' },
+  { bg: '#E5F4F8', fg: '#1D6B80' },
+]
+
+/** One party: initials, name, role — no outline. Long names wrap rather than being cut off. */
+function PartyPill({ party, index }: { party: Party; index: number }) {
+  const tint = PARTY_TINTS[index % PARTY_TINTS.length]
+  return (
+    <span className="v17-party">
+      <span className="v17-initials" style={{ background: tint.bg, color: tint.fg }}>{initials(party.name) || '?'}</span>
+      <span style={{ minWidth: 0 }}>{partyLine(party)}</span>
+    </span>
+  )
+}
+
+/** The first five parties as wrapping pills, then "+N more" — hovering it lists every party with its role. */
 function PartiesList({ parties }: { parties: Party[] }) {
   const shown = parties.slice(0, VISIBLE_PARTIES)
   const hidden = parties.length - shown.length
   return (
-    <div style={{ minWidth: 0 }}>
-      {shown.map(p => <div key={p.id} style={wrap}>{partyLine(p)}</div>)}
+    <div style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: spacing(4), rowGap: spacing(1) }}>
+      {shown.map((p, i) => <PartyPill key={p.id} party={p} index={i} />)}
       {hidden > 0 && (
         <Tooltip
           title={parties.map(p => p.role ? `${p.name} · ${p.role}` : p.name).join('\n')}
@@ -659,31 +709,45 @@ function PartiesList({ parties }: { parties: Party[] }) {
   )
 }
 
-/** Every item, one per line; a long item wraps onto further lines rather than being cut off. */
-function FullList({ items }: { items: { key: string; content: ReactNode }[] }) {
-  return (
-    <div style={{ minWidth: 0 }}>
-      {items.map(item => <div key={item.key} style={wrap}>{item.content}</div>)}
-    </div>
-  )
-}
-
 const LIST_CSS = `
-  .v15-doc-link { color: ${colorPalette.neutral.darken5}; }
-  .v15-card:hover .v15-doc-link { color: ${colorPalette.blue.base}; text-decoration: underline; }
+  .v17-doc-link { color: ${colorPalette.neutral.darken5}; }
+  .v17-card:hover .v17-doc-link { color: ${colorPalette.blue.base}; text-decoration: underline; }
   .goat-tooltip-inner p { white-space: pre-line; }
   /* goat-ui's Tooltip has no width prop and caps at ~200px, which breaks "name · role" lines of the
      all-parties tooltip mid-name. Every other tooltip on this page is short, so widening is safe. */
   .goat-tooltip { max-width: 400px !important; }
-  .v15-card {
-    display: flex; align-items: flex-start; gap: ${spacing(3)}px; padding: ${spacing(3)}px ${spacing(4)}px;
-    border: 1px solid ${colorPalette.neutral.lighten2}; border-radius: 8px; background: ${colorPalette.white};
-    transition: border-color 0.12s;
+  .v17-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: ${spacing(4)}px; align-items: stretch;
   }
-  .v15-card { cursor: pointer; }
-  .v15-card:focus-visible { outline: 2px solid ${colorPalette.blue.base}; outline-offset: 2px; }
-  .v15-card:hover { border-color: ${colorPalette.neutral.lighten1}; }
-  .v15-card.is-selected { background: #EEF4FF; border-color: ${colorPalette.blue.lighten3}; }
+  .v17-card {
+    display: flex; flex-direction: column; min-width: 0; overflow: hidden;
+    border: 1px solid ${colorPalette.neutral.lighten2}; border-radius: 12px; background: ${colorPalette.white};
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .v17-card { cursor: pointer; }
+  .v17-card:focus-visible { outline: 2px solid ${colorPalette.blue.base}; outline-offset: 2px; }
+  .v17-card:hover { border-color: ${colorPalette.neutral.lighten1}; box-shadow: 0 2px 8px rgba(47, 56, 74, 0.08); }
+  .v17-card.is-selected { border-color: ${colorPalette.blue.base}; box-shadow: 0 0 0 1px ${colorPalette.blue.base}; }
+  .v17-card-body { display: flex; flex-direction: column; gap: ${spacing(3)}px; padding: ${spacing(4)}px; flex: 1; }
+  .v17-card-footer {
+    padding: ${spacing(3)}px ${spacing(4)}px; background: ${colorPalette.neutral.lighten5};
+    border-top: 1px solid ${colorPalette.neutral.lighten3};
+  }
+  .v17-card.is-selected .v17-card-footer { background: #EEF4FF; }
+  .v17-summary {
+    font-size: 13px; line-height: 20px; color: ${colorPalette.neutral.darken2};
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .v17-chips { display: flex; flex-wrap: wrap; align-items: center; gap: ${spacing(2)}px; }
+  .v17-party {
+    display: inline-flex; align-items: flex-start; gap: 6px; max-width: 100%; padding: 2px 0;
+    font-size: 13px; line-height: 20px; color: ${colorPalette.neutral.darken5}; word-break: break-word;
+  }
+  .v17-initials {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; line-height: 1;
+  }
+  .v17-section-label { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: ${colorPalette.neutral.darken2}; }
 `
 
 // ─── Document list: sorting and deadlines ─────────────────────────────────────
@@ -720,7 +784,8 @@ const DOC_SORTS: Record<SortKey, { label: string; compare: (store: MetadataStore
   size: { label: 'Largest file', compare: () => (a, b) => sizeInBytes(b.fileSize) - sizeInBytes(a.fileSize) || byName(a, b) },
 }
 
-const LIST_PAGE_SIZE = 20
+// Divides evenly into rows of two or three cards.
+const LIST_PAGE_SIZE = 18
 
 /** Keeps a click on a card's own controls (checkbox, menu) from also opening the preview — menu items render in a portal, but React events still bubble here. */
 const stopClick = (e: React.MouseEvent) => e.stopPropagation()
@@ -782,14 +847,6 @@ function SpaceDocumentsList({ space, docs, store, onDocsChange, onBack, onOpenDo
   const sorted = [...filteredDocs].sort(DOC_SORTS[sortBy].compare(store))
   const pageDocs = sorted.slice((currentPage - 1) * LIST_PAGE_SIZE, currentPage * LIST_PAGE_SIZE)
 
-  /** One labelled field in a document card — label on top, value wraps, nothing is cut off. Edited in the preview. */
-  const field = (key: Exclude<FieldKey, 'summary'>, value: ReactNode) => (
-    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <span style={fieldLabel}>{FIELD_LABELS[key]}</span>
-      {value}
-    </div>
-  )
-
   const renderCard = (record: MetadataDocument) => {
     const m = store.get(record)
     const src = sourceMap.get(record._id) ?? 'local'
@@ -799,49 +856,76 @@ function SpaceDocumentsList({ space, docs, store, onDocsChange, onBack, onOpenDo
     return (
       <div
         key={record._id}
-        className={`v15-card${selected ? ' is-selected' : ''}`}
+        className={`v17-card${selected ? ' is-selected' : ''}`}
         role="link"
         tabIndex={0}
         aria-label={`Open ${fileName(record)}`}
         onClick={() => onOpenDoc(record)}
         onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) onOpenDoc(record) }}
       >
-        <div style={{ paddingTop: 2 }} onClick={stopClick}><Checkbox checked={selected} onChange={e => toggleSelected([record._id], e.target.checked)} /></div>
-        <FileTypeIcon format={record.fileFormat} />
+        <div className="v17-card-body">
+          {/* What the file is: name and file details on the left, with the checkbox beside the name. The
+              format is spelled out in the details line instead of shown as an icon. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(2) }}>
+            {/* goat-ui's Checkbox is 32px wide around a 16px box; pull the name in so it sits next to the box. */}
+            <div style={{ paddingTop: 1, marginRight: -12 }} onClick={stopClick}>
+              <Checkbox checked={selected} onChange={e => toggleSelected([record._id], e.target.checked)} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ ...wrap, fontSize: 15, lineHeight: '22px', fontWeight: 600 }}><span className="v17-doc-link">{fileName(record)}</span></div>
+              <div style={fieldLabel}>{record.fileFormat} · {record.fileSize} · Updated {formatDate(record.uploadedDate)}</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2), flexShrink: 0 }} onClick={stopClick}>
+              {sourceIcon(src, 18, src !== 'local' ? spaceConnectorLabel(space, src) : undefined)}
+              <Dropdown
+                items={[
+                  { key: 'open', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.ArticleOutlined} size={16} />Open preview</span>, onClick: () => onOpenDoc(record) },
+                  { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => {} },
+                  { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: () => setPendingDelete(new Set([record._id])) },
+                ]}
+                trigger={dropdownTriggers.CLICK}
+                placement={dropdownPlacement.BOTTOM_RIGHT}
+              >
+                <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ThreeDotsHorFilled} />
+              </Dropdown>
+            </div>
+          </div>
 
-        {/* What the file is. */}
-        <div style={{ width: '26%', flexShrink: 0, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ ...wrap, fontWeight: 600 }}><span className="v15-doc-link">{fileName(record)}</span></div>
-          <div style={fieldLabel}>{record.fileSize} · Updated {formatDate(record.uploadedDate)}</div>
+          {/* How it's classified. Empty values are simply left out — they're added in the preview. */}
+          {(m.documentType || m.matterReference) && (
+            <div className="v17-chips">
+              {m.documentType && <Chip uppercase={false} label={m.documentType} chipStyle={chipStyles.ACCENT_BLUE} variant={chipVariants.SUBTLE} />}
+              {m.matterReference && <Chip uppercase={false} label={m.matterReference} leftIcon={iconType.FolderOutlined} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />}
+            </div>
+          )}
+
+          {/* What it's about — the full summary is in the preview. */}
+          {m.summary && <div className="v17-summary" title={m.summary}>{m.summary}</div>}
+
+          {/* Who is involved. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+            <span className="v17-section-label">{FIELD_LABELS.parties}</span>
+            {m.parties.length ? <PartiesList parties={m.parties} /> : <span style={{ ...cellText, color: colorPalette.neutral.darken2 }}>No parties</span>}
+          </div>
         </div>
 
-        {/* Fields: labelled, read-only — editing happens in the preview. */}
-        <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 1.4fr)', columnGap: spacing(6) }}>
-          {field('matterReference', m.matterReference ? <div style={wrap}>{m.matterReference}</div> : <Dash />)}
-          {field('documentType', m.documentType ? <div style={wrap}>{m.documentType}</div> : <Dash />)}
-          {field('parties', m.parties.length ? <PartiesList parties={m.parties} /> : <Dash />)}
-          {field('dates', dates.length
-            ? <FullList items={dates.map(d => ({
-                key: d.id,
-                // Wraps after the label if needed, never inside the date.
-                content: <>{d.label}: <span style={{ whiteSpace: 'nowrap' }}>{formatKeyDate(d)}</span></>,
-              }))} />
-            : <Dash />)}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3), flexShrink: 0 }} onClick={stopClick}>
-          {sourceIcon(src, 18, src !== 'local' ? spaceConnectorLabel(space, src) : undefined)}
-          <Dropdown
-            items={[
-              { key: 'open', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.ArticleOutlined} size={16} />Open preview</span>, onClick: () => onOpenDoc(record) },
-              { key: 'download', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.DownloadOutlined} size={16} />Download</span>, onClick: () => {} },
-              { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: () => setPendingDelete(new Set([record._id])) },
-            ]}
-            trigger={dropdownTriggers.CLICK}
-            placement={dropdownPlacement.BOTTOM_RIGHT}
-          >
-            <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ThreeDotsHorFilled} />
-          </Dropdown>
+        {/* When — key dates, label on the left and the date on the right. */}
+        <div className="v17-card-footer">
+          {dates.length
+            ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', columnGap: spacing(2), rowGap: 2, alignItems: 'start' }}>
+                {dates.map(d => (
+                  <Fragment key={d.id}>
+                    <span style={{ display: 'flex', paddingTop: 2 }}>
+                      <Icon type={d.isDeadline ? iconType.ClockOutlined : isPeriod(d) ? iconType.CalendarOutlined : iconType.CheckOutlined} size={16} color="neutral-darken2" />
+                    </span>
+                    <span style={{ ...wrap, color: colorPalette.neutral.darken2 }}>{d.label}</span>
+                    <span style={{ ...cellText, whiteSpace: 'nowrap', textAlign: 'right' }}>{formatKeyDate(d)}</span>
+                  </Fragment>
+                ))}
+              </div>
+            )
+            : <span style={{ ...cellText, color: colorPalette.neutral.darken2 }}>No key dates</span>}
         </div>
       </div>
     )
@@ -903,11 +987,11 @@ function SpaceDocumentsList({ space, docs, store, onDocsChange, onBack, onOpenDo
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: spacing(2), paddingBottom: selectedKeys.size > 0 ? 72 : 0 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: spacing(4), paddingBottom: selectedKeys.size > 0 ? 72 : 0 }}>
         {filteredDocs.length === 0 && (
           <Typography size="base" color="neutral-darken2">No documents match your search.</Typography>
         )}
-        {pageDocs.map(renderCard)}
+        <div className="v17-grid">{pageDocs.map(renderCard)}</div>
         {filteredDocs.length > LIST_PAGE_SIZE && (
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <Pagination current={currentPage} total={filteredDocs.length} pageSize={LIST_PAGE_SIZE} onChange={setCurrentPage} />
