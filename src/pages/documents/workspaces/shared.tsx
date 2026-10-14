@@ -59,6 +59,9 @@ export type Connector = {
 
 export type SpaceVisibility = 'public' | 'private'
 
+/** Interface language for the shared workspace views; German is used by Hackathon Oct '26 Version 5. */
+export type UiLang = 'en' | 'de'
+
 export const SPACE_TYPE_OPTIONS = [
   { label: 'Client', value: 'Client' },
   { label: 'Internal', value: 'Internal' },
@@ -665,16 +668,18 @@ export function SpaceAvatar({ space, size = 36 }: { space: Space; size?: number 
 }
 
 /** Public/private badge shown next to a space's name — private spaces get a lock, public spaces a globe. */
-export function VisibilityIcon({ space, size = 16, organisationAccess = false }: {
+export function VisibilityIcon({ space, size = 16, organisationAccess = false, lang = 'en' }: {
   space: Space
   size?: number
   // Calls non-private access "Organisation" instead of "Public".
   organisationAccess?: boolean
+  lang?: UiLang
 }) {
   if (space.id === MY_DOCS_SPACE_ID) return null
   const isPrivate = space.visibility === 'private'
+  const title = isPrivate ? (lang === 'de' ? 'Privat' : 'Private') : organisationAccess ? 'Organisation' : (lang === 'de' ? 'Öffentlich' : 'Public')
   return (
-    <Tooltip title={isPrivate ? 'Private' : organisationAccess ? 'Organisation' : 'Public'} placement={tooltipPlacements.TOP}>
+    <Tooltip title={title} placement={tooltipPlacements.TOP}>
       <div style={{ display: 'flex' }}>
         <Icon type={isPrivate ? iconType.LockOutlined : iconType.CompanyOutlined} size={size as never} color="neutral-darken2" />
       </div>
@@ -816,7 +821,7 @@ function AvatarPicker({ avatarUrl, name, onChange }: { avatarUrl?: string; name:
   )
 }
 
-export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace', showPhotoUpload = true, showType = true, organisationAccess = false }: {
+export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace', showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en' }: {
   open: boolean
   mode: 'create' | 'edit'
   initialValues?: SpaceFormValues
@@ -827,7 +832,10 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
   showType?: boolean
   // Access becomes a Private / Organisation toggle, private by default, instead of the Public / Private select.
   organisationAccess?: boolean
+  // German labels (only for the hackathon's form: no photo, no type, the access toggle).
+  lang?: UiLang
 }) {
+  const de = lang === 'de'
   const emptyForm: SpaceFormValues = organisationAccess ? { ...EMPTY_SPACE_FORM, visibility: 'private' } : EMPTY_SPACE_FORM
   const [values, setValues] = useState<SpaceFormValues>(emptyForm)
 
@@ -839,15 +847,15 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
   return (
     <Modal
       visible={open}
-      title={mode === 'create' ? `Create New ${noun}` : 'Edit settings'}
+      title={de ? (mode === 'create' ? 'Neuen Arbeitsbereich erstellen' : 'Einstellungen bearbeiten') : mode === 'create' ? `Create New ${noun}` : 'Edit settings'}
       withIcon={false}
       onClose={onClose}
       footer={{ buttons: [
-        { variant: buttonVariants.GHOST, props: { children: 'Cancel', onClick: onClose } },
+        { variant: buttonVariants.GHOST, props: { children: de ? 'Abbrechen' : 'Cancel', onClick: onClose } },
         {
           variant: buttonVariants.PRIMARY,
           props: {
-            children: 'Save',
+            children: de ? 'Speichern' : 'Save',
             disabled: !values.name.trim() || (showType && !values.type),
             onClick: () => onSubmit({ ...values, name: values.name.trim(), description: values.description.trim() }),
           },
@@ -865,16 +873,16 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
         <Input
           label="Name" isRequired
           value={values.name}
-          placeholder="Give your workspace a name"
+          placeholder={de ? 'Geben Sie Ihrem Arbeitsbereich einen Namen' : 'Give your workspace a name'}
           onChange={e => setValues(v => ({ ...v, name: e.target.value }))}
         />
         <TextArea
-          label="Description" hasCounter maxCount={500}
+          label={de ? 'Beschreibung' : 'Description'} hasCounter maxCount={500}
           currentCount={values.description.length}
           value={values.description}
           maxLength={500}
           autoSize={{ minRows: 2, maxRows: 4 }}
-          placeholder="Describe the purpose of this workspace"
+          placeholder={de ? 'Beschreiben Sie, wofür dieser Arbeitsbereich gedacht ist' : 'Describe the purpose of this workspace'}
           onChange={e => setValues(v => ({ ...v, description: e.target.value }))}
         />
         {showType && (
@@ -888,14 +896,14 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
         )}
         {organisationAccess ? (
           <Toggle
-            label="Access"
+            label={de ? 'Zugriff' : 'Access'}
             checked={values.visibility === 'private'}
             helper={values.visibility === 'private'
-              ? 'Only you have access. Switch off to share with your organisation.'
-              : 'Organisation — everyone in your organisation has access.'}
+              ? (de ? 'Nur Sie haben Zugriff. Ausschalten, um ihn mit Ihrer Organisation zu teilen.' : 'Only you have access. Switch off to share with your organisation.')
+              : (de ? 'Organisation – alle in Ihrer Organisation haben Zugriff.' : 'Organisation — everyone in your organisation has access.')}
             onChange={checked => setValues(prev => ({ ...prev, visibility: checked ? 'private' : 'public' }))}
           >
-            Private
+            {de ? 'Privat' : 'Private'}
           </Toggle>
         ) : (
           <Select
@@ -1031,7 +1039,7 @@ function UploadModal({ open, onClose, onUpload }: {
 
 // ─── Space card + Spaces list view ───────────────────────────────────────────
 
-function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess }: {
+function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess, lang = 'en' }: {
   space: Space
   docs: MetadataDocument[]
   lastUpload: string
@@ -1039,7 +1047,9 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   onRequestEdit: (id: string) => void
   onRequestDelete: (id: string) => void
   organisationAccess?: boolean
+  lang?: UiLang
 }) {
+  const de = lang === 'de'
   const [hovered, setHovered] = useState(false)
   const isMyDocs = space.id === MY_DOCS_SPACE_ID
   const docCount = docs.length
@@ -1072,8 +1082,8 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
           <div onClick={e => e.stopPropagation()}>
             <Dropdown
               items={[
-                { key: 'edit', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.GearOutlined} size={16} />Edit settings</span>, onClick: () => onRequestEdit(space.id) },
-                { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete</span>, onClick: () => onRequestDelete(space.id) },
+                { key: 'edit', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.GearOutlined} size={16} />{de ? 'Einstellungen bearbeiten' : 'Edit settings'}</span>, onClick: () => onRequestEdit(space.id) },
+                { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />{de ? 'Löschen' : 'Delete'}</span>, onClick: () => onRequestDelete(space.id) },
               ]}
               trigger={dropdownTriggers.CLICK}
               placement={dropdownPlacement.BOTTOM_RIGHT}
@@ -1086,12 +1096,14 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{space.name}</Typography>
-          <VisibilityIcon space={space} organisationAccess={organisationAccess} />
+          <VisibilityIcon space={space} organisationAccess={organisationAccess} lang={lang} />
         </div>
         <Typography size="base-sm" color="neutral-darken2" maxLines={2}>{space.description}</Typography>
       </div>
       <Typography size="base-sm" color="neutral-darken2">
-        {docCount} {docCount === 1 ? 'document' : 'documents'} • Last upload {lastUpload}
+        {de
+          ? <>{docCount} {docCount === 1 ? 'Dokument' : 'Dokumente'} • Letzter Upload {lastUpload}</>
+          : <>{docCount} {docCount === 1 ? 'document' : 'documents'} • Last upload {lastUpload}</>}
       </Typography>
       {!isMyDocs && presentSources.length > 0 && (
         <div style={{ position: 'absolute', bottom: spacing(4), right: spacing(4), display: 'flex', alignItems: 'center', gap: spacing(2) }}>
@@ -1102,7 +1114,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   )
 }
 
-export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false }: {
+export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en' }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   onOpenSpace: (id: string) => void
@@ -1118,7 +1130,10 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   showPhotoUpload?: boolean
   showType?: boolean
   organisationAccess?: boolean
+  // German title, buttons and dialogs ("Arbeitsbereich").
+  lang?: UiLang
 }) {
+  const de = lang === 'de'
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editSpaceId, setEditSpaceId] = useState<string | null>(null)
   const [deleteSpaceId, setDeleteSpaceId] = useState<string | null>(null)
@@ -1134,9 +1149,9 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
               <Icon type={iconType.ElementsOutlined} size={32} color="inherit" />
             </div>
           )}
-          <Typography size="heading-lg" weight="bold">{noun}s</Typography>
+          <Typography size="heading-lg" weight="bold">{de ? 'Arbeitsbereiche' : `${noun}s`}</Typography>
         </div>
-        <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateModalOpen(true)}>{noun}</ButtonSecondary>
+        <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateModalOpen(true)}>{de ? 'Arbeitsbereich' : noun}</ButtonSecondary>
       </div>
 
       {spaces.length === 0 && renderEmptyState ? (
@@ -1166,6 +1181,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
                 onRequestEdit={setEditSpaceId}
                 onRequestDelete={setDeleteSpaceId}
                 organisationAccess={organisationAccess}
+                lang={lang}
               />
             )
           })}
@@ -1179,6 +1195,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
         showPhotoUpload={showPhotoUpload}
         showType={showType}
         organisationAccess={organisationAccess}
+        lang={lang}
         onClose={() => setCreateModalOpen(false)}
         onSubmit={values => { onCreateSpace(values); setCreateModalOpen(false) }}
       />
@@ -1190,6 +1207,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
         showPhotoUpload={showPhotoUpload}
         showType={showType}
         organisationAccess={organisationAccess}
+        lang={lang}
         onClose={() => setEditSpaceId(null)}
         onSubmit={values => { if (editTargetSpace) onUpdateSpace(editTargetSpace.id, values); setEditSpaceId(null) }}
       />
@@ -1197,15 +1215,17 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
       <Modal
         visible={!!deleteTargetSpace}
         variant={modalVariants.DANGER}
-        title="Delete space"
+        title={de ? 'Arbeitsbereich löschen' : 'Delete space'}
         onClose={() => setDeleteSpaceId(null)}
         footer={{ buttons: [
-          { variant: buttonVariants.GHOST, props: { children: 'Cancel', onClick: () => setDeleteSpaceId(null) } },
-          { variant: buttonVariants.DANGER, props: { children: 'Delete', onClick: () => { if (deleteTargetSpace) onDeleteSpace(deleteTargetSpace.id); setDeleteSpaceId(null) } } },
+          { variant: buttonVariants.GHOST, props: { children: de ? 'Abbrechen' : 'Cancel', onClick: () => setDeleteSpaceId(null) } },
+          { variant: buttonVariants.DANGER, props: { children: de ? 'Löschen' : 'Delete', onClick: () => { if (deleteTargetSpace) onDeleteSpace(deleteTargetSpace.id); setDeleteSpaceId(null) } } },
         ]}}
       >
         <Typography size="base" color="neutral-darken5">
-          Delete <strong>{deleteTargetSpace?.name}</strong>? This cannot be undone.
+          {de
+            ? <><strong>{deleteTargetSpace?.name}</strong> löschen? Das kann nicht rückgängig gemacht werden.</>
+            : <>Delete <strong>{deleteTargetSpace?.name}</strong>? This cannot be undone.</>}
         </Typography>
       </Modal>
     </div>
@@ -1711,7 +1731,7 @@ let msgCounter = 0
 function nextId(prefix: string) { msgCounter += 1; return `${prefix}-${Date.now()}-${msgCounter}` }
 
 /** `initialSpaces` lets a version start with fewer (or no) workspaces; the seed data itself stays put. */
-export function useWorkspaceState(initialSpaces: Space[] = INITIAL_SPACES) {
+export function useWorkspaceState(initialSpaces: Space[] = INITIAL_SPACES, lang: UiLang = 'en') {
   const [spaces, setSpaces] = useState<Space[]>(initialSpaces)
   const [docsBySpace, setDocsBySpace] = useState<Record<string, MetadataDocument[]>>(() => {
     const map: Record<string, MetadataDocument[]> = {}
@@ -1745,19 +1765,19 @@ export function useWorkspaceState(initialSpaces: Space[] = INITIAL_SPACES) {
     const id = nextId('space')
     setSpaces(prev => [...prev, { id, connectors: [], ...values }])
     setDocsBySpace(prev => ({ ...prev, [id]: [] }))
-    notification.success({ title: `"${values.name}" created`, placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
+    notification.success({ title: lang === 'de' ? `„${values.name}“ erstellt` : `"${values.name}" created`, placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
     return id
-  }, [notification])
+  }, [notification, lang])
 
   const updateSpace = useCallback((id: string, values: SpaceFormValues) => {
     setSpaces(prev => prev.map(s => s.id === id ? { ...s, ...values } : s))
-    notification.success({ title: `"${values.name}" updated`, placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
-  }, [notification])
+    notification.success({ title: lang === 'de' ? `„${values.name}“ aktualisiert` : `"${values.name}" updated`, placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
+  }, [notification, lang])
 
   const updateSpaceContext = useCallback((id: string, context: string) => {
     setSpaces(prev => prev.map(s => s.id === id ? { ...s, context } : s))
-    notification.success({ title: 'Context saved', placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
-  }, [notification])
+    notification.success({ title: lang === 'de' ? 'Kontext gespeichert' : 'Context saved', placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
+  }, [notification, lang])
 
   const deleteSpace = useCallback((id: string) => {
     setSpaces(prev => prev.filter(s => s.id !== id))

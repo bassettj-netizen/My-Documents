@@ -43,6 +43,7 @@ import HackathonVersion1 from './pages/documents/hackathon/Version1'
 import HackathonVersion2 from './pages/documents/hackathon/Version2'
 import HackathonVersion3 from './pages/documents/hackathon/Version3'
 import HackathonVersion4 from './pages/documents/hackathon/Version4'
+import HackathonVersion5 from './pages/documents/hackathon/Version5'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
 import FileSyncVersion3 from './pages/documents/file-sync/Version3'
@@ -181,6 +182,7 @@ const HACKATHON_V1_BASE = '/projects/hackathon-oct-26/version-1'
 const HACKATHON_V2_BASE = '/projects/hackathon-oct-26/version-2'
 const HACKATHON_V3_BASE = '/projects/hackathon-oct-26/version-3'
 const HACKATHON_V4_BASE = '/projects/hackathon-oct-26/version-4'
+const HACKATHON_V5_BASE = '/projects/hackathon-oct-26/version-5'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -204,7 +206,7 @@ function AppShell() {
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -213,8 +215,10 @@ function AppShell() {
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
-  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE].find(b => b === metadataAppBase) ?? null
+  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE].find(b => b === metadataAppBase) ?? null
   const inHackathon = !!hackathonBase
+  // Version 5 is the German copy of Version 4, so its sidebar is in German too.
+  const de = hackathonBase === HACKATHON_V5_BASE
 
   const activeKey =
     location.pathname === `${hackathonBase}/home` ? 'home' :
@@ -228,7 +232,7 @@ function AppShell() {
 
   const homeItem = {
     key: 'home',
-    label: 'Home',
+    label: de ? 'Startseite' : 'Home',
     icon: <Icon type={iconType.HouseFilled} />,
     onClick: () => navigate(`${hackathonBase}/home`),
   }
@@ -251,7 +255,7 @@ function AppShell() {
     key: 'workspaces',
     // Workspaces Basic calls these "Spaces" throughout, so the sidebar matches
     // whichever nested app the user is currently inside — except Hackathon Oct '26, which says "Workspaces".
-    label: inWorkspacesBasic && !inHackathon ? 'Spaces' : 'Workspaces',
+    label: de ? 'Arbeitsbereiche' : inWorkspacesBasic && !inHackathon ? 'Spaces' : 'Workspaces',
     icon: <Icon type={iconType.ElementsFilled} />,
     onClick: () => navigate(`${workspacesAppBase}/workspaces`),
   }
@@ -272,7 +276,7 @@ function AppShell() {
   const sidebarBottomItems = [
     {
       key: 'connectors',
-      label: 'Connectors',
+      label: de ? 'Konnektoren' : 'Connectors',
       icon: <ConnectorIcon />,
       // Same rule as "My Documents" — stays inside the current nested workspaces
       // app when already there, rather than jumping out to the unrelated top-level page.
@@ -380,6 +384,8 @@ function App() {
           <Route path="/projects/hackathon-oct-26/version-3/*" element={<HackathonVersion3 />} />
           {/* Version 4: starts as a copy of Version 3. */}
           <Route path="/projects/hackathon-oct-26/version-4/*" element={<HackathonVersion4 />} />
+          {/* Version 5: Version 4 in German ("Arbeitsbereich" for workspace). */}
+          <Route path="/projects/hackathon-oct-26/version-5/*" element={<HackathonVersion5 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

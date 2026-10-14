@@ -77,6 +77,7 @@ import {
   type MetadataDocument,
   type OutgoingAttachment,
   type Space,
+  type UiLang,
 } from './shared'
 
 type DetailView = 'landing' | 'chat' | 'docPreview'
@@ -506,7 +507,7 @@ type PendingAttachment = { id: string; name: string; format: FileFormat; status:
   | { kind: 'doc'; doc: MetadataDocument; source: DocSource }
 )
 
-export function MessageComposer({ value, onChange, onSend, placeholder, autoSize, seedAttachments, onSeedAttachmentsConsumed, hideActions }: {
+export function MessageComposer({ value, onChange, onSend, placeholder, autoSize, seedAttachments, onSeedAttachmentsConsumed, hideActions, lang = 'en' }: {
   value: string
   onChange: (value: string) => void
   onSend: (attachments: OutgoingAttachment[]) => void
@@ -517,7 +518,10 @@ export function MessageComposer({ value, onChange, onSend, placeholder, autoSize
   // Hides the "Add document" / "Prompt templates" row — used where the field is just a quick
   // way in (e.g. Home's ask bar), not the full composer surface Workspaces/CoPilot render.
   hideActions?: boolean
+  // German button labels, for Hackathon Oct '26 Version 5.
+  lang?: UiLang
 }) {
+  const de = lang === 'de'
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textAreaRef = useRef<HTMLTextAreaElement>(null)
@@ -621,7 +625,7 @@ export function MessageComposer({ value, onChange, onSend, placeholder, autoSize
             </div>
           ))}
           {attachments.length > 1 && (
-            <ButtonGhost leftIcon={iconType.CrossOutlined} onClick={() => setAttachments([])}>Remove all</ButtonGhost>
+            <ButtonGhost leftIcon={iconType.CrossOutlined} onClick={() => setAttachments([])}>{de ? 'Alle entfernen' : 'Remove all'}</ButtonGhost>
           )}
         </div>
       )}
@@ -637,13 +641,13 @@ export function MessageComposer({ value, onChange, onSend, placeholder, autoSize
       />
       {!hideActions && (
         <div style={{ position: 'absolute', left: spacing(2), bottom: spacing(2), display: 'flex', gap: spacing(2) }}>
-          <ButtonTertiary leftIcon={iconType.PlusOutlined} onClick={() => fileInputRef.current?.click()}>Add document</ButtonTertiary>
+          <ButtonTertiary leftIcon={iconType.PlusOutlined} onClick={() => fileInputRef.current?.click()}>{de ? 'Dokument hinzufügen' : 'Add document'}</ButtonTertiary>
           <Dropdown
             items={PROMPT_TEMPLATES.map((t, i) => ({ key: String(i), label: t, onClick: () => onChange(t) }))}
             trigger={dropdownTriggers.CLICK}
             placement={dropdownPlacement.TOP_LEFT}
           >
-            <ButtonTertiary leftIcon={iconType.NoteOutlined}>Prompt templates</ButtonTertiary>
+            <ButtonTertiary leftIcon={iconType.NoteOutlined}>{de ? 'Prompt-Vorlagen' : 'Prompt templates'}</ButtonTertiary>
           </Dropdown>
         </div>
       )}

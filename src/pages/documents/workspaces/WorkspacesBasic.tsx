@@ -58,6 +58,7 @@ import {
   type DocSource,
   type MetadataDocument,
   type Space,
+  type UiLang,
 } from './shared'
 import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
 
@@ -847,12 +848,15 @@ function BasicDocumentPreview({ space, doc, originalDoc, docIndex, source, summa
  * local files, plus one row per connector actually present in this space's
  * table, so the user can see where else they could pull documents from.
  */
-export function BasicUploadModal({ open, connectors, onClose, onUpload }: {
+export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en' }: {
   open: boolean
   connectors: Connector[]
   onClose: () => void
   onUpload: (docs: MetadataDocument[]) => void
+  // German labels, for Hackathon Oct '26 Version 5.
+  lang?: UiLang
 }) {
+  const de = lang === 'de'
   const [queuedFiles, setQueuedFiles] = useState<File[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -871,17 +875,17 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload }: {
   return (
     <Modal
       visible={open}
-      title="Upload or Sync Document"
+      title={de ? 'Dokument hochladen oder synchronisieren' : 'Upload or Sync Document'}
       withIcon={false}
       onClose={handleClose}
       maxWidth={600}
       footer={queuedFiles.length > 0 ? { buttons: [
-        { variant: buttonVariants.GHOST, props: { children: 'Cancel', onClick: handleClose } },
-        { variant: buttonVariants.PRIMARY, props: { children: `Upload ${queuedFiles.length} file${queuedFiles.length !== 1 ? 's' : ''}`, onClick: handleUpload } },
+        { variant: buttonVariants.GHOST, props: { children: de ? 'Abbrechen' : 'Cancel', onClick: handleClose } },
+        { variant: buttonVariants.PRIMARY, props: { children: de ? `${queuedFiles.length} ${queuedFiles.length !== 1 ? 'Dateien' : 'Datei'} hochladen` : `Upload ${queuedFiles.length} file${queuedFiles.length !== 1 ? 's' : ''}`, onClick: handleUpload } },
       ]} : undefined}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
-        <Typography size="base" color="neutral-darken5">Choose where to upload your document from.</Typography>
+        <Typography size="base" color="neutral-darken5">{de ? 'Wählen Sie, woher Sie Ihr Dokument hochladen möchten.' : 'Choose where to upload your document from.'}</Typography>
 
         <div
           onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
@@ -916,14 +920,14 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload }: {
 
         {connectors.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
-            <Typography size="base-sm" color="neutral-darken5" weight={fontWeight.SEMIBOLD} uppercase>Connected apps</Typography>
+            <Typography size="base-sm" color="neutral-darken5" weight={fontWeight.SEMIBOLD} uppercase>{de ? 'Verbundene Apps' : 'Connected apps'}</Typography>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {connectors.map(c => (
                 <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: spacing(3), border: '1px solid #e5e7eb', borderRadius: 8, padding: spacing(3) }}>
                   {connectorIcon(c.type, 28, c.label)}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{c.label}</Typography>
-                    <Typography size="base-sm" color="neutral-darken5">Connect to sync documents from external sources.</Typography>
+                    <Typography size="base-sm" color="neutral-darken5">{de ? 'Verbinden, um Dokumente aus externen Quellen zu synchronisieren.' : 'Connect to sync documents from external sources.'}</Typography>
                   </div>
                   <Icon type={iconType.ChevronRightOutlined} size={16} color="neutral-darken2" />
                 </div>
@@ -934,7 +938,9 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload }: {
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(2), marginBottom: spacing(2) }}>
           <Icon type={iconType.LockOutlined} size={16} color="neutral-darken2" />
-          <Typography size="base-sm" color="neutral-darken2">Browse and sync documents from your apps. We never modify files without your permission. We never store your credentials.</Typography>
+          <Typography size="base-sm" color="neutral-darken2">{de
+            ? 'Durchsuchen und synchronisieren Sie Dokumente aus Ihren Apps. Wir ändern Dateien nie ohne Ihre Erlaubnis und speichern niemals Ihre Zugangsdaten.'
+            : 'Browse and sync documents from your apps. We never modify files without your permission. We never store your credentials.'}</Typography>
         </div>
       </div>
     </Modal>
