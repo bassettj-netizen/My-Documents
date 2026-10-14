@@ -34,6 +34,7 @@ import {
   Spinner,
   Table,
   TextArea,
+  Toggle,
   toastPlacements,
   Tooltip,
   tooltipPlacements,
@@ -664,11 +665,16 @@ export function SpaceAvatar({ space, size = 36 }: { space: Space; size?: number 
 }
 
 /** Public/private badge shown next to a space's name — private spaces get a lock, public spaces a globe. */
-export function VisibilityIcon({ space, size = 16 }: { space: Space; size?: number }) {
+export function VisibilityIcon({ space, size = 16, organisationAccess = false }: {
+  space: Space
+  size?: number
+  // Calls non-private access "Organisation" instead of "Public".
+  organisationAccess?: boolean
+}) {
   if (space.id === MY_DOCS_SPACE_ID) return null
   const isPrivate = space.visibility === 'private'
   return (
-    <Tooltip title={isPrivate ? 'Private' : 'Public'} placement={tooltipPlacements.TOP}>
+    <Tooltip title={isPrivate ? 'Private' : organisationAccess ? 'Organisation' : 'Public'} placement={tooltipPlacements.TOP}>
       <div style={{ display: 'flex' }}>
         <Icon type={isPrivate ? iconType.LockOutlined : iconType.CompanyOutlined} size={size as never} color="neutral-darken2" />
       </div>
@@ -810,18 +816,23 @@ function AvatarPicker({ avatarUrl, name, onChange }: { avatarUrl?: string; name:
   )
 }
 
-export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace' }: {
+export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace', showPhotoUpload = true, showType = true, organisationAccess = false }: {
   open: boolean
   mode: 'create' | 'edit'
   initialValues?: SpaceFormValues
   onClose: () => void
   onSubmit: (values: SpaceFormValues) => void
   noun?: 'Workspace' | 'Space'
+  showPhotoUpload?: boolean
+  showType?: boolean
+  // Access becomes a Private / Organisation toggle, private by default, instead of the Public / Private select.
+  organisationAccess?: boolean
 }) {
-  const [values, setValues] = useState<SpaceFormValues>(EMPTY_SPACE_FORM)
+  const emptyForm: SpaceFormValues = organisationAccess ? { ...EMPTY_SPACE_FORM, visibility: 'private' } : EMPTY_SPACE_FORM
+  const [values, setValues] = useState<SpaceFormValues>(emptyForm)
 
   useEffect(() => {
-    if (open) setValues(mode === 'edit' && initialValues ? initialValues : EMPTY_SPACE_FORM)
+    if (open) setValues(mode === 'edit' && initialValues ? initialValues : emptyForm)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
@@ -837,18 +848,20 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
           variant: buttonVariants.PRIMARY,
           props: {
             children: 'Save',
-            disabled: !values.name.trim() || !values.type,
+            disabled: !values.name.trim() || (showType && !values.type),
             onClick: () => onSubmit({ ...values, name: values.name.trim(), description: values.description.trim() }),
           },
         },
       ]}}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
-        <AvatarPicker
-          avatarUrl={values.avatarUrl}
-          name={values.name}
-          onChange={avatarUrl => setValues(v => ({ ...v, avatarUrl }))}
-        />
+        {showPhotoUpload && (
+          <AvatarPicker
+            avatarUrl={values.avatarUrl}
+            name={values.name}
+            onChange={avatarUrl => setValues(v => ({ ...v, avatarUrl }))}
+          />
+        )}
         <Input
           label="Name" isRequired
           value={values.name}
@@ -864,20 +877,35 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
           placeholder="Describe the purpose of this workspace"
           onChange={e => setValues(v => ({ ...v, description: e.target.value }))}
         />
-        <Select
-          label="Type" isRequired
-          value={values.type || undefined}
-          placeholder="Select how the workspace will be used"
-          options={SPACE_TYPE_OPTIONS}
-          onChange={v => setValues(prev => ({ ...prev, type: v as string }))}
-        />
-        <Select
-          label="Access"
-          value={values.visibility}
-          options={ACCESS_OPTIONS}
-          helper="Private = Only you have access, Public = Others have access."
-          onChange={v => setValues(prev => ({ ...prev, visibility: v as SpaceVisibility }))}
-        />
+        {showType && (
+          <Select
+            label="Type" isRequired
+            value={values.type || undefined}
+            placeholder="Select how the workspace will be used"
+            options={SPACE_TYPE_OPTIONS}
+            onChange={v => setValues(prev => ({ ...prev, type: v as string }))}
+          />
+        )}
+        {organisationAccess ? (
+          <Toggle
+            label="Access"
+            checked={values.visibility === 'private'}
+            helper={values.visibility === 'private'
+              ? 'Only you have access. Switch off to share with your organisation.'
+              : 'Organisation — everyone in your organisation has access.'}
+            onChange={checked => setValues(prev => ({ ...prev, visibility: checked ? 'private' : 'public' }))}
+          >
+            Private
+          </Toggle>
+        ) : (
+          <Select
+            label="Access"
+            value={values.visibility}
+            options={ACCESS_OPTIONS}
+            helper="Private = Only you have access, Public = Others have access."
+            onChange={v => setValues(prev => ({ ...prev, visibility: v as SpaceVisibility }))}
+          />
+        )}
       </div>
     </Modal>
   )
@@ -1003,13 +1031,14 @@ function UploadModal({ open, onClose, onUpload }: {
 
 // ─── Space card + Spaces list view ───────────────────────────────────────────
 
-function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete }: {
+function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess }: {
   space: Space
   docs: MetadataDocument[]
   lastUpload: string
   onClick: () => void
   onRequestEdit: (id: string) => void
   onRequestDelete: (id: string) => void
+  organisationAccess?: boolean
 }) {
   const [hovered, setHovered] = useState(false)
   const isMyDocs = space.id === MY_DOCS_SPACE_ID
@@ -1057,7 +1086,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Typography size="base" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{space.name}</Typography>
-          <VisibilityIcon space={space} />
+          <VisibilityIcon space={space} organisationAccess={organisationAccess} />
         </div>
         <Typography size="base-sm" color="neutral-darken2" maxLines={2}>{space.description}</Typography>
       </div>
@@ -1073,7 +1102,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   )
 }
 
-export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace' }: {
+export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   onOpenSpace: (id: string) => void
@@ -1083,6 +1112,12 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   showTitleIcon?: boolean
   // Lets a version call these "Spaces" instead of "Workspaces" without forking this view.
   noun?: 'Workspace' | 'Space'
+  // Replaces the built-in "No spaces yet" block; gets a callback that opens the create dialog.
+  renderEmptyState?: (openCreate: () => void) => ReactNode
+  // Passed to the create and edit dialogs.
+  showPhotoUpload?: boolean
+  showType?: boolean
+  organisationAccess?: boolean
 }) {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editSpaceId, setEditSpaceId] = useState<string | null>(null)
@@ -1104,7 +1139,9 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
         <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateModalOpen(true)}>{noun}</ButtonSecondary>
       </div>
 
-      {spaces.length === 0 ? (
+      {spaces.length === 0 && renderEmptyState ? (
+        renderEmptyState(() => setCreateModalOpen(true))
+      ) : spaces.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(4), padding: `${spacing(12)}px 0`, color: colorPalette.neutral.darken2 }}>
           <div style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon type={iconType.FolderFilled} size={24} color="neutral-darken2" />
@@ -1128,6 +1165,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
                 onClick={() => onOpenSpace(space.id)}
                 onRequestEdit={setEditSpaceId}
                 onRequestDelete={setDeleteSpaceId}
+                organisationAccess={organisationAccess}
               />
             )
           })}
@@ -1138,6 +1176,9 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
         open={createModalOpen}
         mode="create"
         noun={noun}
+        showPhotoUpload={showPhotoUpload}
+        showType={showType}
+        organisationAccess={organisationAccess}
         onClose={() => setCreateModalOpen(false)}
         onSubmit={values => { onCreateSpace(values); setCreateModalOpen(false) }}
       />
@@ -1146,6 +1187,9 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
         open={!!editTargetSpace}
         mode="edit"
         initialValues={editTargetSpace ?? undefined}
+        showPhotoUpload={showPhotoUpload}
+        showType={showType}
+        organisationAccess={organisationAccess}
         onClose={() => setEditSpaceId(null)}
         onSubmit={values => { if (editTargetSpace) onUpdateSpace(editTargetSpace.id, values); setEditSpaceId(null) }}
       />
@@ -1666,16 +1710,17 @@ export function ChatPanel({ space, docs, sessions, activeSessionId, onNewChat, o
 let msgCounter = 0
 function nextId(prefix: string) { msgCounter += 1; return `${prefix}-${Date.now()}-${msgCounter}` }
 
-export function useWorkspaceState() {
-  const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES)
+/** `initialSpaces` lets a version start with fewer (or no) workspaces; the seed data itself stays put. */
+export function useWorkspaceState(initialSpaces: Space[] = INITIAL_SPACES) {
+  const [spaces, setSpaces] = useState<Space[]>(initialSpaces)
   const [docsBySpace, setDocsBySpace] = useState<Record<string, MetadataDocument[]>>(() => {
     const map: Record<string, MetadataDocument[]> = {}
-    INITIAL_SPACES.forEach(s => { map[s.id] = seedDocsForSpace(s.id) })
+    initialSpaces.forEach(s => { map[s.id] = seedDocsForSpace(s.id) })
     return map
   })
   const [sessionsBySpace, setSessionsBySpace] = useState<Record<string, ChatSession[]>>(() => {
     const map: Record<string, ChatSession[]> = {}
-    INITIAL_SPACES.forEach(s => { map[s.id] = generateSessionsForSpace(s, docsBySpace[s.id] ?? seedDocsForSpace(s.id)) })
+    initialSpaces.forEach(s => { map[s.id] = generateSessionsForSpace(s, docsBySpace[s.id] ?? seedDocsForSpace(s.id)) })
     return map
   })
   const [activeSessionBySpace, setActiveSessionBySpace] = useState<Record<string, string | null>>({})

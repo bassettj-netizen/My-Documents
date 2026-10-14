@@ -38,6 +38,15 @@ const groups = [
     ],
   },
   {
+    title: "Hackathon Oct '26",
+    items: [
+      { label: 'Version 1', path: '/projects/hackathon-oct-26/version-1' },
+      { label: 'Version 2', path: '/projects/hackathon-oct-26/version-2' },
+      { label: 'Version 3', path: '/projects/hackathon-oct-26/version-3' },
+      { label: 'Version 4', path: '/projects/hackathon-oct-26/version-4' },
+    ],
+  },
+  {
     title: 'File Sync',
     items: [
       { label: 'Version 1', path: '/projects/file-sync/version-1' },

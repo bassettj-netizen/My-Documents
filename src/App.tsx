@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
+  Avatar,
   avatarSizeEnum,
   constants,
   HaufeLogo,
@@ -38,6 +39,10 @@ import MetadataVersion15 from './pages/documents/metadata/Version15'
 import MetadataVersion16 from './pages/documents/metadata/Version16'
 import MetadataVersion17 from './pages/documents/metadata/Version17'
 import MetadataVersion18 from './pages/documents/metadata/Version18'
+import HackathonVersion1 from './pages/documents/hackathon/Version1'
+import HackathonVersion2 from './pages/documents/hackathon/Version2'
+import HackathonVersion3 from './pages/documents/hackathon/Version3'
+import HackathonVersion4 from './pages/documents/hackathon/Version4'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
 import FileSyncVersion3 from './pages/documents/file-sync/Version3'
@@ -141,6 +146,19 @@ function ConnectorIcon() {
   )
 }
 
+const CURRENT_USER = { name: 'Alex Mustermensch', initials: 'AM' }
+const HIDDEN_HEADER_ID = 'hidden-layout-header'
+
+// Personal Office's product logo (screenshots/Haufe-haufe-personal-office-platin.avif) — a brand mark,
+// so it's shown as-is rather than tinted like the DS icons around it.
+function PersonalOfficeIcon() {
+  return (
+    <div className="goat-menu-item-icon">
+      <img src="/hackathon/personal-office.avif" alt="" width={24} height={24} style={{ display: 'block' }} />
+    </div>
+  )
+}
+
 // CoPilot has no in-app destination — it opens in a new tab.
 const COPILOT_URL = 'https://example.com/copilot-placeholder'
 
@@ -158,6 +176,11 @@ const METADATA_V15_BASE = '/projects/metadata/cards-horizontal'
 const METADATA_V16_BASE = '/projects/metadata/preview-panel'
 const METADATA_V17_BASE = '/projects/metadata/cards-vertical'
 const METADATA_V18_BASE = '/projects/metadata/cards-grouped'
+// Hackathon Oct '26 versions start from Metadata Table, so they share the same shell.
+const HACKATHON_V1_BASE = '/projects/hackathon-oct-26/version-1'
+const HACKATHON_V2_BASE = '/projects/hackathon-oct-26/version-2'
+const HACKATHON_V3_BASE = '/projects/hackathon-oct-26/version-3'
+const HACKATHON_V4_BASE = '/projects/hackathon-oct-26/version-4'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -181,7 +204,7 @@ function AppShell() {
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -189,38 +212,62 @@ function AppShell() {
   // should stay inside of, rather than jumping out to an unrelated top-level page.
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
+  // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
+  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE].find(b => b === metadataAppBase) ?? null
+  const inHackathon = !!hackathonBase
+
   const activeKey =
+    location.pathname === `${hackathonBase}/home` ? 'home' :
+    location.pathname === `${hackathonBase}/personal-office` ? 'personal-office' :
+    location.pathname === `${hackathonBase}/copilot` ? 'copilot' :
     location.pathname === '/connectors' || location.pathname === `${WORKSPACES_NUVIO_BASE}/connectors` || location.pathname === `${WORKSPACES_BASIC_BASE}/connectors` || location.pathname === `${metadataAppBase}/connectors` ? 'connectors' :
     location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` || location.pathname === `${WORKSPACES_BASIC_BASE}/my-documents` || location.pathname === `${metadataAppBase}/my-documents` ? 'documents' :
     location.pathname.startsWith('/projects/workspaces') || (!!metadataAppBase && location.pathname.startsWith(`${metadataAppBase}/workspaces`)) ? 'workspaces' :
     location.pathname.startsWith('/projects') ? 'documents' :
     ''
 
-  const sidebarTopItems = [
-    {
-      key: 'documents',
-      label: 'My Documents',
-      icon: <Icon type={iconType.FolderFilled} />,
-      // Inside a nested-routing workspaces app (V6 or Basic), "My Documents"
-      // stays within that app's own URL space instead of jumping out to the
-      // unrelated top-level page.
-      onClick: () => navigate(inWorkspacesV6 || inWorkspacesBasic ? `${workspacesAppBase}/my-documents` : '/projects/my-documents/version-1'),
-    },
-    {
-      key: 'workspaces',
-      // Workspaces Basic calls these "Spaces" throughout, so the sidebar matches
-      // whichever nested app the user is currently inside.
-      label: inWorkspacesBasic ? 'Spaces' : 'Workspaces',
-      icon: <Icon type={iconType.ElementsFilled} />,
-      onClick: () => navigate(`${workspacesAppBase}/workspaces`),
-    },
-    {
-      key: 'copilot',
-      label: 'CoPilot',
-      icon: <CoPilotIcon />,
-      onClick: () => window.open(COPILOT_URL, '_blank', 'noopener,noreferrer'),
-    },
-  ] as unknown as SidebarItem[]
+  const homeItem = {
+    key: 'home',
+    label: 'Home',
+    icon: <Icon type={iconType.HouseFilled} />,
+    onClick: () => navigate(`${hackathonBase}/home`),
+  }
+  const personalOfficeItem = {
+    key: 'personal-office',
+    label: 'Personal Office',
+    icon: <PersonalOfficeIcon />,
+    onClick: () => navigate(`${hackathonBase}/personal-office`),
+  }
+  const documentsItem = {
+    key: 'documents',
+    label: 'My Documents',
+    icon: <Icon type={iconType.FolderFilled} />,
+    // Inside a nested-routing workspaces app (V6 or Basic), "My Documents"
+    // stays within that app's own URL space instead of jumping out to the
+    // unrelated top-level page.
+    onClick: () => navigate(inWorkspacesV6 || inWorkspacesBasic ? `${workspacesAppBase}/my-documents` : '/projects/my-documents/version-1'),
+  }
+  const workspacesItem = {
+    key: 'workspaces',
+    // Workspaces Basic calls these "Spaces" throughout, so the sidebar matches
+    // whichever nested app the user is currently inside — except Hackathon Oct '26, which says "Workspaces".
+    label: inWorkspacesBasic && !inHackathon ? 'Spaces' : 'Workspaces',
+    icon: <Icon type={iconType.ElementsFilled} />,
+    onClick: () => navigate(`${workspacesAppBase}/workspaces`),
+  }
+  const copilotItem = {
+    key: 'copilot',
+    label: 'CoPilot',
+    icon: <CoPilotIcon />,
+    // Hackathon Oct '26 has its own CoPilot page; elsewhere CoPilot opens in a new tab.
+    onClick: () => inHackathon ? navigate(`${hackathonBase}/copilot`) : window.open(COPILOT_URL, '_blank', 'noopener,noreferrer'),
+  }
+
+  // Hackathon Oct '26 has its own order, with Home and Personal Office and without My Documents.
+  const sidebarTopItems = (inHackathon
+    ? [homeItem, copilotItem, personalOfficeItem, workspacesItem]
+    : [documentsItem, workspacesItem, copilotItem]
+  ) as unknown as SidebarItem[]
 
   const sidebarBottomItems = [
     {
@@ -231,15 +278,25 @@ function AppShell() {
       // app when already there, rather than jumping out to the unrelated top-level page.
       onClick: () => navigate(inWorkspacesV6 || inWorkspacesBasic ? `${workspacesAppBase}/connectors` : '/connectors'),
     },
+    // Hackathon Oct '26 has no header, so the user's avatar sits at the foot of the sidebar instead.
+    ...(inHackathon ? [{
+      key: 'user',
+      label: CURRENT_USER.name,
+      icon: (
+        <div className="goat-menu-item-icon">
+          <Avatar srcPlaceholder={CURRENT_USER.initials} size={avatarSizeEnum.SMALL} />
+        </div>
+      ),
+    }] : []),
   ] as unknown as SidebarItem[]
 
   return (
     <Layout
-      header={{
+      header={inHackathon ? { id: HIDDEN_HEADER_ID } : {
         avatar: {
-          srcPlaceholder: 'AM',
+          srcPlaceholder: CURRENT_USER.initials,
           size: avatarSizeEnum.SMALL,
-          title: 'Alex Mustermensch',
+          title: CURRENT_USER.name,
         },
       }}
       sidebar={{
@@ -257,6 +314,8 @@ function AppShell() {
         },
       }}
     >
+      {/* The Layout always renders its header, so Hackathon Oct '26 hides it to drop the header entirely. */}
+      {inHackathon && <style>{`#${HIDDEN_HEADER_ID} { display: none; }`}</style>}
       <Outlet />
     </Layout>
   )
@@ -313,6 +372,14 @@ function App() {
           <Route path="/projects/metadata/version-17/*" element={<RenamedPath from="/projects/metadata/version-17" to="/projects/metadata/cards-vertical" />} />
           {/* Cards Grouped: Cards Horizontal restyled — date headings, file-type and source icons, path and parties lines. */}
           <Route path="/projects/metadata/cards-grouped/*" element={<MetadataVersion18 />} />
+          {/* Hackathon Oct '26: starts as a copy of Metadata Table. */}
+          <Route path="/projects/hackathon-oct-26/version-1/*" element={<HackathonVersion1 />} />
+          {/* Version 2: Version 1 with the workspace's documents, context, guardrails, bookmarks and templates on one screen. */}
+          <Route path="/projects/hackathon-oct-26/version-2/*" element={<HackathonVersion2 />} />
+          {/* Version 3: a summary page per workspace, with a page of its own for each area behind it. */}
+          <Route path="/projects/hackathon-oct-26/version-3/*" element={<HackathonVersion3 />} />
+          {/* Version 4: starts as a copy of Version 3. */}
+          <Route path="/projects/hackathon-oct-26/version-4/*" element={<HackathonVersion4 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />
