@@ -63,7 +63,7 @@ import {
   type SpaceFormValues,
 } from '../workspaces/shared'
 import { BasicUploadModal, CopilotIcon } from '../workspaces/WorkspacesBasic'
-import HackathonCoPilotPage from './CoPilotPage'
+import HackathonCoPilotPageV4 from './CoPilotPageV4'
 import HackathonHomePage from './HomePage'
 import PersonalOfficePage from './PersonalOfficePage'
 import { BookmarksTab, ContextTab, GuardrailsTab, TabEmptyState, TemplatesTab } from './WorkspaceTabs'
@@ -458,7 +458,7 @@ export default function HackathonVersion4() {
         <Route path=":workspaceSlug/documents/:docId" element={<DocumentPreviewRoute workspace={workspace} store={store} />} />
       </Route>
       <Route path="home" element={<HackathonHomePage copilotPath={`${BASE}/copilot`} />} />
-      <Route path="copilot" element={<HackathonCoPilotPage
+      <Route path="copilot" element={<HackathonCoPilotPageV4
         workspaces={workspace.spaces.map(space => workspaceReference(space, workspace, extras))}
         onCreateWorkspace={workspace.createSpace}
       />} />
