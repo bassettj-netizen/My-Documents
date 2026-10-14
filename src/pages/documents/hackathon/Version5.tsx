@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import MyDocumentsV1 from '../my-documents/Version1'
-import ConnectionsPage from '../../connections/ConnectionsPage'
+import ConnectionsPageV5 from './ConnectionsPageV5'
 import {
   ButtonDanger,
   ButtonGhost,
@@ -478,7 +478,7 @@ export default function HackathonVersion5() {
       />} />
       <Route path="personal-office" element={<PersonalOfficePage copilotPath={`${BASE}/copilot`} />} />
       <Route path="my-documents" element={<MyDocumentsV1 showTitleIcon={false} />} />
-      <Route path="connectors" element={<ConnectionsPage />} />
+      <Route path="connectors" element={<ConnectionsPageV5 />} />
       <Route path="*" element={<Navigate to="workspaces" replace />} />
     </Routes>
   )
