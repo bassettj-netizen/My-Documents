@@ -24,7 +24,7 @@ import { colorPalette, spacing } from '../workspaces/shared'
 
 const FIRST_NAME = 'Alex'
 const SUGGESTIONS = ['Entgelttransparenz erklären', 'Kündigung rechtssicher prüfen', 'Arbeitszeugnis erstellen']
-const PAGE_BACKGROUND = '#F4F7FD'
+const PAGE_BACKGROUND = colorPalette.neutral.lighten5
 
 type Mode = 'chat' | 'work'
 

@@ -49,8 +49,8 @@ export function TabEmptyState({ icon, title, text, action }: { icon: ReactNode; 
         {icon}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1), maxWidth: 440 }}>
-        <Typography size="base" weight="semibold" color="neutral-darken5">{title}</Typography>
-        <Typography size="base-sm" color="neutral-darken2">{text}</Typography>
+        <Typography size="base" weight="semibold" color="neutral-darken5" align="center">{title}</Typography>
+        <Typography size="base-sm" color="neutral-darken2" align="center">{text}</Typography>
       </div>
       {action}
     </div>

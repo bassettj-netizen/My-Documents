@@ -42,6 +42,7 @@ import {
 import {
   colorPalette,
   computeDocSourceMap,
+  localFileToDoc,
   PAGE_SIZE,
   Skeleton,
   skeletonVariants,
@@ -56,6 +57,7 @@ import {
   useSidebarWidth,
   useWorkspaceState,
   VisibilityIcon,
+  type Connector,
   type DocSource,
   type MetadataDocument,
   type Space,
@@ -109,6 +111,8 @@ import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
  */
 
 const BASE = '/projects/hackathon-oct-26/version-5'
+// Main content areas sit on the theme's neutral-lighten5; menus and sidebars stay white.
+const CONTENT_BG = colorPalette.neutral.lighten5
 
 /** Same slug rule as Workspaces Basic, plus umlauts spelled out so German names keep readable URLs. */
 function slugify(name: string): string {
@@ -470,6 +474,7 @@ export default function HackathonVersion5() {
       <Route path="copilot" element={<HackathonCoPilotPageV5
         workspaces={workspace.spaces.map(space => workspaceReference(space, workspace, extras))}
         onCreateWorkspace={workspace.createSpace}
+        onSaveDocuments={(id, files) => workspace.addDocsToSpace(id, files.map(localFileToDoc))}
       />} />
       <Route path="personal-office" element={<PersonalOfficePage copilotPath={`${BASE}/copilot`} />} />
       <Route path="my-documents" element={<MyDocumentsV1 showTitleIcon={false} />} />
@@ -496,6 +501,7 @@ function SpacesListRoute({ workspace }: { workspace: WorkspaceState }) {
       showTitleIcon={false}
       noun="Workspace"
       lang="de"
+      background={CONTENT_BG}
       renderEmptyState={openCreate => <WorkspacesEmptyState onCreate={openCreate} />}
       showPhotoUpload={false}
       showType={false}
@@ -510,8 +516,8 @@ function WorkspacesEmptyState({ onCreate }: { onCreate: () => void }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(8), padding: `${spacing(10)}px 0` }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), maxWidth: 480, textAlign: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-          <Typography size="heading-sm" weight="bold" color="neutral-darken5">Noch keine Arbeitsbereiche</Typography>
-          <Typography size="base" color="neutral-darken2">
+          <Typography size="heading-sm" weight="bold" color="neutral-darken5" align="center">Noch keine Arbeitsbereiche</Typography>
+          <Typography size="base" color="neutral-darken2" align="center">
             Ein Arbeitsbereich gibt Ihrer KI den nötigen Kontext. Legen Sie einen für einen Mandanten, eine Abteilung oder ein Projekt an – alles, was Sie darin fragen oder tun, stützt sich dann auf die richtigen Informationen.
           </Typography>
         </div>
@@ -1220,7 +1226,7 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
   ]
 
   return (
-    <div style={{ padding: `${spacing(6)}px ${spacing(10)}px`, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: colorPalette.white, height: '100%', overflow: 'hidden' }}>
+    <div style={{ padding: `${spacing(6)}px ${spacing(10)}px`, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: CONTENT_BG, height: '100%', overflow: 'hidden' }}>
       <style>{TABLE_CSS}</style>
       {area === 'summary' ? (
         <WorkspaceHero
@@ -1401,7 +1407,8 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
       <BasicUploadModal
         lang="de"
         open={uploadOpen}
-        connectors={presentConnectors}
+        // New workspaces have no connected apps yet, so offer the ones Acme Corp has in Metadata Table.
+        connectors={presentConnectors.length > 0 ? presentConnectors : PRESET_CONNECTORS}
         onClose={() => setUploadOpen(false)}
         onUpload={newDocs => {
           onDocsChange([...newDocs, ...docs])
@@ -1463,6 +1470,11 @@ function WorkspaceHero({ space, onBack, onEdit, onDelete }: {
   )
 }
 
+const PRESET_CONNECTORS: Connector[] = [
+  { id: 'preset-sharepoint', type: 'sharepoint', label: 'SharePoint' },
+  { id: 'preset-google-drive', type: 'google-drive', label: 'Google Drive' },
+]
+
 const NONE_YET = 'Noch nichts'
 
 /** The workspace's areas as plain rows inside the Your knowledge card: name, what's in it, and a way in. */
@@ -1486,7 +1498,7 @@ function KnowledgeList({ space, docs, extras, onOpen }: {
   if (filled.length === 0) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: spacing(6), borderRadius: 8, border: `1px dashed ${colorPalette.neutral.lighten1}`, textAlign: 'center' }}>
-        <Typography size="base-sm" color="neutral-darken2">Noch nichts hinzugefügt. Über „Eigene Inhalte hinzufügen“ bringen Sie Ihre ersten Dokumente oder Anweisungen ein.</Typography>
+        <Typography size="base-sm" color="neutral-darken2" align="center">Noch nichts hinzugefügt. Über „Eigene Inhalte hinzufügen“ bringen Sie Ihre ersten Dokumente oder Anweisungen ein.</Typography>
       </div>
     )
   }

@@ -1114,7 +1114,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   )
 }
 
-export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en' }: {
+export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en', background = colorPalette.white }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   onOpenSpace: (id: string) => void
@@ -1132,6 +1132,8 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   organisationAccess?: boolean
   // German title, buttons and dialogs ("Arbeitsbereich").
   lang?: UiLang
+  // Page background behind the cards.
+  background?: string
 }) {
   const de = lang === 'de'
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -1141,7 +1143,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   const deleteTargetSpace = spaces.find(s => s.id === deleteSpaceId) ?? null
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: colorPalette.white, minHeight: '100%' }}>
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: background, minHeight: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
           {showTitleIcon && (

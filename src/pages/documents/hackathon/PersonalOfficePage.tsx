@@ -43,7 +43,7 @@ const NAV_ITEMS: { label: string; icon: string }[] = [
   { label: 'Onlinetraining & Videos', icon: iconType.VideoOutlined },
 ]
 
-const PAGE_BG = '#F5F7FC'
+const PAGE_BG = colorPalette.neutral.lighten5
 const HEADER_BG = '#E4E8F7'
 const NAVY = '#001344'
 
