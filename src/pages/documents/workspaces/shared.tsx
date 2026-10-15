@@ -1114,7 +1114,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   )
 }
 
-export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en', background = colorPalette.white }: {
+export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en', background = colorPalette.white, description }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   onOpenSpace: (id: string) => void
@@ -1134,6 +1134,8 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   lang?: UiLang
   // Page background behind the cards.
   background?: string
+  // A line under the title on what workspaces are and why they help.
+  description?: ReactNode
 }) {
   const de = lang === 'de'
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -1144,14 +1146,21 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
 
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: background, minHeight: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
-          {showTitleIcon && (
-            <div style={{ color: '#141F29', display: 'flex' }}>
-              <Icon type={iconType.ElementsOutlined} size={32} color="inherit" />
+      <div style={{ display: 'flex', alignItems: description ? 'flex-start' : 'center', justifyContent: 'space-between', gap: spacing(6) }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1), minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
+            {showTitleIcon && (
+              <div style={{ color: '#141F29', display: 'flex' }}>
+                <Icon type={iconType.ElementsOutlined} size={32} color="inherit" />
+              </div>
+            )}
+            <Typography size="heading-lg" weight="bold">{de ? 'Arbeitsbereiche' : `${noun}s`}</Typography>
+          </div>
+          {description && (
+            <div style={{ maxWidth: 720 }}>
+              <Typography size="base" color="neutral-darken2">{description}</Typography>
             </div>
           )}
-          <Typography size="heading-lg" weight="bold">{de ? 'Arbeitsbereiche' : `${noun}s`}</Typography>
         </div>
         <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateModalOpen(true)}>{de ? 'Arbeitsbereich' : noun}</ButtonSecondary>
       </div>
