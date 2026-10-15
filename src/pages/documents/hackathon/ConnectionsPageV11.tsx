@@ -281,14 +281,15 @@ export default function ConnectionsPageV11() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: colorPalette.neutral.lighten5 }}>
-      <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(1), padding: `${spacing(6)}px ${spacing(10)}px 0` }}>
+      {/* Same margins and description size as the Workspaces list. */}
+      <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(1), padding: `${spacing(6)}px ${spacing(6)}px 0` }}>
         <Typography size="heading-lg" weight={fontWeight.BOLD}>Konnektoren</Typography>
-        <Typography size="base-sm" color="neutral-darken2">
+        <Typography size="base" color="neutral-darken2">
           Verwalten Sie externe Apps, die mit Arbeitsbereichen verbunden sind. Änderungen hier betreffen alle, die Zugriff auf diese Arbeitsbereiche haben.
         </Typography>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', gap: spacing(4), padding: `${spacing(6)}px ${spacing(10)}px` }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', gap: spacing(4), padding: spacing(6) }}>
         {/* Connector types, in their own white container like a sub-menu. */}
         <div style={{ ...PANEL, width: 300, flexShrink: 0, padding: spacing(2), display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
           <div style={{ padding: `${spacing(2)}px ${spacing(3)}px` }}>
