@@ -23,7 +23,7 @@ import { MessageComposer } from '../workspaces/Version6'
 import { CoPilotMark } from '../workspaces/CoPilotPage'
 import type { WorkspaceReference } from './workspaceModel'
 import { useProcessingUpload } from './uploadToasts'
-import { AnswerBody, SourceChips, SourcesPanel, type SourceFilter } from './AnswerSources'
+import { AnswerBody, SourceChips, SourcesPanel, SourcesPanelSlot, type SourceFilter } from './AnswerSources'
 import { buildSources, placeMarkers, type AnswerSource } from './sourceData'
 
 /**
@@ -697,6 +697,7 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
 
       {/* The sources panel takes the summary's place while it's open. */}
       {panelSources && sourcesView ? (
+        <SourcesPanelSlot>
         <SourcesPanel
           key={`${sourcesView.messageId}-${sourcesView.opened}`}
           sources={panelSources}
@@ -706,6 +707,7 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
           onFilter={filter => setSourcesView(prev => prev && { ...prev, filter })}
           onClose={() => setSourcesView(null)}
         />
+        </SourcesPanelSlot>
       ) : attached && <WorkspaceSummary workspace={attached} />}
 
       {/* Same dialog as on the Workspaces page; the new workspace becomes the current one. */}

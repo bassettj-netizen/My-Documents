@@ -117,6 +117,28 @@ function SourceChip({ kind, label, count, active, onClick }: { kind: AnswerSourc
 
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
+const PANEL_WIDTH = 360
+
+/**
+ * Slides the panel in from the right: its slot grows from nothing to the panel's width (so the chat
+ * narrows smoothly) while the panel moves in. It stays mounted while the panel is open, so switching to
+ * another source inside the open panel doesn't slide it in again.
+ */
+export function SourcesPanelSlot({ children }: { children: ReactNode }) {
+  return (
+    <div className="sources-slot" style={{ width: PANEL_WIDTH, flexShrink: 0, height: '100%', overflow: 'hidden' }}>
+      <style>{`
+        .sources-slot { animation: sources-grow .28s cubic-bezier(.2, .8, .2, 1); }
+        .sources-slot > div { animation: sources-slide .28s cubic-bezier(.2, .8, .2, 1); }
+        @keyframes sources-grow { from { width: 0 } to { width: ${PANEL_WIDTH}px } }
+        @keyframes sources-slide { from { transform: translateX(40%); opacity: .4 } to { transform: none; opacity: 1 } }
+        @media (prefers-reduced-motion: reduce) { .sources-slot, .sources-slot > div { animation: none } }
+      `}</style>
+      {children}
+    </div>
+  )
+}
+
 /** The sources of one answer, docked on the right: filters, then an accordion of [n] title → passage. */
 export function SourcesPanel({ sources, lang, focus, filter, onFilter, onClose }: {
   sources: AnswerSource[]
@@ -138,7 +160,7 @@ export function SourcesPanel({ sources, lang, focus, filter, onFilter, onClose }
 
   return (
     <div style={{
-      width: 360, flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column',
+      width: PANEL_WIDTH, flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column',
       backgroundColor: colorPalette.white, borderLeft: `1px solid ${colorPalette.neutral.lighten1}`,
     }}>
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: spacing(2), padding: `${spacing(5)}px ${spacing(5)}px ${spacing(4)}px`, borderBottom: `1px solid ${colorPalette.neutral.lighten2}` }}>
