@@ -510,11 +510,11 @@ function WorkspacesEmptyState({ onCreate }: { onCreate: () => void }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(8), padding: `${spacing(10)}px 0` }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), maxWidth: 480, textAlign: 'center' }}>
         {/* Illustration from the My Documents Figma (node 5116:93493). */}
-        <img src="/hackathon/workspace-empty-state.svg" alt="" width={160} height={160} style={{ display: 'block' }} />
+        <img src="/hackathon/workspace-empty-state.svg" alt="" width={128} height={128} style={{ display: 'block' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-          <Typography size="heading-sm" weight="bold" color="neutral-darken5" align="center">No workspaces yet</Typography>
+          <Typography size="heading-sm" weight="bold" color="neutral-darken5" align="center">Create your first workspace</Typography>
           <Typography size="base" color="neutral-darken2" align="center">
-            A workspace gives your AI the context it needs. Create one for a client, a department, or a project, and everything you ask or do within it stays grounded in the right information.
+            A workspace gives CoPilot the context it needs. Create one for a client, a department, or a project, and everything you ask or do within it stays grounded in the right information.
           </Typography>
         </div>
         <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={onCreate}>Create workspace</ButtonPrimary>

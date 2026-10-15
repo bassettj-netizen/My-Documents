@@ -520,11 +520,11 @@ function WorkspacesEmptyState({ onCreate }: { onCreate: () => void }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(8), padding: `${spacing(10)}px 0` }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), maxWidth: 480, textAlign: 'center' }}>
         {/* Illustration from the My Documents Figma (node 5116:93493). */}
-        <img src="/hackathon/workspace-empty-state.svg" alt="" width={160} height={160} style={{ display: 'block' }} />
+        <img src="/hackathon/workspace-empty-state.svg" alt="" width={128} height={128} style={{ display: 'block' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-          <Typography size="heading-sm" weight="bold" color="neutral-darken5" align="center">Noch keine Arbeitsbereiche</Typography>
+          <Typography size="heading-sm" weight="bold" color="neutral-darken5" align="center">Erstellen Sie Ihren ersten Arbeitsbereich</Typography>
           <Typography size="base" color="neutral-darken2" align="center">
-            Ein Arbeitsbereich gibt Ihrer KI den nötigen Kontext. Legen Sie einen für einen Mandanten, eine Abteilung oder ein Projekt an – alles, was Sie darin fragen oder tun, stützt sich dann auf die richtigen Informationen.
+            Ein Arbeitsbereich gibt CoPilot den nötigen Kontext. Legen Sie einen für einen Mandanten, eine Abteilung oder ein Projekt an – alles, was Sie darin fragen oder tun, stützt sich dann auf die richtigen Informationen.
           </Typography>
         </div>
         <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={onCreate}>Arbeitsbereich erstellen</ButtonPrimary>
