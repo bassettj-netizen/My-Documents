@@ -3,7 +3,7 @@
  * rest of Version 5 — the page on neutral-lighten5, the connector types in a white container on the
  * left, and the selected type's accounts (or its set-up prompt) in a white container on the right.
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Banner,
   bannerStyles,
@@ -132,11 +132,6 @@ function SetUpConnectorModal({ visible, connector, onClose, onVerified }: {
   const [bannerError, setBannerError] = useState(false)
   const [verifying, setVerifying] = useState(false)
 
-  useEffect(() => {
-    if (visible) return
-    setName(''); setClientId(''); setTenantId(''); setDomain(''); setClientSecret('')
-    setFieldErrors({}); setBannerError(false); setVerifying(false)
-  }, [visible])
 
   const canVerify = [name, clientId, tenantId, domain, clientSecret].every(v => v.trim() !== '')
 
@@ -378,7 +373,9 @@ export default function ConnectionsPageV5() {
         </div>
       </div>
 
+      {/* Remounted on each open so the form always starts empty. */}
       <SetUpConnectorModal
+        key={modalOpen ? 'open' : 'closed'}
         visible={modalOpen}
         connector={selected}
         onClose={() => setModalOpen(false)}

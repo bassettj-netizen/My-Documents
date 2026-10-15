@@ -12,6 +12,8 @@ import {
   searchbarWidth,
   Select,
   Typography,
+  toastPlacements,
+  useNotifications,
 } from '@goat-ui/goat-ui-core'
 import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
 import { MessageComposer } from '../workspaces/Version6'
@@ -189,23 +191,6 @@ function ChatBubbleAssistant({ message }: { message: ChatMsg }) {
   )
 }
 
-/** The workspace a chat answers from: name plus what it hands CoPilot. */
-function WorkspaceChip({ workspace }: { workspace: WorkspaceReference }) {
-  return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: spacing(2), alignSelf: 'flex-start', maxWidth: '100%',
-      padding: `${spacing(1)}px ${spacing(3)}px`,
-      borderRadius: 8, backgroundColor: colorPalette.blue.lighten5, border: `1px solid ${colorPalette.blue.lighten3}`,
-    }}>
-      <Icon type={iconType.ElementsOutlined} size={16} color="blue-darken1" />
-      <span style={{ fontSize: 14, color: colorPalette.neutral.darken5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        <strong>{workspace.name}</strong>
-        <span style={{ color: colorPalette.neutral.darken2 }}> · {workspaceSummary(workspace)}</span>
-      </span>
-    </div>
-  )
-}
-
 /** The "@query" being typed at the end of the field, if any — the @ must start the field or follow a space. */
 function mentionQuery(text: string): string | null {
   const match = /(?:^|\s)@([^@\n]{0,40})$/.exec(text)
@@ -301,11 +286,25 @@ function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }: {
+export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, onSaveDocuments }: {
   workspaces: WorkspaceReference[]
   // "Create workspace" at the foot of the workspace dropdown; returns the new workspace's id.
   onCreateWorkspace: (values: SpaceFormValues) => string
+  // Files sent with a question while in a workspace are saved to that workspace's documents.
+  onSaveDocuments: (workspaceId: string, files: File[]) => void
 }) {
+  const { notification } = useNotifications()
+  /** Saves the files sent with a message to the chat's workspace — only once the message has gone. */
+  const saveToWorkspace = (ws: WorkspaceReference | null | undefined, attachments: OutgoingAttachment[]) => {
+    const files = attachments.flatMap(a => a.kind === 'file' ? [a.file] : [])
+    if (!ws || files.length === 0) return
+    onSaveDocuments(ws.id, files)
+    notification.success({
+      title: files.length === 1 ? `"${files[0].name}" saved to ${ws.name}` : `${files.length} documents saved to ${ws.name}`,
+      placement: toastPlacements.BOTTOM_LEFT,
+      duration: 3,
+    })
+  }
   const location = useLocation()
   const navigate = useNavigate()
   const [panelOpen, setPanelOpen] = useState(true)
@@ -360,6 +359,7 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }
     const title = text.length > 60 ? `${text.slice(0, 60)}…` : text || 'New chat'
     const ws = attached ?? undefined
     setSessions(prev => [{ id, day: 'Today', title, workspace: ws, messages: reply(text, attachments, ws) }, ...prev])
+    saveToWorkspace(ws, attachments)
     setActiveId(id)
     setQuestion('')
   }
@@ -374,6 +374,7 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }
     if (!activeSession) return
     const text = question.trim()
     setSessions(prev => prev.map(s => s.id !== activeSession.id ? s : { ...s, messages: [...s.messages, ...reply(text, attachments, s.workspace)] }))
+    saveToWorkspace(activeSession.workspace, attachments)
     setQuestion('')
   }
 
@@ -386,10 +387,11 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }
   )
 
   return (
-    <div style={{ display: 'flex', height: '100%', backgroundColor: colorPalette.white }}>
+    // Main area on the theme's neutral-lighten5; the chat panel (a menu) stays white.
+    <div style={{ display: 'flex', height: '100%', backgroundColor: colorPalette.neutral.lighten5 }}>
       {panelOpen && (
         <div style={{
-          width: 268, flexShrink: 0, borderRight: `1px solid ${colorPalette.neutral.lighten1}`,
+          width: 268, flexShrink: 0, borderRight: `1px solid ${colorPalette.neutral.lighten1}`, backgroundColor: colorPalette.white,
           display: 'flex', flexDirection: 'column', padding: `${spacing(4)}px ${spacing(4)}px`, gap: spacing(5), overflowY: 'auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
@@ -399,6 +401,9 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
             <SectionLabel>Workspace</SectionLabel>
+            {/* The DS Select has no borderless option, so the outline is removed for this one dropdown. */}
+            <style>{`.copilot-workspace-select .goat-select-selector { border-color: transparent !important; box-shadow: none !important; padding-left: ${spacing(2)}px !important; }`}</style>
+            <div className="copilot-workspace-select">
             <Select
               value={workspaceId}
               options={[
@@ -416,6 +421,7 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }
               ]}
               onChange={v => v === CREATE_WORKSPACE ? setCreateOpen(true) : selectWorkspace(v as string)}
             />
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
@@ -428,8 +434,8 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }
           <PanelRow icon={iconType.NoteOutlined} label="Prompt Templates" />
 
           {filteredGroups.length === 0 ? (
-            <div style={{ padding: `0 ${spacing(2)}px` }}>
-              <Typography size="base-sm" color="neutral-darken2">
+            <div style={{ padding: `${spacing(4)}px ${spacing(2)}px` }}>
+              <Typography size="base-sm" color="neutral-darken2" align="center">
                 {search.trim() ? 'No chats match your search.' : attached ? `No chats in ${attached.name} yet.` : 'No chats yet.'}
               </Typography>
             </div>
@@ -451,7 +457,6 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace }
               {panelToggle}
               <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
                 <Typography size="base-lg" weight={fontWeight.SEMIBOLD} color="neutral-darken5" maxLines={1}>{activeSession.title}</Typography>
-                {activeSession.workspace && <WorkspaceChip workspace={activeSession.workspace} />}
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
@@ -564,7 +569,6 @@ function WorkspaceSummary({ workspace }: { workspace: WorkspaceReference }) {
       width: 280, flexShrink: 0, alignSelf: 'flex-start', margin: spacing(4), maxHeight: `calc(100% - ${spacing(8)}px)`, overflowY: 'auto',
       padding: spacing(4), display: 'flex', flexDirection: 'column', gap: spacing(4),
       backgroundColor: colorPalette.white, border: `1px solid ${colorPalette.neutral.lighten2}`, borderRadius: 12,
-      boxShadow: '0 8px 24px rgba(0, 19, 68, 0.10)',
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
         <Typography size="base" weight={fontWeight.SEMIBOLD} color="neutral-darken5">In this workspace</Typography>

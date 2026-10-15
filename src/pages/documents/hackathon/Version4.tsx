@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import MyDocumentsV1 from '../my-documents/Version1'
-import ConnectionsPage from '../../connections/ConnectionsPage'
+import ConnectionsPageV4 from './ConnectionsPageV4'
 import {
   ButtonDanger,
   ButtonGhost,
@@ -43,6 +43,7 @@ import {
   colorPalette,
   computeDocSourceMap,
   formatDate,
+  localFileToDoc,
   PAGE_SIZE,
   Skeleton,
   skeletonVariants,
@@ -57,6 +58,7 @@ import {
   useSidebarWidth,
   useWorkspaceState,
   VisibilityIcon,
+  type Connector,
   type DocSource,
   type MetadataDocument,
   type Space,
@@ -105,6 +107,8 @@ import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
  */
 
 const BASE = '/projects/hackathon-oct-26/version-4'
+// Main content areas sit on the theme's neutral-lighten5; menus and sidebars stay white.
+const CONTENT_BG = colorPalette.neutral.lighten5
 
 /** Same slug rule as Workspaces Basic, so space URLs match between the two versions. */
 function slugify(name: string): string {
@@ -461,10 +465,11 @@ export default function HackathonVersion4() {
       <Route path="copilot" element={<HackathonCoPilotPageV4
         workspaces={workspace.spaces.map(space => workspaceReference(space, workspace, extras))}
         onCreateWorkspace={workspace.createSpace}
+        onSaveDocuments={(id, files) => workspace.addDocsToSpace(id, files.map(localFileToDoc))}
       />} />
       <Route path="personal-office" element={<PersonalOfficePage copilotPath={`${BASE}/copilot`} />} />
       <Route path="my-documents" element={<MyDocumentsV1 showTitleIcon={false} />} />
-      <Route path="connectors" element={<ConnectionsPage />} />
+      <Route path="connectors" element={<ConnectionsPageV4 />} />
       <Route path="*" element={<Navigate to="workspaces" replace />} />
     </Routes>
   )
@@ -486,6 +491,7 @@ function SpacesListRoute({ workspace }: { workspace: WorkspaceState }) {
       onDeleteSpace={workspace.deleteSpace}
       showTitleIcon={false}
       noun="Workspace"
+      background={CONTENT_BG}
       renderEmptyState={openCreate => <WorkspacesEmptyState onCreate={openCreate} />}
       showPhotoUpload={false}
       showType={false}
@@ -500,8 +506,8 @@ function WorkspacesEmptyState({ onCreate }: { onCreate: () => void }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(8), padding: `${spacing(10)}px 0` }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), maxWidth: 480, textAlign: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-          <Typography size="heading-sm" weight="bold" color="neutral-darken5">No workspaces yet</Typography>
-          <Typography size="base" color="neutral-darken2">
+          <Typography size="heading-sm" weight="bold" color="neutral-darken5" align="center">No workspaces yet</Typography>
+          <Typography size="base" color="neutral-darken2" align="center">
             A workspace gives your AI the context it needs. Create one for a client, a department, or a project, and everything you ask or do within it stays grounded in the right information.
           </Typography>
         </div>
@@ -1210,7 +1216,7 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
   ]
 
   return (
-    <div style={{ padding: `${spacing(6)}px ${spacing(10)}px`, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: colorPalette.white, height: '100%', overflow: 'hidden' }}>
+    <div style={{ padding: `${spacing(6)}px ${spacing(10)}px`, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: CONTENT_BG, height: '100%', overflow: 'hidden' }}>
       <style>{TABLE_CSS}</style>
       {area === 'summary' ? (
         <WorkspaceHero
@@ -1389,7 +1395,8 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
 
       <BasicUploadModal
         open={uploadOpen}
-        connectors={presentConnectors}
+        // New workspaces have no connected apps yet, so offer the ones Acme Corp has in Metadata Table.
+        connectors={presentConnectors.length > 0 ? presentConnectors : PRESET_CONNECTORS}
         onClose={() => setUploadOpen(false)}
         onUpload={newDocs => {
           onDocsChange([...newDocs, ...docs])
@@ -1450,6 +1457,11 @@ function WorkspaceHero({ space, onBack, onEdit, onDelete }: {
   )
 }
 
+const PRESET_CONNECTORS: Connector[] = [
+  { id: 'preset-sharepoint', type: 'sharepoint', label: 'SharePoint' },
+  { id: 'preset-google-drive', type: 'google-drive', label: 'Google Drive' },
+]
+
 const NONE_YET = 'None yet'
 
 /** The workspace's areas as plain rows inside the Your knowledge card: name, what's in it, and a way in. */
@@ -1473,7 +1485,7 @@ function KnowledgeList({ space, docs, extras, onOpen }: {
   if (filled.length === 0) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: spacing(6), borderRadius: 8, border: `1px dashed ${colorPalette.neutral.lighten1}`, textAlign: 'center' }}>
-        <Typography size="base-sm" color="neutral-darken2">Nothing added yet. Use Add my content to bring in your first documents or instructions.</Typography>
+        <Typography size="base-sm" color="neutral-darken2" align="center">Nothing added yet. Use Add my content to bring in your first documents or instructions.</Typography>
       </div>
     )
   }
