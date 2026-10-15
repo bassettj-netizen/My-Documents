@@ -598,6 +598,7 @@ function workspaceReference(space: Space, workspace: WorkspaceState, extras: Ext
     name: space.name,
     description: space.description,
     path: `${BASE}/workspaces/${slugify(space.name)}`,
+    documentNames: workspace.getSpaceDocs(space.id).slice(0, 12).map(fileName),
     documents: workspace.getSpaceDocs(space.id).length,
     hasBackground: !!space.context?.trim(),
     details: e.details.filter(d => d.label.trim() && d.value.trim()).length,

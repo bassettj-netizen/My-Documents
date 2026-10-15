@@ -31,6 +31,8 @@ export type WorkspaceReference = {
   description: string
   // Where the workspace's own page lives, for linking back to it.
   path: string
+  // File names of some of its documents — what CoPilot can cite as workspace sources (V10/V11).
+  documentNames?: string[]
   documents: number
   hasBackground: boolean
   details: number

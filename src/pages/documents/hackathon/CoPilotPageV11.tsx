@@ -23,6 +23,8 @@ import { MessageComposer } from '../workspaces/Version6'
 import { CoPilotMark } from '../workspaces/CoPilotPage'
 import type { WorkspaceReference } from './workspaceModel'
 import { useProcessingUpload } from './uploadToasts'
+import { AnswerBody, SourceChips, SourcesPanel, type SourceFilter } from './AnswerSources'
+import { buildSources, placeMarkers, type AnswerSource } from './sourceData'
 
 /**
  * Hackathon Oct '26 — CoPilot for Version 11 (copied from Version 9, itself copied from Version 7, itself copied from Version 5): the German version of Version 4's CoPilot page
@@ -183,11 +185,21 @@ function ChatBubbleUser({ message }: { message: ChatMsg }) {
   )
 }
 
-function ChatBubbleAssistant({ message }: { message: ChatMsg }) {
+function ChatBubbleAssistant({ message, sources, onOpenSources }: {
+  message: ChatMsg
+  // Sources behind the answer (workspace chats only): cited inline and listed as chips underneath.
+  sources?: AnswerSource[]
+  onOpenSources?: (filter: SourceFilter, focus: number | null) => void
+}) {
   const [copied, setCopied] = useState(false)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-      <Typography size="base" color="neutral-darken5">{renderLiteMarkdown(message.content)}</Typography>
+      <Typography size="base" color="neutral-darken5">
+        {sources && sources.length > 0
+          ? <AnswerBody content={placeMarkers(message.content, sources.length)} sources={sources} lang="de" onMarker={n => onOpenSources?.('all', n)} />
+          : renderLiteMarkdown(message.content)}
+      </Typography>
+      {sources && sources.length > 0 && <SourceChips sources={sources} lang="de" onOpen={filter => onOpenSources?.(filter, null)} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
         <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ThumbsUpOutlined} ariaLabel="Hilfreich" />
         <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.ThumbsDownOutlined} ariaLabel="Nicht hilfreich" />
@@ -387,6 +399,8 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
   const location = useLocation()
   const navigate = useNavigate()
   const [panelOpen, setPanelOpen] = useState(true)
+  // The sources panel: which answer's sources, filtered how, opened on which one.
+  const [sourcesView, setSourcesView] = useState<{ messageId: string; filter: SourceFilter; focus: number | null; opened: number } | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [question, setQuestion] = useState('')
@@ -467,6 +481,16 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
     saveToWorkspace(activeSession.workspace, attachments)
     setQuestion('')
   }
+
+  /** An answer's sources — only in a workspace chat, citing Haufe knowledge and that workspace's files. */
+  const answerSources = (message: ChatMsg, question: string): AnswerSource[] | undefined => {
+    const ws = activeSession?.workspace ? workspaces.find(w => w.id === activeSession.workspace!.id) ?? activeSession.workspace : null
+    return ws ? buildSources(message.id, question, ws.documentNames ?? [], 'de') : undefined
+  }
+  const sourcesMessage = sourcesView && activeSession ? activeSession.messages.find(m => m.id === sourcesView.messageId) : undefined
+  const panelSources = sourcesMessage && activeSession
+    ? answerSources(sourcesMessage, activeSession.messages[activeSession.messages.indexOf(sourcesMessage) - 1]?.content ?? '')
+    : undefined
 
   return (
     // Main area on the theme's neutral-lighten5; the chat panel (a menu) stays white.
@@ -599,7 +623,14 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
           <>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
               <div style={{ maxWidth: 840, width: '100%', padding: `${spacing(4)}px ${spacing(8)}px`, display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
-                {activeSession.messages.map(m => m.role === 'user' ? <ChatBubbleUser key={m.id} message={m} /> : <ChatBubbleAssistant key={m.id} message={m} />)}
+                {activeSession.messages.map((m, i) => m.role === 'user'
+                  ? <ChatBubbleUser key={m.id} message={m} />
+                  : <ChatBubbleAssistant
+                      key={m.id}
+                      message={m}
+                      sources={answerSources(m, activeSession.messages[i - 1]?.content ?? '')}
+                      onOpenSources={(filter, focus) => setSourcesView({ messageId: m.id, filter, focus, opened: Date.now() })}
+                    />)}
               </div>
             </div>
             <div style={{ flexShrink: 0, padding: `0 ${spacing(8)}px ${spacing(4)}px`, display: 'flex', justifyContent: 'center' }}>
@@ -664,7 +695,18 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
       </div>
       </div>
 
-      {attached && <WorkspaceSummary workspace={attached} />}
+      {/* The sources panel takes the summary's place while it's open. */}
+      {panelSources && sourcesView ? (
+        <SourcesPanel
+          key={`${sourcesView.messageId}-${sourcesView.opened}`}
+          sources={panelSources}
+          lang="de"
+          focus={sourcesView.focus}
+          filter={sourcesView.filter}
+          onFilter={filter => setSourcesView(prev => prev && { ...prev, filter })}
+          onClose={() => setSourcesView(null)}
+        />
+      ) : attached && <WorkspaceSummary workspace={attached} />}
 
       {/* Same dialog as on the Workspaces page; the new workspace becomes the current one. */}
       <SpaceFormModal
