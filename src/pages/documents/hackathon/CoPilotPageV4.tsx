@@ -276,8 +276,11 @@ function MentionComposer({ value, onChange, workspaces, onPick, ...composer }: O
 /** A workspace dropdown option: a 20px avatar or icon, then the name. */
 function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), minWidth: 0 }}>
-      <span style={{ width: 20, height: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
+    <span className="copilot-ws-option" style={{ display: 'flex', alignItems: 'center', gap: spacing(2), minWidth: 0 }}>
+      <span
+        className="copilot-ws-option-icon"
+        style={{ width: 20, height: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >{icon}</span>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
     </span>
   )
@@ -400,13 +403,27 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, 
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
             <SectionLabel>Workspace</SectionLabel>
+            {/* Closed dropdown: text and icon keep their colours while it's open or focused, and no focus ring.
+                Open list: the selected option's icon and label are blue. */}
+            <style>{`
+              .copilot-ws-option-icon { color: ${colorPalette.neutral.darken3}; }
+              .copilot-workspace-select .goat-select-selection-item,
+              .copilot-workspace-select .goat-select-selection-item .copilot-ws-option { color: ${colorPalette.neutral.darken5} !important; opacity: 1 !important; }
+              .copilot-workspace-select .goat-select-selection-item .copilot-ws-option-icon { color: ${colorPalette.neutral.darken3} !important; }
+              .copilot-workspace-select .goat-select-selector,
+              .copilot-workspace-select .goat-select-focused .goat-select-selector,
+              .copilot-workspace-select *:focus,
+              .copilot-workspace-select *:focus-visible { outline: none !important; box-shadow: none !important; }
+              .goat-select-item-option-selected .copilot-ws-option,
+              .goat-select-item-option-selected .copilot-ws-option-icon { color: ${colorPalette.blue.base}; }
+            `}</style>
             {/* The DS Select has no borderless option, so the outline is removed for this one dropdown. */}
             <style>{`.copilot-workspace-select .goat-select-selector { border-color: transparent !important; box-shadow: none !important; padding-left: ${spacing(2)}px !important; }`}</style>
             <div className="copilot-workspace-select">
             <Select
               value={workspaceId}
               options={[
-                { label: <OptionLabel icon={<Icon type={iconType.CommentOutlined} size={16} color="neutral-darken3" />}>My Chats</OptionLabel>, value: GENERAL },
+                { label: <OptionLabel icon={<Icon type={iconType.CommentOutlined} size={16} color="inherit" />}>My Chats</OptionLabel>, value: GENERAL },
                 ...workspaces.map(w => ({
                   // Workspaces here have no photo, so the avatar only needs the name for its initials.
                   label: <OptionLabel icon={<SpaceAvatar space={{ id: w.id, name: w.name } as Space} size={20} />}>{w.name}</OptionLabel>,
