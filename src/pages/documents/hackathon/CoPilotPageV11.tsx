@@ -316,7 +316,7 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete }:
   const commit = () => { if (draft.trim()) onRename(draft.trim()); setRenaming(false) }
   return (
     <div style={{
-      // No background or outline — it sits on the page, across the full width.
+      // No background or outline — it sits on the page, between the chat panel and the workspace summary.
       flexShrink: 0, height: 56, display: 'flex', alignItems: 'center', gap: spacing(3), padding: `0 ${spacing(6)}px`,
     }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: spacing(2) }}>
@@ -582,8 +582,7 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
         </div>
       </div>
 
-      {/* Right of the chat panel: an open chat's header across the full width, then the chat (or the
-          welcome screen) with the workspace summary beside it. */}
+      {/* Between the chat panel and the workspace summary: an open chat's header, then the chat or the welcome screen. */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {activeSession && (
             <ChatHeader
@@ -662,9 +661,10 @@ export default function HackathonCoPilotPageV11({ workspaces, onCreateWorkspace,
         )}
       </div>
 
+      </div>
+      </div>
+
       {attached && <WorkspaceSummary workspace={attached} />}
-      </div>
-      </div>
 
       {/* Same dialog as on the Workspaces page; the new workspace becomes the current one. */}
       <SpaceFormModal
@@ -705,7 +705,7 @@ function WorkspaceSummary({ workspace }: { workspace: WorkspaceReference }) {
   ]
 
   return (
-    // A container under the header, as tall as its content (scrolls inside if the window is short).
+    // A container at the top right, beside the header and chat, as tall as its content (scrolls inside if needed).
     <div style={{
       width: 300, flexShrink: 0, alignSelf: 'flex-start', margin: spacing(4), maxHeight: `calc(100% - ${spacing(8)}px)`, overflowY: 'auto',
       padding: spacing(5), display: 'flex', flexDirection: 'column', gap: spacing(4),
