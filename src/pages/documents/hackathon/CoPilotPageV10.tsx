@@ -308,8 +308,8 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete }:
   const commit = () => { if (draft.trim()) onRename(draft.trim()); setRenaming(false) }
   return (
     <div style={{
+      // No background or outline — it sits on the page, across the full width.
       flexShrink: 0, height: 56, display: 'flex', alignItems: 'center', gap: spacing(3), padding: `0 ${spacing(6)}px`,
-      backgroundColor: colorPalette.white, borderBottom: `1px solid ${colorPalette.neutral.lighten2}`,
     }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: spacing(2) }}>
         {workspace ? (
@@ -574,7 +574,8 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
         </div>
       </div>
 
-      {/* Between the two panels: an open chat's header, then the chat or the welcome screen. */}
+      {/* Right of the chat panel: an open chat's header across the full width, then the chat (or the
+          welcome screen) with the workspace summary beside it. */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {activeSession && (
             <ChatHeader
@@ -653,10 +654,9 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
         )}
       </div>
 
-      </div>
-      </div>
-
       {attached && <WorkspaceSummary workspace={attached} />}
+      </div>
+      </div>
 
       {/* Same dialog as on the Workspaces page; the new workspace becomes the current one. */}
       <SpaceFormModal
@@ -673,7 +673,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
   )
 }
 
-/** Right-hand panel in a workspace, docked top to bottom: everything CoPilot answers from, at a glance. */
+/** Workspace summary beside the chat: everything CoPilot answers from, at a glance. */
 function WorkspaceSummary({ workspace }: { workspace: WorkspaceReference }) {
   const navigate = useNavigate()
   const contextValue = [
@@ -696,11 +696,11 @@ function WorkspaceSummary({ workspace }: { workspace: WorkspaceReference }) {
   ]
 
   return (
-    // A panel docked on the right, top to bottom — the counterpart of the chat panel on the left.
+    // A container under the header, as tall as its content (scrolls inside if the window is short).
     <div style={{
-      width: 300, flexShrink: 0, height: '100%', overflowY: 'auto',
-      padding: `${spacing(5)}px ${spacing(5)}px`, display: 'flex', flexDirection: 'column', gap: spacing(4),
-      backgroundColor: colorPalette.white, borderLeft: `1px solid ${colorPalette.neutral.lighten1}`,
+      width: 300, flexShrink: 0, alignSelf: 'flex-start', margin: spacing(4), maxHeight: `calc(100% - ${spacing(8)}px)`, overflowY: 'auto',
+      padding: spacing(5), display: 'flex', flexDirection: 'column', gap: spacing(4),
+      backgroundColor: colorPalette.white, border: `1px solid ${colorPalette.neutral.lighten2}`, borderRadius: 12,
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
         <Typography size="base" weight={fontWeight.SEMIBOLD} color="neutral-darken5">In this workspace</Typography>
