@@ -848,13 +848,15 @@ function BasicDocumentPreview({ space, doc, originalDoc, docIndex, source, summa
  * local files, plus one row per connector actually present in this space's
  * table, so the user can see where else they could pull documents from.
  */
-export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en' }: {
+export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en', uploadImmediately = false }: {
   open: boolean
   connectors: Connector[]
   onClose: () => void
   onUpload: (docs: MetadataDocument[]) => void
   // German labels, for Hackathon Oct '26 Version 5.
   lang?: UiLang
+  // Uploads files as soon as they're chosen or dropped and closes, instead of listing them for an Upload button.
+  uploadImmediately?: boolean
 }) {
   const de = lang === 'de'
   const [queuedFiles, setQueuedFiles] = useState<File[]>([])
@@ -863,6 +865,13 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
 
   const addFiles = (list: FileList | null) => {
     if (!list) return
+    if (uploadImmediately) {
+      if (list.length === 0) return
+      onUpload(Array.from(list).map(localFileToDoc))
+      setIsDragging(false)
+      onClose()
+      return
+    }
     setQueuedFiles(prev => {
       const existing = new Set(prev.map(f => f.name))
       return [...prev, ...Array.from(list).filter(f => !existing.has(f.name))]

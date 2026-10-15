@@ -32,12 +32,10 @@ import {
   searchbarWidth,
   Table,
   TextArea,
-  toastPlacements,
   Tooltip,
   tooltipPlacements,
   tooltipSizes,
   Typography,
-  useNotifications,
 } from '@goat-ui/goat-ui-core'
 import {
   colorPalette,
@@ -66,9 +64,10 @@ import {
 import { BasicUploadModal, CopilotIcon } from '../workspaces/WorkspacesBasic'
 import HackathonCoPilotPageV5 from './CoPilotPageV5'
 import HackathonHomePage from './HomePage'
+import { useProcessingUpload } from './uploadToasts'
 import PersonalOfficePage from './PersonalOfficePage'
 import { BookmarksTab, ContextTab, GuardrailsTab, TabEmptyState, TemplatesTab } from './WorkspaceTabsDe'
-import { EMPTY_EXTRAS, type WorkspaceExtras, type WorkspaceReference } from './workspaceModel'
+import { EMPTY_EXTRAS, type WorkspaceChat, type WorkspaceExtras, type WorkspaceReference } from './workspaceModel'
 import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
 
 /**
@@ -79,7 +78,7 @@ import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
  *
  * Hackathon Oct '26 — Version 4: Version 3 with a lighter header and the summary as two side-by-side
  * knowledge streams.
- * - Your knowledge: what you bring — a line on what can be connected, an "Add my content" menu (upload
+ * - My knowledge: what you bring — a line on what can be connected, an "Add my content" menu (upload
  *   a document, add a connector via the Connectors page, add instructions via Guardrails), and the
  *   areas as plain rows that open each one — only once something's been added to them.
  * - Haufe knowledge: what's been made with Haufe for this workspace, as a CoPilot container (chats) and
@@ -472,6 +471,11 @@ export default function HackathonVersion5() {
       </Route>
       <Route path="home" element={<HackathonHomePage copilotPath={`${BASE}/copilot`} />} />
       <Route path="copilot" element={<HackathonCoPilotPageV5
+        onChatStarted={(workspaceId, chat) => setExtrasBySpace(prev => {
+          const current = prev[workspaceId] ?? EMPTY_EXTRAS
+          if (current.chats.some(c => c.id === chat.id)) return prev
+          return { ...prev, [workspaceId]: { ...current, chats: [{ ...chat, createdAt: Date.now() }, ...current.chats] } }
+        })}
         workspaces={workspace.spaces.map(space => workspaceReference(space, workspace, extras))}
         onCreateWorkspace={workspace.createSpace}
         onSaveDocuments={(id, files) => workspace.addDocsToSpace(id, files.map(localFileToDoc))}
@@ -515,6 +519,8 @@ function WorkspacesEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(8), padding: `${spacing(10)}px 0` }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), maxWidth: 480, textAlign: 'center' }}>
+        {/* Illustration from the My Documents Figma (node 5116:93493). */}
+        <img src="/hackathon/workspace-empty-state.svg" alt="" width={160} height={160} style={{ display: 'block' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
           <Typography size="heading-sm" weight="bold" color="neutral-darken5" align="center">Noch keine Arbeitsbereiche</Typography>
           <Typography size="base" color="neutral-darken2" align="center">
@@ -585,6 +591,7 @@ function SpaceDetailRoute({ workspace, store, extras, area }: { workspace: Works
       docs={workspace.getSpaceDocs(space.id)}
       store={store}
       onDocsChange={docs => workspace.setSpaceDocs(space.id, docs)}
+      onAddDocs={newDocs => workspace.addDocsToSpace(space.id, newDocs)}
       // From an area, back goes to the workspace's summary; from the summary, to the list.
       onBack={() => navigate(area === 'summary' ? `${BASE}/workspaces` : summaryPath)}
       onOpenDoc={doc => navigate(`${summaryPath}/documents/${encodeURIComponent(doc._id)}`)}
@@ -924,7 +931,7 @@ const TABLE_CSS = `
  * A workspace page: the summary (full header and one tile per area), or one area on its own
  * with a back button to the summary.
  */
-function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocuments, space, docs, store, onDocsChange, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot }: {
+function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocuments, space, docs, store, onDocsChange, onAddDocs, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot }: {
   area: WorkspacePageArea
   onOpenArea: (area: WorkspaceArea) => void
   onOpenConnectors: () => void
@@ -934,6 +941,8 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
   docs: MetadataDocument[]
   store: MetadataStore
   onDocsChange: (docs: MetadataDocument[]) => void
+  // Adds to whatever the workspace holds at the time — uploads land a moment after they start.
+  onAddDocs: (docs: MetadataDocument[]) => void
   onBack: () => void
   onOpenDoc: (doc: MetadataDocument) => void
   onUpdateSpace: (values: SpaceFormValues) => void
@@ -944,7 +953,7 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
   // Opens CoPilot with the whole workspace referenced, optionally with a first question.
   onAskCopilot: (initialQuestion?: string) => void
 }) {
-  const { notification } = useNotifications()
+  const runUpload = useProcessingUpload('de')
   const sidebarWidth = useSidebarWidth()
 
   const [search, setSearch] = useState('')
@@ -1252,7 +1261,7 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: spacing(6), alignItems: 'stretch' }}>
             <SummaryCard
               icon={<Icon type={iconType.UserOutlined} size={20} color="neutral-darken4" />}
-              title="Ihr Wissen"
+              title="Mein Wissen"
               subtitle="Verbinden Sie Dokumente, Metadaten, Anweisungen, Connectoren und mehr – CoPilot nutzt all das für seine Antworten in diesem Arbeitsbereich."
               action={
                 <Dropdown
@@ -1268,7 +1277,7 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
                   trigger={dropdownTriggers.CLICK}
                   placement={dropdownPlacement.BOTTOM_RIGHT}
                 >
-                  <ButtonPrimary leftIcon={iconType.PlusOutlined} rightIcon={iconType.ChevronDownOutlined}>Eigene Inhalte hinzufügen</ButtonPrimary>
+                  <ButtonPrimary leftIcon={iconType.PlusOutlined}>Eigene Inhalte hinzufügen</ButtonPrimary>
                 </Dropdown>
               }
             >
@@ -1280,7 +1289,7 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
               title="Haufe-Wissen"
               subtitle="Alles, was mit Haufe für diesen Arbeitsbereich entstanden ist – CoPilot-Chats, Abmahnungen, Arbeitszeugnisse und mehr."
             >
-              <HaufeContent onAskCopilot={onAskCopilot} onOpenHrDocuments={onOpenHrDocuments} />
+              <HaufeContent chats={extras.chats} onAskCopilot={onAskCopilot} onOpenHrDocuments={onOpenHrDocuments} />
             </SummaryCard>
           </div>
         </div>
@@ -1409,11 +1418,10 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
         open={uploadOpen}
         // New workspaces have no connected apps yet, so offer the ones Acme Corp has in Metadata Table.
         connectors={presentConnectors.length > 0 ? presentConnectors : PRESET_CONNECTORS}
+        uploadImmediately
         onClose={() => setUploadOpen(false)}
-        onUpload={newDocs => {
-          onDocsChange([...newDocs, ...docs])
-          notification.success({ title: `${newDocs.length} ${newDocs.length === 1 ? 'Dokument' : 'Dokumente'} hochgeladen`, placement: toastPlacements.BOTTOM_LEFT, duration: 4 })
-        }}
+        // Bulk Edit V3's processing toasts; the documents appear once "extraction" is done.
+        onUpload={newDocs => runUpload(newDocs.map(d => d.name), () => onAddDocs(newDocs))}
       />
     </div>
   )
@@ -1477,7 +1485,7 @@ const PRESET_CONNECTORS: Connector[] = [
 
 const NONE_YET = 'Noch nichts'
 
-/** The workspace's areas as plain rows inside the Your knowledge card: name, what's in it, and a way in. */
+/** The workspace's areas as plain rows inside the My knowledge card: name, what's in it, and a way in. */
 function KnowledgeList({ space, docs, extras, onOpen }: {
   space: Space
   docs: MetadataDocument[]
@@ -1495,13 +1503,7 @@ function KnowledgeList({ space, docs, extras, onOpen }: {
   }
   // An area only shows up once something's been added to it.
   const filled = WORKSPACE_AREAS.filter(area => status[area] !== NONE_YET)
-  if (filled.length === 0) {
-    return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: spacing(6), borderRadius: 8, border: `1px dashed ${colorPalette.neutral.lighten1}`, textAlign: 'center' }}>
-        <Typography size="base-sm" color="neutral-darken2" align="center">Noch nichts hinzugefügt. Über „Eigene Inhalte hinzufügen“ bringen Sie Ihre ersten Dokumente oder Anweisungen ein.</Typography>
-      </div>
-    )
-  }
+  if (filled.length === 0) return <DashedEmptyState title="Fügen Sie Ihren ersten Inhalt hinzu" text="Laden Sie ein Dokument hoch, verbinden Sie eine App wie SharePoint oder fügen Sie Anweisungen hinzu – CoPilot nutzt alles davon, um in diesem Arbeitsbereich zu antworten." />
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {filled.map((area, i) => <KnowledgeRow key={area} area={area} status={status[area]} first={i === 0} onClick={() => onOpen(area)} />)}
@@ -1534,6 +1536,21 @@ function KnowledgeRow({ area, status, first, onClick }: { area: WorkspaceArea; s
 }
 
 /** One knowledge stream: an icon, title and line about it, an optional action, then its content. */
+/** Empty state inside a knowledge card: a dashed box with a headline and one line, centred. */
+function formatCreated(ts: number) {
+  const d = new Date(ts)
+  return d.toDateString() === new Date().toDateString() ? 'Heute' : formatDate(d.toISOString())
+}
+
+function DashedEmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(1), padding: spacing(6), borderRadius: 8, border: `1px dashed ${colorPalette.neutral.lighten1}` }}>
+      <Typography size="base" weight="semibold" color="neutral-darken5" align="center">{title}</Typography>
+      <Typography size="base-sm" color="neutral-darken2" align="center">{text}</Typography>
+    </div>
+  )
+}
+
 function SummaryCard({ icon, title, subtitle, action, children }: { icon: ReactNode; title: string; subtitle: string; action?: ReactNode; children: ReactNode }) {
   return (
     <div style={{
@@ -1568,38 +1585,34 @@ const HAUFE_KINDS: Record<HaufeKind, { label: string; icon: string }> = {
 
 type HaufeItem = { id: string; kind: HaufeKind; title: string; source: string; date: string }
 
-// Sample entries until workspaces record what's made in CoPilot HR, DocPlus and Personal Office.
-const HAUFE_SAMPLE: HaufeItem[] = [
-  { id: 'h1', kind: 'chat', title: 'Probezeit – können wir sie verlängern?', source: 'CoPilot HR', date: 'Heute' },
-  { id: 'h2', kind: 'warning', title: 'Abmahnung – wiederholte unentschuldigte Verspätung', source: 'DocPlus', date: 'Gestern' },
-  { id: 'h3', kind: 'reference', title: 'Arbeitszeugnis – M. Schneider', source: 'Personal Office', date: '12. Okt.' },
-  { id: 'h4', kind: 'chat', title: 'Anhörung des Betriebsrats zur Umstrukturierung', source: 'CoPilot HR', date: '10. Okt.' },
-  { id: 'h5', kind: 'contract', title: 'Befristeter Arbeitsvertrag – J. Weber', source: 'DocPlus', date: '8. Okt.' },
-  { id: 'h6', kind: 'reference', title: 'Zwischenzeugnis – A. Koch', source: 'Personal Office', date: '2. Okt.' },
-]
 
 /**
  * What's been made with Haufe for this workspace, by application: a CoPilot container with the chats
  * and an HR Dokumente container with the documents generated from templates. Each shows a count and
  * the latest few, and jumps straight to its application.
  */
-function HaufeContent({ onAskCopilot, onOpenHrDocuments }: { onAskCopilot: (initialQuestion?: string) => void; onOpenHrDocuments: () => void }) {
-  const chats = HAUFE_SAMPLE.filter(item => item.kind === 'chat')
-  const documents = HAUFE_SAMPLE.filter(item => item.kind !== 'chat')
+function HaufeContent({ chats, onAskCopilot, onOpenHrDocuments }: { chats: WorkspaceChat[]; onAskCopilot: (initialQuestion?: string) => void; onOpenHrDocuments: () => void }) {
+  // Only what's actually been made in this workspace: CoPilot chats so far (nothing creates HR documents yet).
+  const chatItems: HaufeItem[] = chats.map(c => ({ id: c.id, kind: 'chat', title: c.title, source: 'CoPilot HR', date: formatCreated(c.createdAt) }))
+  const documents: HaufeItem[] = []
+  if (chatItems.length === 0 && documents.length === 0) {
+    return <DashedEmptyState title="Noch nichts mit Haufe erstellt" text="Starten Sie einen CoPilot-Chat in diesem Arbeitsbereich – er erscheint dann hier, ebenso wie HR-Dokumente, die Sie dafür erstellen." />
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
-        <AppContainer
+        {chatItems.length > 0 && <AppContainer
           icon={<CopilotIcon />}
           name="CoPilot"
-          count={chats.length}
+          count={chatItems.length}
           noun={['Chat', 'Chats']}
-          items={chats}
+          items={chatItems}
           openLabel="CoPilot öffnen"
           onOpen={() => onAskCopilot()}
-          onOpenItem={item => onAskCopilot(item.title)}
-        />
-        <AppContainer
+          // Opens CoPilot in this workspace; re-asking the title would start a duplicate chat.
+          onOpenItem={() => onAskCopilot()}
+        />}
+        {documents.length > 0 && <AppContainer
           icon={<Icon type={iconType.ArticleOutlined} size={16} color="inherit" />}
           name="HR Dokumente"
           count={documents.length}
@@ -1608,7 +1621,7 @@ function HaufeContent({ onAskCopilot, onOpenHrDocuments }: { onAskCopilot: (init
           openLabel="HR Dokumente öffnen"
           onOpen={onOpenHrDocuments}
           onOpenItem={onOpenHrDocuments}
-        />
+        />}
     </div>
   )
 }

@@ -12,13 +12,12 @@ import {
   searchbarWidth,
   Select,
   Typography,
-  toastPlacements,
-  useNotifications,
 } from '@goat-ui/goat-ui-core'
 import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
 import { MessageComposer } from '../workspaces/Version6'
 import { CoPilotMark } from '../workspaces/CoPilotPage'
 import type { WorkspaceReference } from './workspaceModel'
+import { useProcessingUpload } from './uploadToasts'
 
 /**
  * Hackathon Oct '26 — CoPilot for Version 4: the shared CoPilot page with the Workspace dropdown
@@ -286,24 +285,22 @@ function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, onSaveDocuments }: {
+export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, onSaveDocuments, onChatStarted }: {
   workspaces: WorkspaceReference[]
   // "Create workspace" at the foot of the workspace dropdown; returns the new workspace's id.
   onCreateWorkspace: (values: SpaceFormValues) => string
   // Files sent with a question while in a workspace are saved to that workspace's documents.
   onSaveDocuments: (workspaceId: string, files: File[]) => void
+  // A chat now belongs to a workspace (started there, or moved there with @) — the workspace lists it.
+  onChatStarted: (workspaceId: string, chat: { id: string; title: string }) => void
 }) {
-  const { notification } = useNotifications()
+  const runUpload = useProcessingUpload('en')
   /** Saves the files sent with a message to the chat's workspace — only once the message has gone. */
   const saveToWorkspace = (ws: WorkspaceReference | null | undefined, attachments: OutgoingAttachment[]) => {
     const files = attachments.flatMap(a => a.kind === 'file' ? [a.file] : [])
     if (!ws || files.length === 0) return
-    onSaveDocuments(ws.id, files)
-    notification.success({
-      title: files.length === 1 ? `"${files[0].name}" saved to ${ws.name}` : `${files.length} documents saved to ${ws.name}`,
-      placement: toastPlacements.BOTTOM_LEFT,
-      duration: 3,
-    })
+    // Same processing toasts as uploading in the workspace; the files land once "extraction" is done.
+    runUpload(files.map(f => f.name), () => onSaveDocuments(ws.id, files))
   }
   const location = useLocation()
   const navigate = useNavigate()
@@ -359,6 +356,7 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, 
     const title = text.length > 60 ? `${text.slice(0, 60)}…` : text || 'New chat'
     const ws = attached ?? undefined
     setSessions(prev => [{ id, day: 'Today', title, workspace: ws, messages: reply(text, attachments, ws) }, ...prev])
+    if (ws) onChatStarted(ws.id, { id, title })
     saveToWorkspace(ws, attachments)
     setActiveId(id)
     setQuestion('')
@@ -366,6 +364,7 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, 
 
   // Clear the handed-over question so a reload doesn't ask it again.
   useEffect(() => {
+    if (handedOver?.workspace) onChatStarted(handedOver.workspace.id, { id: handedOver.id, title: handedOver.title })
     if (routeState) navigate(location.pathname, { replace: true, state: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -473,7 +472,7 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, 
                   placeholder="Ask a follow-up question, or type @ to target a workspace"
                   workspaces={workspaces}
                   // The chat moves to the picked workspace, and the panel follows it there.
-                  onPick={ws => { setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, workspace: ws } : s)); setWorkspaceId(ws.id) }}
+                  onPick={ws => { setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, workspace: ws } : s)); setWorkspaceId(ws.id); onChatStarted(ws.id, { id: activeSession.id, title: activeSession.title }) }}
                 />
               </div>
             </div>
