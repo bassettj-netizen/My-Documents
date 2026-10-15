@@ -63,7 +63,7 @@ import {
   type SpaceFormValues,
 } from '../workspaces/shared'
 import { BasicUploadModal, CopilotIcon } from '../workspaces/WorkspacesBasic'
-import HackathonCoPilotPageV4 from './CoPilotPageV4'
+import HackathonCoPilotPageV4, { type ChatSession as CoPilotChat } from './CoPilotPageV4'
 import HackathonHomePage from './HomePage'
 import { useProcessingUpload } from './uploadToasts'
 import PersonalOfficePage from './PersonalOfficePage'
@@ -444,6 +444,8 @@ export default function HackathonVersion4() {
   const store = useMetadataStore(workspace)
   // Context details, guardrails, bookmarks and templates per workspace — kept here so they survive leaving the page.
   const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>({})
+  // CoPilot's chats live here, so leaving CoPilot doesn't lose them and a chat can be reopened from a workspace.
+  const [copilotSessions, setCopilotSessions] = useState<CoPilotChat[] | null>(null)
   const extras: ExtrasStore = {
     get: id => extrasBySpace[id] ?? EMPTY_EXTRAS,
     update: (id, patch) => setExtrasBySpace(prev => ({ ...prev, [id]: { ...(prev[id] ?? EMPTY_EXTRAS), ...patch } })),
@@ -462,6 +464,8 @@ export default function HackathonVersion4() {
       </Route>
       <Route path="home" element={<HackathonHomePage copilotPath={`${BASE}/copilot`} />} />
       <Route path="copilot" element={<HackathonCoPilotPageV4
+        savedSessions={copilotSessions}
+        onSessionsChange={setCopilotSessions}
         onChatStarted={(workspaceId, chat) => setExtrasBySpace(prev => {
           const current = prev[workspaceId] ?? EMPTY_EXTRAS
           if (current.chats.some(c => c.id === chat.id)) return prev
@@ -496,6 +500,8 @@ function SpacesListRoute({ workspace }: { workspace: WorkspaceState }) {
       showTitleIcon={false}
       noun="Workspace"
       background={CONTENT_BG}
+      // Only once there's a workspace — the empty state explains workspaces on its own.
+      description={workspace.spaces.length > 0 ? 'Workspaces bring everything for a client, department or project together — documents, context, instructions and connected apps. CoPilot answers with the right background, and you find what you need in one place.' : undefined}
       renderEmptyState={openCreate => <WorkspacesEmptyState onCreate={openCreate} />}
       showPhotoUpload={false}
       showType={false}
@@ -598,6 +604,7 @@ function SpaceDetailRoute({ workspace, store, extras, area }: { workspace: Works
         const workspaceRef = workspaceReference(space, workspace, extras)
         navigate(`${BASE}/copilot`, { state: { workspaceRef, initialQuestion } })
       }}
+      onOpenChat={openChatId => navigate(`${BASE}/copilot`, { state: { workspaceRef: workspaceReference(space, workspace, extras), openChatId } })}
     />
   )
 }
@@ -921,7 +928,7 @@ const TABLE_CSS = `
  * A workspace page: the summary (full header and one tile per area), or one area on its own
  * with a back button to the summary.
  */
-function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocuments, space, docs, store, onDocsChange, onAddDocs, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot }: {
+function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocuments, space, docs, store, onDocsChange, onAddDocs, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot, onOpenChat }: {
   area: WorkspacePageArea
   onOpenArea: (area: WorkspaceArea) => void
   onOpenConnectors: () => void
@@ -942,6 +949,8 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
   onSaveBackground: (text: string) => void
   // Opens CoPilot with the whole workspace referenced, optionally with a first question.
   onAskCopilot: (initialQuestion?: string) => void
+  // Opens CoPilot on one of this workspace's existing chats.
+  onOpenChat: (chatId: string) => void
 }) {
   const runUpload = useProcessingUpload('en')
   const sidebarWidth = useSidebarWidth()
@@ -1279,7 +1288,7 @@ function SpaceDocumentsTable({ area, onOpenArea, onOpenConnectors, onOpenHrDocum
               title="Haufe knowledge"
               subtitle="Everything made with Haufe for this workspace — CoPilot chats, warning letters, job reference letters and more."
             >
-              <HaufeContent chats={extras.chats} onAskCopilot={onAskCopilot} onOpenHrDocuments={onOpenHrDocuments} />
+              <HaufeContent chats={extras.chats} onAskCopilot={onAskCopilot} onOpenChat={onOpenChat} onOpenHrDocuments={onOpenHrDocuments} />
             </SummaryCard>
           </div>
         </div>
@@ -1493,12 +1502,28 @@ function KnowledgeList({ space, docs, extras, onOpen }: {
   if (filled.length === 0) return <DashedEmptyState title="Add your first piece of content" text="Upload a document, connect an app like SharePoint, or add instructions — CoPilot uses all of it to answer in this workspace." />
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {filled.map((area, i) => <KnowledgeRow key={area} area={area} status={status[area]} first={i === 0} onClick={() => onOpen(area)} />)}
+      {filled.map((area, i) => (
+        <KnowledgeRow key={area} area={area} status={status[area]} first={i === 0} onClick={() => onOpen(area)}
+          extra={area === 'documents' ? <DocumentSources space={space} docs={docs} /> : undefined} />
+      ))}
     </div>
   )
 }
 
-function KnowledgeRow({ area, status, first, onClick }: { area: WorkspaceArea; status: string; first: boolean; onClick: () => void }) {
+/** Where a workspace's documents come from — the same source icons as the documents table, one per source. */
+function DocumentSources({ space, docs }: { space: Space; docs: MetadataDocument[] }) {
+  const sources = [...new Set(computeDocSourceMap(docs, space).values())]
+  // Connected apps first, manual uploads last.
+  sources.sort((a, b) => (a === 'local' ? 1 : 0) - (b === 'local' ? 1 : 0))
+  if (sources.length === 0) return null
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}>
+      {sources.map(src => <span key={src} style={{ display: 'inline-flex' }}>{sourceIcon(src, 16, src !== 'local' ? spaceConnectorLabel(space, src) : undefined)}</span>)}
+    </span>
+  )
+}
+
+function KnowledgeRow({ area, status, first, onClick, extra }: { area: WorkspaceArea; status: string; first: boolean; onClick: () => void; extra?: ReactNode }) {
   const [hovered, setHovered] = useState(false)
   return (
     <div
@@ -1516,6 +1541,7 @@ function KnowledgeRow({ area, status, first, onClick }: { area: WorkspaceArea; s
     >
       <Icon type={AREA_ICONS[area] as never} size={20} color="neutral-darken3" />
       <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: colorPalette.neutral.darken5 }}>{AREA_TITLES[area]}</span>
+      {extra}
       <span style={{ fontSize: 14, color: colorPalette.neutral.darken3 }}>{status}</span>
       <Icon type={iconType.ChevronRightOutlined} size={16} color={hovered ? 'blue-base' : 'neutral-darken2'} />
     </div>
@@ -1578,7 +1604,7 @@ type HaufeItem = { id: string; kind: HaufeKind; title: string; source: string; d
  * and an HR Dokumente container with the documents generated from templates. Each shows a count and
  * the latest few, and jumps straight to its application.
  */
-function HaufeContent({ chats, onAskCopilot, onOpenHrDocuments }: { chats: WorkspaceChat[]; onAskCopilot: (initialQuestion?: string) => void; onOpenHrDocuments: () => void }) {
+function HaufeContent({ chats, onAskCopilot, onOpenChat, onOpenHrDocuments }: { chats: WorkspaceChat[]; onAskCopilot: (initialQuestion?: string) => void; onOpenChat: (chatId: string) => void; onOpenHrDocuments: () => void }) {
   // Only what's actually been made in this workspace: CoPilot chats so far (nothing creates HR documents yet).
   const chatItems: HaufeItem[] = chats.map(c => ({ id: c.id, kind: 'chat', title: c.title, source: 'CoPilot HR', date: formatCreated(c.createdAt) }))
   const documents: HaufeItem[] = []
@@ -1596,8 +1622,7 @@ function HaufeContent({ chats, onAskCopilot, onOpenHrDocuments }: { chats: Works
           items={chatItems}
           openLabel="Open CoPilot"
           onOpen={() => onAskCopilot()}
-          // Opens CoPilot in this workspace; re-asking the title would start a duplicate chat.
-          onOpenItem={() => onAskCopilot()}
+          onOpenItem={item => onOpenChat(item.id)}
         />}
         {documents.length > 0 && <AppContainer
           icon={<Icon type={iconType.ArticleOutlined} size={16} color="inherit" />}

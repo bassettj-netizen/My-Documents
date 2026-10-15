@@ -12,6 +12,7 @@ import {
   searchbarWidth,
   Select,
   Typography,
+  buttonSizes,
 } from '@goat-ui/goat-ui-core'
 import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
 import { MessageComposer } from '../workspaces/Version6'
@@ -49,8 +50,8 @@ import { useProcessingUpload } from './uploadToasts'
 const GENERAL = 'general'
 const CREATE_WORKSPACE = 'create-workspace'
 
-type ChatMsg = { id: string; role: 'user' | 'assistant'; content: string; attachmentNames?: string[] }
-type ChatSession = { id: string; title: string; day: string; messages: ChatMsg[]; workspace?: WorkspaceReference }
+export type ChatMsg = { id: string; role: 'user' | 'assistant'; content: string; attachmentNames?: string[] }
+export type ChatSession = { id: string; title: string; day: string; messages: ChatMsg[]; workspace?: WorkspaceReference }
 
 let idCounter = 0
 function nextId(prefix: string) { idCounter += 1; return `${prefix}-home-${idCounter}` }
@@ -296,7 +297,7 @@ function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, onSaveDocuments, onChatStarted }: {
+export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, onSaveDocuments, onChatStarted, savedSessions, onSessionsChange }: {
   workspaces: WorkspaceReference[]
   // "Create workspace" at the foot of the workspace dropdown; returns the new workspace's id.
   onCreateWorkspace: (values: SpaceFormValues) => string
@@ -304,6 +305,9 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
   onSaveDocuments: (workspaceId: string, files: File[]) => void
   // A chat now belongs to a workspace (started there, or moved there with @) — the workspace lists it.
   onChatStarted: (workspaceId: string, chat: { id: string; title: string }) => void
+  // Chats are kept by the version, so they're still here after leaving CoPilot (null = the sample chats).
+  savedSessions: ChatSession[] | null
+  onSessionsChange: (sessions: ChatSession[]) => void
 }) {
   const runUpload = useProcessingUpload('de')
   /** Saves the files sent with a message to the chat's workspace — only once the message has gone. */
@@ -319,9 +323,12 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
   const [createOpen, setCreateOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [question, setQuestion] = useState('')
-  const routeState = location.state as { initialQuestion?: string; workspaceRef?: WorkspaceReference } | null
+  // initialQuestion starts a new chat; openChatId (from a workspace's Haufe knowledge) opens an existing one.
+  const routeState = location.state as { initialQuestion?: string; workspaceRef?: WorkspaceReference; openChatId?: string } | null
+  const baseSessions = savedSessions ?? INITIAL_SESSIONS
+  const openedChat = routeState?.openChatId ? baseSessions.find(s => s.id === routeState.openChatId) ?? null : null
   // The current workspace: whose chats the panel lists and what new chats answer from.
-  const [workspaceId, setWorkspaceId] = useState<string>(routeState?.workspaceRef?.id ?? GENERAL)
+  const [workspaceId, setWorkspaceId] = useState<string>(routeState?.workspaceRef?.id ?? openedChat?.workspace?.id ?? GENERAL)
   const attached = workspaces.find(w => w.id === workspaceId) ?? null
   /** Switch workspace from the dropdown or the chip — back to its welcome screen. */
   const selectWorkspace = (id: string) => { setWorkspaceId(id); setActiveId(null) }
@@ -338,8 +345,14 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
       ],
     }
   })
-  const [sessions, setSessions] = useState<ChatSession[]>(() => handedOver ? [handedOver, ...INITIAL_SESSIONS] : INITIAL_SESSIONS)
-  const [activeId, setActiveId] = useState<string | null>(handedOver?.id ?? null)
+  const [sessions, setSessions] = useState<ChatSession[]>(() => handedOver ? [handedOver, ...baseSessions] : baseSessions)
+  const [activeId, setActiveId] = useState<string | null>(handedOver?.id ?? openedChat?.id ?? null)
+
+  // Hand every change back to the version so the chats survive leaving the page.
+  useEffect(() => {
+    onSessionsChange(sessions)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions])
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -388,21 +401,17 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
     setQuestion('')
   }
 
-  const panelToggle = (
-    <ButtonGhost
-      shape={buttonShapes.SQUARE}
-      leftIcon={panelOpen ? iconType.ChevronLeftOutlined : iconType.ChevronRightOutlined}
-      onClick={() => setPanelOpen(v => !v)}
-    />
-  )
-
   return (
     // Main area on the theme's neutral-lighten5; the chat panel (a menu) stays white.
     <div style={{ display: 'flex', height: '100%', backgroundColor: colorPalette.neutral.lighten5 }}>
-      {panelOpen && (
+      {/* Chat panel, collapsible from its own foot like the app's other panels: a narrow strip of icons when collapsed. */}
+      <div style={{
+        width: panelOpen ? 268 : 64, flexShrink: 0, borderRight: `1px solid ${colorPalette.neutral.lighten1}`, backgroundColor: colorPalette.white,
+        display: 'flex', flexDirection: 'column', transition: 'width 0.15s',
+      }}>
+      {panelOpen ? (
         <div style={{
-          width: 268, flexShrink: 0, borderRight: `1px solid ${colorPalette.neutral.lighten1}`, backgroundColor: colorPalette.white,
-          display: 'flex', flexDirection: 'column', padding: `${spacing(4)}px ${spacing(4)}px`, gap: spacing(5), overflowY: 'auto',
+          flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `${spacing(4)}px ${spacing(4)}px`, gap: spacing(5), overflowY: 'auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
             <CoPilotMark size={32} />
@@ -424,6 +433,11 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
               .copilot-workspace-select *:focus-visible { outline: none !important; box-shadow: none !important; }
               .goat-select-item-option-selected .copilot-ws-option,
               .goat-select-item-option-selected .copilot-ws-option-icon { color: ${colorPalette.blue.base}; }
+              .goat-select-item-option-disabled:has(.copilot-create-ws) {
+                cursor: default !important; background-color: transparent !important; opacity: 1 !important;
+                margin-top: ${spacing(1)}px; padding-top: ${spacing(2)}px; border-top: 1px solid ${colorPalette.neutral.lighten3};
+              }
+              .goat-select-item-option-disabled:has(.copilot-create-ws) .goat-select-item-option-content { overflow: visible; }
             `}</style>
             {/* The DS Select has no borderless option, so the outline is removed for this one dropdown. */}
             <style>{`.copilot-workspace-select .goat-select-selector { border-color: transparent !important; box-shadow: none !important; padding-left: ${spacing(2)}px !important; }`}</style>
@@ -437,10 +451,16 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
                   label: <OptionLabel icon={<SpaceAvatar space={{ id: w.id, name: w.name } as Space} size={20} />}>{w.name}</OptionLabel>,
                   value: w.id,
                 })),
-                // The last option is an action, so it gets a + and link colour instead of looking like a workspace.
+                // Not a workspace but a button at the foot of the list. The DS Select has no footer slot, so it sits in a
+                // disabled row (not selectable, no hover — see the style block) and only the button reacts.
                 {
-                  label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.blue.base, fontWeight: 600 }}><Icon type={iconType.PlusOutlined} size={16} color="inherit" />Arbeitsbereich erstellen</span>,
+                  label: (
+                    <span className="copilot-create-ws">
+                      <ButtonTertiary size={buttonSizes.SMALL} width={buttonWidth.EXPANDED} leftIcon={iconType.PlusOutlined} onClick={e => { e.stopPropagation(); setCreateOpen(true) }}>Arbeitsbereich erstellen</ButtonTertiary>
+                    </span>
+                  ),
                   value: CREATE_WORKSPACE,
+                  disabled: true,
                 },
               ]}
               onChange={v => v === CREATE_WORKSPACE ? setCreateOpen(true) : selectWorkspace(v as string)}
@@ -472,13 +492,33 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
             </div>
           ))}
         </div>
+      ) : (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), padding: `${spacing(4)}px 0` }}>
+          <CoPilotMark size={32} />
+          <ButtonPrimary shape={buttonShapes.SQUARE} leftIcon={iconType.CommentOutlined} onClick={() => { setQuestion(''); setActiveId(null) }} ariaLabel="Neuer Chat" />
+          <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.NoteOutlined} ariaLabel="Prompt-Vorlagen" />
+        </div>
       )}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setPanelOpen(v => !v)}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPanelOpen(v => !v) } }}
+          title={panelOpen ? undefined : 'Ausklappen'}
+          style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: panelOpen ? 'flex-start' : 'center', gap: spacing(3),
+            padding: `${spacing(3)}px ${spacing(4)}px`, borderTop: `1px solid ${colorPalette.neutral.lighten3}`, cursor: 'pointer',
+          }}
+        >
+          <Icon type={panelOpen ? iconType.ChevronLeftOutlined : iconType.ChevronRightOutlined} size={16} color="neutral-darken4" />
+          {panelOpen && <span style={{ fontSize: 13, color: colorPalette.neutral.darken5 }}>Einklappen</span>}
+        </div>
+      </div>
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {activeSession ? (
           <>
             <div style={{ flexShrink: 0, padding: `${spacing(4)}px`, display: 'flex', alignItems: 'center', gap: spacing(3) }}>
-              {panelToggle}
               <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
                 <Typography size="base-lg" weight={fontWeight.SEMIBOLD} color="neutral-darken5" maxLines={1}>{activeSession.title}</Typography>
               </div>
@@ -504,7 +544,6 @@ export default function HackathonCoPilotPageV5({ workspaces, onCreateWorkspace, 
           </>
         ) : (
           <>
-            <div style={{ flexShrink: 0, padding: `${spacing(4)}px` }}>{panelToggle}</div>
 
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `0 ${spacing(10)}px ${spacing(10)}px` }}>
               <div style={{ maxWidth: 650, width: '100%', display: 'flex', flexDirection: 'column', gap: spacing(10) }}>

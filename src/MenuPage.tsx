@@ -45,6 +45,10 @@ const groups = [
       { label: 'Version 3', path: '/projects/hackathon-oct-26/version-3' },
       { label: 'Version 4', path: '/projects/hackathon-oct-26/version-4' },
       { label: 'Version 5 (Deutsch)', path: '/projects/hackathon-oct-26/version-5' },
+      { label: 'Version 6', path: '/projects/hackathon-oct-26/version-6' },
+      { label: 'Version 7 (Deutsch)', path: '/projects/hackathon-oct-26/version-7' },
+      { label: 'Version 8', path: '/projects/hackathon-oct-26/version-8' },
+      { label: 'Version 9 (Deutsch)', path: '/projects/hackathon-oct-26/version-9' },
     ],
   },
   {
