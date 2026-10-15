@@ -1039,7 +1039,7 @@ function UploadModal({ open, onClose, onUpload }: {
 
 // ─── Space card + Spaces list view ───────────────────────────────────────────
 
-function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess, lang = 'en' }: {
+function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess, lang = 'en', extra }: {
   space: Space
   docs: MetadataDocument[]
   lastUpload: string
@@ -1048,6 +1048,8 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   onRequestDelete: (id: string) => void
   organisationAccess?: boolean
   lang?: UiLang
+  // Extra content under the description, e.g. chips.
+  extra?: ReactNode
 }) {
   const de = lang === 'de'
   const [hovered, setHovered] = useState(false)
@@ -1100,6 +1102,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
         </div>
         <Typography size="base-sm" color="neutral-darken2" maxLines={2}>{space.description}</Typography>
       </div>
+      {extra}
       <Typography size="base-sm" color="neutral-darken2">
         {de
           ? <>{docCount} {docCount === 1 ? 'Dokument' : 'Dokumente'} • Letzter Upload {lastUpload}</>
@@ -1114,7 +1117,7 @@ function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestD
   )
 }
 
-export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en', background = colorPalette.white, description }: {
+export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en', background = colorPalette.white, description, renderCardExtra }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   onOpenSpace: (id: string) => void
@@ -1136,6 +1139,8 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   background?: string
   // A line under the title on what workspaces are and why they help.
   description?: ReactNode
+  // Extra content for each workspace card, under its description.
+  renderCardExtra?: (space: Space) => ReactNode
 }) {
   const de = lang === 'de'
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -1193,6 +1198,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
                 onRequestDelete={setDeleteSpaceId}
                 organisationAccess={organisationAccess}
                 lang={lang}
+                extra={renderCardExtra?.(space)}
               />
             )
           })}

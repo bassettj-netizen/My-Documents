@@ -30,7 +30,7 @@ import { useProcessingUpload } from './uploadToasts'
  * - Chat panel: CoPilot HR, New Chat, title search, Prompt Templates, the Workspace dropdown,
  *   then the current workspace's chats under Today / Yesterday. "My Chats" holds the chats that aren't tied to a workspace.
  * - Welcome: CoPilot mark, "Welcome to CoPilot HR," with the sources note, then the question composer.
- *   In a workspace, the mark, heading and intro become the workspace icon, its name and its description,
+ *   In a workspace, the mark, heading and intro become the workspace's avatar, its name and its description,
  *   and a panel on the right sums up its documents, context, guardrails, bookmarks and templates.
  * - Sending a question starts a new chat under Today with a canned reply; the chevron hides the panel.
  * - A question asked on Home arrives as `initialQuestion` in the route state and opens as a new chat.
@@ -542,7 +542,7 @@ export default function HackathonCoPilotPageV4({ workspaces, onCreateWorkspace, 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
                   {/* In a workspace, the welcome is headed with it instead of CoPilot HR. */}
                   {attached
-                    ? <div style={{ display: 'flex', color: '#001344' }}><Icon type={iconType.ElementsOutlined} size={40} color="inherit" /></div>
+                    ? <SpaceAvatar space={{ id: attached.id, name: attached.name } as Space} size={40} />
                     : <CoPilotMark size={40} />}
                   <span style={{ fontSize: 24, lineHeight: '1.3', fontWeight: 700, color: '#001344' }}>{attached ? attached.name : 'Welcome to CoPilot HR,'}</span>
                   <Typography size="base" color={attached && !attached.description.trim() ? 'neutral-darken2' : 'neutral-darken5'}>

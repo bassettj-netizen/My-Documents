@@ -48,6 +48,8 @@ import HackathonVersion6 from './pages/documents/hackathon/Version6'
 import HackathonVersion7 from './pages/documents/hackathon/Version7'
 import HackathonVersion8 from './pages/documents/hackathon/Version8'
 import HackathonVersion9 from './pages/documents/hackathon/Version9'
+import HackathonVersion10 from './pages/documents/hackathon/Version10'
+import HackathonVersion11 from './pages/documents/hackathon/Version11'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
 import FileSyncVersion3 from './pages/documents/file-sync/Version3'
@@ -191,6 +193,8 @@ const HACKATHON_V6_BASE = '/projects/hackathon-oct-26/version-6'
 const HACKATHON_V7_BASE = '/projects/hackathon-oct-26/version-7'
 const HACKATHON_V8_BASE = '/projects/hackathon-oct-26/version-8'
 const HACKATHON_V9_BASE = '/projects/hackathon-oct-26/version-9'
+const HACKATHON_V10_BASE = '/projects/hackathon-oct-26/version-10'
+const HACKATHON_V11_BASE = '/projects/hackathon-oct-26/version-11'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -214,7 +218,7 @@ function AppShell() {
   const location = useLocation()
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -223,10 +227,10 @@ function AppShell() {
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
-  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE].find(b => b === metadataAppBase) ?? null
+  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE].find(b => b === metadataAppBase) ?? null
   const inHackathon = !!hackathonBase
-  // Versions 5, 7 and 9 are the German copies of 4, 6 and 8, so their sidebar is in German too.
-  const de = hackathonBase === HACKATHON_V5_BASE || hackathonBase === HACKATHON_V7_BASE || hackathonBase === HACKATHON_V9_BASE
+  // Versions 5, 7, 9 and 11 are the German copies of 4, 6, 8 and 10, so their sidebar is in German too.
+  const de = [HACKATHON_V5_BASE, HACKATHON_V7_BASE, HACKATHON_V9_BASE, HACKATHON_V11_BASE].includes(hackathonBase!)
 
   const activeKey =
     location.pathname === `${hackathonBase}/home` ? 'home' :
@@ -277,8 +281,8 @@ function AppShell() {
 
   // Hackathon Oct '26 has its own order, with Home and Personal Office and without My Documents.
   const sidebarTopItems = (inHackathon
-    // Versions 6 to 9 drop Home from the sidebar.
-    ? ([HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE].includes(hackathonBase!) ? [copilotItem, personalOfficeItem, workspacesItem] : [homeItem, copilotItem, personalOfficeItem, workspacesItem])
+    // Versions 6 to 11 drop Home from the sidebar.
+    ? ([HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE].includes(hackathonBase!) ? [copilotItem, personalOfficeItem, workspacesItem] : [homeItem, copilotItem, personalOfficeItem, workspacesItem])
     : [documentsItem, workspacesItem, copilotItem]
   ) as unknown as SidebarItem[]
 
@@ -405,6 +409,9 @@ function App() {
           {/* Versions 8 and 9: 6 and 7 with My knowledge filled in from one side panel (9 is German). */}
           <Route path="/projects/hackathon-oct-26/version-8/*" element={<HackathonVersion8 />} />
           <Route path="/projects/hackathon-oct-26/version-9/*" element={<HackathonVersion9 />} />
+          {/* Versions 10 and 11: 8 and 9 where a new workspace opens on an animated "ready" view (11 is German). */}
+          <Route path="/projects/hackathon-oct-26/version-10/*" element={<HackathonVersion10 />} />
+          <Route path="/projects/hackathon-oct-26/version-11/*" element={<HackathonVersion11 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

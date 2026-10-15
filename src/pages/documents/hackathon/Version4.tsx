@@ -36,6 +36,9 @@ import {
   tooltipPlacements,
   tooltipSizes,
   Typography,
+  Chip,
+  chipStyles,
+  chipVariants,
 } from '@goat-ui/goat-ui-core'
 import {
   colorPalette,
@@ -455,7 +458,7 @@ export default function HackathonVersion4() {
     <Routes>
       <Route index element={<Navigate to="workspaces" replace />} />
       <Route path="workspaces">
-        <Route index element={<SpacesListRoute workspace={workspace} />} />
+        <Route index element={<SpacesListRoute workspace={workspace} extras={extras} />} />
         <Route path=":workspaceSlug" element={<SpaceDetailRoute workspace={workspace} store={store} extras={extras} area="summary" />} />
         {WORKSPACE_AREAS.map(area => (
           <Route key={area} path={`:workspaceSlug/${area}`} element={<SpaceDetailRoute workspace={workspace} store={store} extras={extras} area={area} />} />
@@ -483,7 +486,7 @@ export default function HackathonVersion4() {
   )
 }
 
-function SpacesListRoute({ workspace }: { workspace: WorkspaceState }) {
+function SpacesListRoute({ workspace, extras }: { workspace: WorkspaceState; extras: ExtrasStore }) {
   const navigate = useNavigate()
   return (
     <SpacesListView
@@ -500,6 +503,7 @@ function SpacesListRoute({ workspace }: { workspace: WorkspaceState }) {
       showTitleIcon={false}
       noun="Workspace"
       background={CONTENT_BG}
+      renderCardExtra={space => <HaufeTypeChips extras={extras.get(space.id)} />}
       // Only once there's a workspace — the empty state explains workspaces on its own.
       description={workspace.spaces.length > 0 ? 'Workspaces bring everything for a client, department or project together — documents, context, instructions and connected apps. CoPilot answers with the right background, and you find what you need in one place.' : undefined}
       renderEmptyState={openCreate => <WorkspacesEmptyState onCreate={openCreate} />}
@@ -1560,6 +1564,21 @@ function DashedEmptyState({ title, text }: { title: string; text: string }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing(1), padding: spacing(6), borderRadius: 8, border: `1px dashed ${colorPalette.neutral.lighten1}` }}>
       <Typography size="base" weight="semibold" color="neutral-darken5" align="center">{title}</Typography>
       <Typography size="base-sm" color="neutral-darken2" align="center">{text}</Typography>
+    </div>
+  )
+}
+
+/** The Haufe knowledge a workspace has, as chips on its card — one per app with something in it. */
+function HaufeTypeChips({ extras }: { extras: WorkspaceExtras }) {
+  const types = [
+    extras.chats.length > 0 && 'CoPilot',
+    extras.haufeDocuments.some(doc => doc.app === 'zeugnismanager') && 'Haufe Zeugnismanager',
+    extras.haufeDocuments.some(doc => doc.app === 'hr-dokumente') && 'HR Dokumente',
+  ].filter((t): t is string => !!t)
+  if (types.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(2) }}>
+      {types.map(t => <Chip key={t} label={t} uppercase={false} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />)}
     </div>
   )
 }
