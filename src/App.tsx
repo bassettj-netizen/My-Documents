@@ -50,6 +50,9 @@ import HackathonVersion8 from './pages/documents/hackathon/Version8'
 import HackathonVersion9 from './pages/documents/hackathon/Version9'
 import HackathonVersion10 from './pages/documents/hackathon/Version10'
 import HackathonVersion11 from './pages/documents/hackathon/Version11'
+import Workspaces2Version1 from './pages/documents/workspaces-2/Version1'
+import Workspaces2Version2 from './pages/documents/workspaces-2/Version2'
+import Workspaces2Version3 from './pages/documents/workspaces-2/Version3'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
 import FileSyncVersion3 from './pages/documents/file-sync/Version3'
@@ -117,7 +120,8 @@ import PreviewScreenV4 from './pages/documents/document-preview/PreviewScreenV4'
 // (`.goat-menu-item-icon`) — needed for correct sizing/label layout, and an
 // explicit `neutral.base` color since these custom SVGs don't get the DS's
 // automatic icon tint from just `currentColor` alone.
-function CoPilotIcon() {
+// `outline` drops the filled inner shape, for menus drawn in outlined icons (Workspaces 2.0 Version 2).
+function CoPilotIcon({ outline = false }: { outline?: boolean }) {
   return (
     <div className="goat-menu-item-icon" style={{ color: colorPalette.neutral.base }}>
       <svg width={24} height={24} viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -126,7 +130,7 @@ function CoPilotIcon() {
         </mask>
         <g mask="url(#copilot-sidebar-icon-mask)">
           <path d="M11 15.1099C8.72746 15.1099 6.89011 13.2725 6.89011 11C6.89011 8.72746 8.72746 6.89011 11 6.89011C13.2725 6.89011 15.1099 8.72746 15.1099 11C15.1099 13.2725 13.2725 15.1099 11 15.1099ZM11 8.09889C9.40442 8.09889 8.09889 9.40442 8.09889 11C8.09889 12.5956 9.40442 13.9011 11 13.9011C12.5956 13.9011 13.9011 12.5956 13.9011 11C13.9011 9.40442 12.5956 8.09889 11 8.09889ZM11.0242 21.9758C8.53409 21.9758 6.79343 20.0418 6.79343 17.2857C6.72088 15.5934 5.60879 15.2308 4.69011 15.2308C3.23956 15.2308 1.95824 14.7472 1.08791 13.8528C0.362638 13.1033 0 12.1121 0 11C0.0483517 7.92967 2.46593 6.79343 4.71429 6.76923C5.72967 6.76923 6.79343 6.21321 6.79343 4.71429C6.76923 1.88571 8.48569 0 11 0C13.5143 0 15.1099 1.83736 15.2308 4.69011C15.3033 6.47912 16.5604 6.76923 17.2857 6.76923C19.4132 6.76923 21.9275 7.90547 22 11C22 12.1121 21.6373 13.1033 20.8879 13.8528C20.0176 14.7231 18.7121 15.2308 17.2857 15.2308C16.3912 15.2308 15.3033 15.5934 15.255 17.2857C15.1341 20.1385 13.4901 21.9758 11.0242 21.9758ZM7.97801 4.71429C7.97801 6.33409 6.98679 7.95387 4.71429 7.97801C3.67472 7.97801 1.25714 8.29232 1.20879 11C1.20879 11.7736 1.45055 12.4748 1.95824 12.9824C2.58681 13.6352 3.57802 13.9978 4.69011 13.9978C6.64834 13.9978 7.90547 15.255 8.00221 17.2132C8.00221 18.978 8.94503 20.7429 11.0242 20.7429C13.1033 20.7429 13.9494 19.4132 14.0461 17.2132C14.1187 15.2308 15.3758 13.9978 17.2857 13.9736C18.3978 13.9736 19.389 13.611 20.0418 12.9582C20.5494 12.4264 20.8154 11.7494 20.7912 10.9758C20.7429 8.19558 18.0835 7.95387 17.2857 7.95387C15.7627 7.95387 14.1187 7.08354 14.022 4.71429C13.9252 2.51429 12.8132 1.18461 11 1.18461C9.18679 1.18461 7.97801 2.56264 7.97801 4.69011V4.71429Z" fill="currentColor" />
-          <path d="M11 1C12.6569 1 14 2.34315 14 4C14 4.01141 13.9992 4.0228 13.999 4.03418L14.6358 4.64062L14.3731 4.91504L17.336 7.7373L17.6006 7.45996L18.1729 8.00488C19.7493 8.09443 21 9.40116 21 11C21 12.6107 19.7306 13.9241 18.1377 13.9961L17.3545 14.8105L16.6514 14.1338L14.1309 16.7539L14.8379 17.4336L13.9824 18.3223C13.8217 19.8276 12.548 21 11 21C9.34316 21 8.00002 19.6569 8.00002 18C8.00002 17.9261 8.00355 17.8529 8.00881 17.7803L7.00002 16.8203L7.33498 16.4678L5.33889 14.5674L5.07424 14.8457L4.17873 13.9941C4.11959 13.9976 4.06003 14 4.00002 14C2.34316 14 1.00002 12.6569 1.00002 11C1.00002 9.4257 2.21273 8.13549 3.7549 8.01074L4.834 6.90918L5.53029 7.59082L7.94826 5.12109L7.24904 4.43652L8.02053 3.64746C8.19503 2.15674 9.46243 1 11 1ZM10.1963 7.32227L10.0342 7.16309L7.61623 9.63281L7.61721 9.63379L6.92482 10.3398C6.9726 10.5524 7.00002 10.773 7.00002 11C7.00002 11.0949 6.99399 11.1886 6.98537 11.2812L10.8926 15.002C10.9283 15.0007 10.9641 15 11 15C11.2375 15 11.4679 15.0299 11.6895 15.082L12.0283 14.7305L15.0567 11.582C15.0196 11.3937 15 11.1992 15 11C15 10.8012 15.0188 10.6069 15.0557 10.4189L11.9492 7.46094L11.4317 6.96875C11.2907 6.98907 11.1466 7 11 7C10.8453 7 10.6933 6.9884 10.5449 6.96582L10.1963 7.32227Z" fill="currentColor" />
+          {!outline && <path d="M11 1C12.6569 1 14 2.34315 14 4C14 4.01141 13.9992 4.0228 13.999 4.03418L14.6358 4.64062L14.3731 4.91504L17.336 7.7373L17.6006 7.45996L18.1729 8.00488C19.7493 8.09443 21 9.40116 21 11C21 12.6107 19.7306 13.9241 18.1377 13.9961L17.3545 14.8105L16.6514 14.1338L14.1309 16.7539L14.8379 17.4336L13.9824 18.3223C13.8217 19.8276 12.548 21 11 21C9.34316 21 8.00002 19.6569 8.00002 18C8.00002 17.9261 8.00355 17.8529 8.00881 17.7803L7.00002 16.8203L7.33498 16.4678L5.33889 14.5674L5.07424 14.8457L4.17873 13.9941C4.11959 13.9976 4.06003 14 4.00002 14C2.34316 14 1.00002 12.6569 1.00002 11C1.00002 9.4257 2.21273 8.13549 3.7549 8.01074L4.834 6.90918L5.53029 7.59082L7.94826 5.12109L7.24904 4.43652L8.02053 3.64746C8.19503 2.15674 9.46243 1 11 1ZM10.1963 7.32227L10.0342 7.16309L7.61623 9.63281L7.61721 9.63379L6.92482 10.3398C6.9726 10.5524 7.00002 10.773 7.00002 11C7.00002 11.0949 6.99399 11.1886 6.98537 11.2812L10.8926 15.002C10.9283 15.0007 10.9641 15 11 15C11.2375 15 11.4679 15.0299 11.6895 15.082L12.0283 14.7305L15.0567 11.582C15.0196 11.3937 15 11.1992 15 11C15 10.8012 15.0188 10.6069 15.0557 10.4189L11.9492 7.46094L11.4317 6.96875C11.2907 6.98907 11.1466 7 11 7C10.8453 7 10.6933 6.9884 10.5449 6.96582L10.1963 7.32227Z" fill="currentColor" />}
         </g>
       </svg>
     </div>
@@ -166,6 +170,24 @@ function PersonalOfficeIcon() {
   )
 }
 
+// HR Dokumente's product logo (screenshots/…Icon-Haufe-DocPlus.svg), shown as-is like Personal Office's.
+function HrDokumenteIcon() {
+  return (
+    <div className="goat-menu-item-icon">
+      <img src="/hackathon/hr-dokumente.svg" alt="" width={24} height={24} style={{ display: 'block' }} />
+    </div>
+  )
+}
+
+// Haufe Zeugnis Manager's product logo (screenshots/…Icon-Haufe-Zeugnis-Manager.svg), shown as-is.
+function ZeugnisManagerIcon() {
+  return (
+    <div className="goat-menu-item-icon">
+      <img src="/hackathon/zeugnis-manager.svg" alt="" width={24} height={24} style={{ display: 'block' }} />
+    </div>
+  )
+}
+
 // CoPilot has no in-app destination — it opens in a new tab.
 const COPILOT_URL = 'https://example.com/copilot-placeholder'
 
@@ -195,6 +217,12 @@ const HACKATHON_V8_BASE = '/projects/hackathon-oct-26/version-8'
 const HACKATHON_V9_BASE = '/projects/hackathon-oct-26/version-9'
 const HACKATHON_V10_BASE = '/projects/hackathon-oct-26/version-10'
 const HACKATHON_V11_BASE = '/projects/hackathon-oct-26/version-11'
+// Workspaces 2.0 continues from Hackathon Oct '26 Version 10, so it shares the hackathon sidebar.
+const WORKSPACES_2_V1_BASE = '/projects/workspaces-2/version-1'
+// Version 2 swaps in the product's full menu (Figma "2 · Client dossier").
+const WORKSPACES_2_V2_BASE = '/projects/workspaces-2/version-2'
+// Version 3: Version 2 with Version 1's workspace cards.
+const WORKSPACES_2_V3_BASE = '/projects/workspaces-2/version-3'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -216,9 +244,11 @@ function RenamedPath({ from, to }: { from: string; to: string }) {
 function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
+  // Workspaces 2.0 Versions 2 and 3: the sidebar starts open, as in their Figma.
+  const [productMenuCollapsed, setProductMenuCollapsed] = useState(false)
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -227,7 +257,7 @@ function AppShell() {
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
-  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE].find(b => b === metadataAppBase) ?? null
+  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE].find(b => b === metadataAppBase) ?? null
   const inHackathon = !!hackathonBase
   // Versions 5, 7, 9 and 11 are the German copies of 4, 6, 8 and 10, so their sidebar is in German too.
   const de = [HACKATHON_V5_BASE, HACKATHON_V7_BASE, HACKATHON_V9_BASE, HACKATHON_V11_BASE].includes(hackathonBase!)
@@ -235,6 +265,8 @@ function AppShell() {
   const activeKey =
     location.pathname === `${hackathonBase}/home` ? 'home' :
     location.pathname === `${hackathonBase}/personal-office` ? 'personal-office' :
+    location.pathname === `${hackathonBase}/hr-dokumente` ? 'hr-dokumente' :
+    location.pathname === `${hackathonBase}/zeugnis-manager` ? 'zeugnis-manager' :
     location.pathname === `${hackathonBase}/copilot` ? 'copilot' :
     location.pathname === '/connectors' || location.pathname === `${WORKSPACES_NUVIO_BASE}/connectors` || location.pathname === `${WORKSPACES_BASIC_BASE}/connectors` || location.pathname === `${metadataAppBase}/connectors` ? 'connectors' :
     location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` || location.pathname === `${WORKSPACES_BASIC_BASE}/my-documents` || location.pathname === `${metadataAppBase}/my-documents` ? 'documents' :
@@ -282,33 +314,60 @@ function AppShell() {
   // Hackathon Oct '26 has its own order, with Home and Personal Office and without My Documents.
   const sidebarTopItems = (inHackathon
     // Versions 6 to 11 drop Home from the sidebar.
-    ? ([HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE].includes(hackathonBase!) ? [copilotItem, personalOfficeItem, workspacesItem] : [homeItem, copilotItem, personalOfficeItem, workspacesItem])
+    ? ([HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE].includes(hackathonBase!) ? [copilotItem, personalOfficeItem, workspacesItem] : [homeItem, copilotItem, personalOfficeItem, workspacesItem])
     : [documentsItem, workspacesItem, copilotItem]
   ) as unknown as SidebarItem[]
 
-  const sidebarBottomItems = [
-    {
-      key: 'connectors',
-      label: de ? 'Konnektoren' : 'Connectors',
-      icon: <ConnectorIcon />,
-      // Same rule as "My Documents" — stays inside the current nested workspaces
-      // app when already there, rather than jumping out to the unrelated top-level page.
-      onClick: () => navigate(inWorkspacesV6 || inWorkspacesBasic ? `${workspacesAppBase}/connectors` : '/connectors'),
-    },
-    // Hackathon Oct '26 has no header, so the user's avatar sits at the foot of the sidebar instead.
-    ...(inHackathon ? [{
-      key: 'user',
-      label: CURRENT_USER.name,
-      icon: (
-        // The DS's smallest avatar is 32px, taller than the sidebar's 24px icon slot (it was cut off at the
-        // bottom), so it's scaled to 24px to sit like the other icons.
-        <div className="goat-menu-item-icon" style={{ width: 24, height: 24, flexShrink: 0 }}>
-          <div style={{ width: 32, height: 32, transform: 'scale(0.75)', transformOrigin: 'top left' }}>
-            <Avatar srcPlaceholder={CURRENT_USER.initials} size={avatarSizeEnum.SMALL} />
-          </div>
+  const connectorsItem = {
+    key: 'connectors',
+    label: de ? 'Konnektoren' : 'Connectors',
+    icon: <ConnectorIcon />,
+    // Same rule as "My Documents" — stays inside the current nested workspaces
+    // app when already there, rather than jumping out to the unrelated top-level page.
+    onClick: () => navigate(inWorkspacesV6 || inWorkspacesBasic ? `${workspacesAppBase}/connectors` : '/connectors'),
+  }
+  // Hackathon Oct '26 has no header, so the user's avatar sits at the foot of the sidebar instead.
+  const userItem = {
+    key: 'user',
+    label: CURRENT_USER.name,
+    icon: (
+      // The DS's smallest avatar is 32px, taller than the sidebar's 24px icon slot (it was cut off at the
+      // bottom), so it's scaled to 24px to sit like the other icons.
+      <div className="goat-menu-item-icon" style={{ width: 24, height: 24, flexShrink: 0 }}>
+        <div style={{ width: 32, height: 32, transform: 'scale(0.75)', transformOrigin: 'top left' }}>
+          <Avatar srcPlaceholder={CURRENT_USER.initials} size={avatarSizeEnum.SMALL} />
         </div>
-      ),
-    }] : []),
+      </div>
+    ),
+  }
+  const sidebarBottomItems = [connectorsItem, ...(inHackathon ? [userItem] : [])] as unknown as SidebarItem[]
+
+  // Workspaces 2.0 Versions 2 and 3 use the product's full menu, with My Knowledge and Cowork as open groups. Items
+  // without a page in this prototype (Calculators, Cowork, Workflows, Gesetzesradar,
+  // Einstellungen, Abmelden) do nothing; the avatar stays at the foot as in Version 1.
+  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE
+  const productTopItems = [
+    { ...copilotItem, label: 'Copilot Tax', icon: <CoPilotIcon outline /> },
+    { key: 'calculators', label: 'Calculators', icon: <Icon type={iconType.CalculatorOutlined} /> },
+    { ...personalOfficeItem, label: 'Haufe Office Line' },
+    { key: 'hr-dokumente', label: 'HR Dokumente', icon: <HrDokumenteIcon />, onClick: () => navigate(`${hackathonBase}/hr-dokumente`) },
+    { key: 'zeugnis-manager', label: 'Haufe Zeugnis Manager', icon: <ZeugnisManagerIcon />, onClick: () => navigate(`${hackathonBase}/zeugnis-manager`) },
+    { key: 'content', label: 'My Knowledge', icon: <Icon type={iconType.FolderOutlined} />, children: [
+      { key: 'documents', label: 'Meine Dokumente', icon: <Icon type={iconType.FolderOutlined} />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
+      { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} /> },
+    ] },
+    { key: 'cowork', label: 'Cowork', icon: <Icon type={iconType.RouteOutlined} />, children: [
+      { key: 'cowork-tax', label: 'Tax', icon: <Icon type={iconType.RouteOutlined} /> },
+      { key: 'cowork-finki', label: 'Finki', icon: <Icon type={iconType.RouteOutlined} /> },
+    ] },
+    { key: 'workflows', label: 'Workflows', icon: <Icon type={iconType.ArticleOutlined} /> },
+    { key: 'gesetzesradar', label: 'Gesetzesradar', icon: <Icon type={iconType.WorldOutlined} /> },
+    { ...connectorsItem, icon: <Icon type={iconType.LinkOutlined} /> },
+  ] as unknown as SidebarItem[]
+  const productBottomItems = [
+    { key: 'settings', label: 'Einstellungen', icon: <Icon type={iconType.GearOutlined} /> },
+    { key: 'logout', label: 'Abmelden', icon: <Icon type={iconType.LogoutOutlined} /> },
+    userItem,
   ] as unknown as SidebarItem[]
 
   return (
@@ -321,9 +380,10 @@ function AppShell() {
         },
       }}
       sidebar={{
-        topItems: sidebarTopItems,
-        bottomItems: sidebarBottomItems,
+        topItems: productMenu ? productTopItems : sidebarTopItems,
+        bottomItems: productMenu ? productBottomItems : sidebarBottomItems,
         collapsible: true,
+        ...(productMenu ? { collapsed: productMenuCollapsed, onCollapsedChange: setProductMenuCollapsed, defaultOpenKeys: ['content', 'cowork'] } : {}),
         activeKeys: [activeKey],
         mode: 'light',
         logoProps: {
@@ -337,6 +397,15 @@ function AppShell() {
     >
       {/* The Layout always renders its header, so Hackathon Oct '26 hides it to drop the header entirely. */}
       {inHackathon && <style>{`#${HIDDEN_HEADER_ID} { display: none; }`}</style>}
+      {/* The sidebar switches between a scrolling menu (when it doesn't fit) and one with the bottom items
+          pinned to the foot (when it does). The pinned layout is a few pixels taller, so at window heights
+          where the long product menu only just fits it flips between the two every frame and the bottom items
+          jump. Giving both layouts the same rules — scroll if needed, bottom items pushed to the foot — makes
+          the flip invisible. */}
+      {productMenu && <style>{`aside.goat-layout-sider div:has(> ul.goat-menu-root) { overflow-y: auto !important; overflow-x: hidden !important; justify-content: space-between !important; }`}</style>}
+      {/* Workspaces 2.0 Versions 2 and 3: the pages are white, so the Layout's own tinted background (seen while a page
+          loads, or below a short one) is white too. */}
+      {productMenu && <style>{`.goat-layout { background: ${colorPalette.white} !important; }`}</style>}
       <Outlet />
     </Layout>
   )
@@ -412,6 +481,12 @@ function App() {
           {/* Versions 10 and 11: 8 and 9 where a new workspace opens on an animated "ready" view (11 is German). */}
           <Route path="/projects/hackathon-oct-26/version-10/*" element={<HackathonVersion10 />} />
           <Route path="/projects/hackathon-oct-26/version-11/*" element={<HackathonVersion11 />} />
+          {/* Workspaces 2.0: Version 1 starts as a copy of Hackathon Oct '26 Version 10. */}
+          <Route path="/projects/workspaces-2/version-1/*" element={<Workspaces2Version1 />} />
+          {/* Version 2: Version 1's workspace page reworked to the "2 · Client dossier" Figma, with the product's full sidebar menu. */}
+          <Route path="/projects/workspaces-2/version-2/*" element={<Workspaces2Version2 />} />
+          {/* Version 3: Version 2 with Version 1's workspace cards on the Workspaces page. */}
+          <Route path="/projects/workspaces-2/version-3/*" element={<Workspaces2Version3 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

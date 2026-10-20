@@ -1179,9 +1179,11 @@ function ViewPanel({ doc, space, meta, source, docIndex, onEdit }: {
         <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.EditOutlined} onClick={onEdit} />
       </div>
 
-      {meta.summary
-        ? <div style={{ ...cellText, lineHeight: '22px' }}>{meta.summary}</div>
-        : <div style={{ ...cellText, color: colorPalette.neutral.darken2 }}>No summary yet. Use the edit button to add one.</div>}
+      <DetailSection title={FIELD_LABELS.summary}>
+        {meta.summary
+          ? <div style={{ ...cellText, lineHeight: '22px' }}>{meta.summary}</div>
+          : <div style={{ ...cellText, color: colorPalette.neutral.darken2 }}>No summary yet. Use the edit button to add one.</div>}
+      </DetailSection>
 
       <Divider />
 

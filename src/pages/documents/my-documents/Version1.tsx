@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   ButtonDanger,
   ButtonGhost,
@@ -311,7 +311,10 @@ const PAGE_SIZE = 20
  * Source column (personal files aren't synced from a connected app), plus a
  * simple upload dropzone instead of the multi-source "Add Documents" flow.
  */
-export default function MyDocumentsVersion1({ onSendToChat, showTitleIcon = true }: { onSendToChat?: (docs: PersonalDoc[]) => void; showTitleIcon?: boolean } = {}) {
+// `title` and `description`: the page's heading and a line under it (Workspaces 2.0 Version 2). With a
+// description, the header is spaced like the Workspaces list (SpacesListView): 24px all round, 4px between
+// title and description, 24px down to the content, and the search aligned to the top.
+export default function MyDocumentsVersion1({ onSendToChat, showTitleIcon = true, title = 'My Documents', description }: { onSendToChat?: (docs: PersonalDoc[]) => void; showTitleIcon?: boolean; title?: string; description?: ReactNode } = {}) {
   const [docs, setDocs] = useState<PersonalDoc[]>(MOCK_DOCS)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -503,15 +506,22 @@ export default function MyDocumentsVersion1({ onSendToChat, showTitleIcon = true
 
   return (
     <div ref={pageRef} style={{ height: pageHeight ?? '100%', display: 'flex', flexDirection: 'column', backgroundColor: colorPalette.white, overflow: 'hidden' }}>
-      <div style={{ flexShrink: 0, padding: `${spacing(6)}px ${spacing(6)}px ${spacing(4)}px`, display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(2) }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
-            {showTitleIcon && (
-              <div style={{ color: '#141F29', display: 'flex' }}>
-                <Icon type={iconType.FolderOutlined} size={32} color="inherit" />
+      <div style={{ flexShrink: 0, padding: `${spacing(6)}px ${spacing(6)}px ${description ? spacing(6) : spacing(4)}px`, display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+        <div style={{ display: 'flex', alignItems: description ? 'flex-start' : 'center', justifyContent: 'space-between', gap: description ? spacing(6) : spacing(2) }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1), minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
+              {showTitleIcon && (
+                <div style={{ color: '#141F29', display: 'flex' }}>
+                  <Icon type={iconType.FolderOutlined} size={32} color="inherit" />
+                </div>
+              )}
+              <Typography size="heading-lg" weight={fontWeight.BOLD}>{title}</Typography>
+            </div>
+            {description && (
+              <div style={{ maxWidth: 720 }}>
+                <Typography size="base" color="neutral-darken2">{description}</Typography>
               </div>
             )}
-            <Typography size="heading-lg" weight={fontWeight.BOLD}>My Documents</Typography>
           </div>
           <div style={{ width: 300 }}>
             <SearchBar placeholder="Search documents" value={search} onChange={setSearch} />

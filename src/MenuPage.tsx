@@ -54,6 +54,14 @@ const groups = [
     ],
   },
   {
+    title: 'Workspaces 2.0',
+    items: [
+      { label: 'Version 1', path: '/projects/workspaces-2/version-1' },
+      { label: 'Version 2', path: '/projects/workspaces-2/version-2' },
+      { label: 'Version 3', path: '/projects/workspaces-2/version-3' },
+    ],
+  },
+  {
     title: 'File Sync',
     items: [
       { label: 'Version 1', path: '/projects/file-sync/version-1' },

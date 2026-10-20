@@ -141,7 +141,8 @@ function Medallion({ children, tone = 'blue' }: { children: ReactNode; tone?: 'b
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function PersonalOfficePage({ copilotPath }: { copilotPath: string }) {
+// `background`: the page's background (Workspaces 2.0 Version 2 uses white).
+export default function PersonalOfficePage({ copilotPath, background = PAGE_BG }: { copilotPath: string; background?: string }) {
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(true)
   const [activeNav, setActiveNav] = useState('Startseite')
@@ -149,7 +150,7 @@ export default function PersonalOfficePage({ copilotPath }: { copilotPath: strin
   const openCopilot = () => navigate(copilotPath)
 
   return (
-    <div style={{ display: 'flex', height: '100%', backgroundColor: PAGE_BG }}>
+    <div style={{ display: 'flex', height: '100%', backgroundColor: background }}>
       {/* Product navigation */}
       <div style={{
         width: navOpen ? 220 : 56, flexShrink: 0, display: 'flex', flexDirection: 'column', backgroundColor: colorPalette.white,

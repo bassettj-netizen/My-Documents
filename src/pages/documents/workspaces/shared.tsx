@@ -1039,7 +1039,7 @@ function UploadModal({ open, onClose, onUpload }: {
 
 // ─── Space card + Spaces list view ───────────────────────────────────────────
 
-function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess, lang = 'en', extra }: {
+export function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess, lang = 'en', extra }: {
   space: Space
   docs: MetadataDocument[]
   lastUpload: string
