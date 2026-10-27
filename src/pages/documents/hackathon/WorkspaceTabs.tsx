@@ -26,8 +26,8 @@ import { SUGGESTED_GUARDRAILS, type Bookmark, type Guardrail, type Template, typ
 let idCounter = 0
 const newId = (prefix: string) => { idCounter += 1; return `${prefix}-${Date.now()}-${idCounter}` }
 
-const BOOKMARK_APPS = ['SharePoint', 'Confluence', 'Jira', 'Microsoft Teams', 'Personal Office', 'Website', 'Other']
-const TEMPLATE_APPS = ['Personal Office', 'Microsoft Word', 'SharePoint', 'Outlook', 'Other']
+export const BOOKMARK_APPS = ['SharePoint', 'Confluence', 'Jira', 'Microsoft Teams', 'Personal Office', 'Website', 'Other']
+export const TEMPLATE_APPS = ['Personal Office', 'Microsoft Word', 'SharePoint', 'Outlook', 'Other']
 
 
 const toOptions = (values: string[]) => values.map(v => ({ label: v, value: v }))
@@ -62,7 +62,7 @@ function TabIntro({ title, text, action }: { title: string; text: string; action
   )
 }
 
-function AppLabel({ app }: { app: string }) {
+export function AppLabel({ app }: { app: string }) {
   return (
     <span style={{ fontSize: 12, fontWeight: 600, color: colorPalette.neutral.darken3, backgroundColor: colorPalette.neutral.lighten4, borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>
       {app}

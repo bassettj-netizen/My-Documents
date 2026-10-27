@@ -18,7 +18,7 @@ import {
   dropdownTriggers,
   Input,
 } from '@goat-ui/goat-ui-core'
-import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
+import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, type DocSource, type MetadataDocument, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
 import { MessageComposer } from '../workspaces/Version6'
 import { CoPilotMark } from '../workspaces/CoPilotPage'
 import type { WorkspaceReference } from '../hackathon/workspaceModel'
@@ -213,13 +213,20 @@ function mentionQuery(text: string): string | null {
   return match ? match[1] : null
 }
 
+type SeedAttachment = { doc: MetadataDocument; source: DocSource }
+const NO_ATTACHMENTS: SeedAttachment[] = []
+const noop = () => {}
+
 /**
  * The CoPilot question box plus an @ picker: typing @ lists the workspaces above the box, filtered by
  * what follows it. Keys are caught on the way down to the field so ↑/↓/Enter drive the list while it's open.
  */
-function MentionComposer({ value, onChange, workspaces, onPick, ...composer }: Omit<ComponentProps<typeof MessageComposer>, 'seedAttachments' | 'onSeedAttachmentsConsumed' | 'autoSize'> & {
+function MentionComposer({ value, onChange, workspaces, onPick, seedAttachments, onSeedAttachmentsConsumed, ...composer }: Omit<ComponentProps<typeof MessageComposer>, 'seedAttachments' | 'onSeedAttachmentsConsumed' | 'autoSize'> & {
   workspaces: WorkspaceReference[]
   onPick: (ws: WorkspaceReference) => void
+  // Documents to attach to the question, e.g. sent from a workspace (Workspaces 2.0 Version 9).
+  seedAttachments?: SeedAttachment[]
+  onSeedAttachmentsConsumed?: () => void
 }) {
   const [highlight, setHighlight] = useState(0)
   const [dismissed, setDismissed] = useState<string | null>(null)
@@ -282,8 +289,8 @@ function MentionComposer({ value, onChange, workspaces, onPick, ...composer }: O
         {...composer}
         value={value}
         onChange={v => { onChange(v); setHighlight(0) }}
-        seedAttachments={[]}
-        onSeedAttachmentsConsumed={() => {}}
+        seedAttachments={seedAttachments ?? NO_ATTACHMENTS}
+        onSeedAttachmentsConsumed={onSeedAttachmentsConsumed ?? noop}
         autoSize={{ minRows: 2, maxRows: 6 }}
       />
     </div>
@@ -399,7 +406,9 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
   const [search, setSearch] = useState('')
   const [question, setQuestion] = useState('')
   // initialQuestion starts a new chat; openChatId (from a workspace's Haufe knowledge) opens an existing one.
-  const routeState = location.state as { initialQuestion?: string; workspaceRef?: WorkspaceReference; openChatId?: string } | null
+  // attachDocs (Version 9's Send to CoPilot) attaches documents to the new question in the workspace.
+  const routeState = location.state as { initialQuestion?: string; workspaceRef?: WorkspaceReference; openChatId?: string; attachDocs?: SeedAttachment[] } | null
+  const [attachDocs, setAttachDocs] = useState<SeedAttachment[]>(() => routeState?.attachDocs ?? NO_ATTACHMENTS)
   const baseSessions = savedSessions ?? [...extraSessions, ...INITIAL_SESSIONS]
   const openedChat = routeState?.openChatId ? baseSessions.find(s => s.id === routeState.openChatId) ?? null : null
   // The current workspace: whose chats the panel lists and what new chats answer from.
@@ -670,6 +679,8 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                   placeholder={attached ? `Ask about ${attached.name}` : 'Ask a question, or type @ to target a workspace'}
                   workspaces={workspaces}
                   onPick={ws => setWorkspaceId(ws.id)}
+                  seedAttachments={attachDocs}
+                  onSeedAttachmentsConsumed={() => setAttachDocs(NO_ATTACHMENTS)}
                 />
               </div>
             </div>

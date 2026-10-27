@@ -53,6 +53,14 @@ import HackathonVersion11 from './pages/documents/hackathon/Version11'
 import Workspaces2Version1 from './pages/documents/workspaces-2/Version1'
 import Workspaces2Version2 from './pages/documents/workspaces-2/Version2'
 import Workspaces2Version3 from './pages/documents/workspaces-2/Version3'
+import Workspaces2Version4 from './pages/documents/workspaces-2/Version4'
+import Workspaces2Version5 from './pages/documents/workspaces-2/Version5'
+import Workspaces2Version6 from './pages/documents/workspaces-2/Version6'
+import Workspaces2Version7 from './pages/documents/workspaces-2/Version7'
+import Workspaces2Version8 from './pages/documents/workspaces-2/Version8'
+import Workspaces2Version9 from './pages/documents/workspaces-2/Version9'
+import Workspaces2Version10 from './pages/documents/workspaces-2/Version10'
+import { AppGlyph, HR_DOKUMENTE_GLYPH, ZEUGNIS_MANAGER_GLYPH } from './pages/documents/workspaces-2/appGlyphs'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
 import FileSyncVersion3 from './pages/documents/file-sync/Version3'
@@ -170,20 +178,25 @@ function PersonalOfficeIcon() {
   )
 }
 
-// HR Dokumente's product logo (screenshots/…Icon-Haufe-DocPlus.svg), shown as-is like Personal Office's.
-function HrDokumenteIcon() {
+// Workspaces 2.0 Versions 2–5: the Haufe apps' marks without their pink tiles, in the menu's own icon colour
+// (grey, blue when active) like the DS icons around them. Haufe Office Line's logo is a raster image, so its
+// mark — a "P" with a dot — is redrawn as a line icon on an outlined tile.
+function MenuAppGlyph({ d }: { d: string }) {
   return (
     <div className="goat-menu-item-icon">
-      <img src="/hackathon/hr-dokumente.svg" alt="" width={24} height={24} style={{ display: 'block' }} />
+      <span style={{ width: 24, height: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><AppGlyph d={d} size={20} /></span>
     </div>
   )
 }
 
-// Haufe Zeugnis Manager's product logo (screenshots/…Icon-Haufe-Zeugnis-Manager.svg), shown as-is.
-function ZeugnisManagerIcon() {
+function OfficeLineGlyph() {
   return (
     <div className="goat-menu-item-icon">
-      <img src="/hackathon/zeugnis-manager.svg" alt="" width={24} height={24} style={{ display: 'block' }} />
+      <svg width={24} height={24} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <rect x="3.75" y="3.75" width="16.5" height="16.5" rx="3" stroke="currentColor" strokeWidth="1.5" />
+        <circle cx="15.5" cy="8.5" r="2" fill="currentColor" />
+        <path d="M7.75 17V11.25H9.75C10.716 11.25 11.5 12.034 11.5 13S10.716 14.75 9.75 14.75H7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </div>
   )
 }
@@ -223,6 +236,18 @@ const WORKSPACES_2_V1_BASE = '/projects/workspaces-2/version-1'
 const WORKSPACES_2_V2_BASE = '/projects/workspaces-2/version-2'
 // Version 3: Version 2 with Version 1's workspace cards.
 const WORKSPACES_2_V3_BASE = '/projects/workspaces-2/version-3'
+// Version 4: Version 2 with the workspace cards' files and apps as a line of text.
+const WORKSPACES_2_V4_BASE = '/projects/workspaces-2/version-4'
+// Version 5: Version 4 with roomier overview cards on the Workspaces page.
+const WORKSPACES_2_V5_BASE = '/projects/workspaces-2/version-5'
+// Version 6: Version 4 with the workspace cards coloured by type.
+const WORKSPACES_2_V6_BASE = '/projects/workspaces-2/version-6'
+// Version 7: Version 5 with workspace cards combining its overview with the product's Spaces cards.
+const WORKSPACES_2_V7_BASE = '/projects/workspaces-2/version-7'
+// Version 8: Version 7 with the workspace cards rearranged — one wide card per row, contents side by side.
+const WORKSPACES_2_V8_BASE = '/projects/workspaces-2/version-8'
+const WORKSPACES_2_V9_BASE = '/projects/workspaces-2/version-9'
+const WORKSPACES_2_V10_BASE = '/projects/workspaces-2/version-10'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -248,7 +273,7 @@ function AppShell() {
   const [productMenuCollapsed, setProductMenuCollapsed] = useState(false)
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -257,7 +282,7 @@ function AppShell() {
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
-  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE].find(b => b === metadataAppBase) ?? null
+  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE].find(b => b === metadataAppBase) ?? null
   const inHackathon = !!hackathonBase
   // Versions 5, 7, 9 and 11 are the German copies of 4, 6, 8 and 10, so their sidebar is in German too.
   const de = [HACKATHON_V5_BASE, HACKATHON_V7_BASE, HACKATHON_V9_BASE, HACKATHON_V11_BASE].includes(hackathonBase!)
@@ -345,13 +370,13 @@ function AppShell() {
   // Workspaces 2.0 Versions 2 and 3 use the product's full menu, with My Knowledge and Cowork as open groups. Items
   // without a page in this prototype (Calculators, Cowork, Workflows, Gesetzesradar,
   // Einstellungen, Abmelden) do nothing; the avatar stays at the foot as in Version 1.
-  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE
+  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE || hackathonBase === WORKSPACES_2_V4_BASE || hackathonBase === WORKSPACES_2_V5_BASE || hackathonBase === WORKSPACES_2_V6_BASE || hackathonBase === WORKSPACES_2_V7_BASE || hackathonBase === WORKSPACES_2_V8_BASE || hackathonBase === WORKSPACES_2_V9_BASE || hackathonBase === WORKSPACES_2_V10_BASE
   const productTopItems = [
     { ...copilotItem, label: 'Copilot Tax', icon: <CoPilotIcon outline /> },
     { key: 'calculators', label: 'Calculators', icon: <Icon type={iconType.CalculatorOutlined} /> },
-    { ...personalOfficeItem, label: 'Haufe Office Line' },
-    { key: 'hr-dokumente', label: 'HR Dokumente', icon: <HrDokumenteIcon />, onClick: () => navigate(`${hackathonBase}/hr-dokumente`) },
-    { key: 'zeugnis-manager', label: 'Haufe Zeugnis Manager', icon: <ZeugnisManagerIcon />, onClick: () => navigate(`${hackathonBase}/zeugnis-manager`) },
+    { ...personalOfficeItem, label: 'Haufe Office Line', icon: <OfficeLineGlyph /> },
+    { key: 'hr-dokumente', label: 'HR Dokumente', icon: <MenuAppGlyph d={HR_DOKUMENTE_GLYPH} />, onClick: () => navigate(`${hackathonBase}/hr-dokumente`) },
+    { key: 'zeugnis-manager', label: 'Haufe Zeugnis Manager', icon: <MenuAppGlyph d={ZEUGNIS_MANAGER_GLYPH} />, onClick: () => navigate(`${hackathonBase}/zeugnis-manager`) },
     { key: 'content', label: 'My Knowledge', icon: <Icon type={iconType.FolderOutlined} />, children: [
       { key: 'documents', label: 'Meine Dokumente', icon: <Icon type={iconType.FolderOutlined} />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
       { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} /> },
@@ -487,6 +512,18 @@ function App() {
           <Route path="/projects/workspaces-2/version-2/*" element={<Workspaces2Version2 />} />
           {/* Version 3: Version 2 with Version 1's workspace cards on the Workspaces page. */}
           <Route path="/projects/workspaces-2/version-3/*" element={<Workspaces2Version3 />} />
+          {/* Version 4: Version 2 with the workspace cards' files and apps summarised as text. */}
+          <Route path="/projects/workspaces-2/version-4/*" element={<Workspaces2Version4 />} />
+          {/* Version 5: Version 4 with roomier overview cards — key details, contents and recent activity. */}
+          <Route path="/projects/workspaces-2/version-5/*" element={<Workspaces2Version5 />} />
+          {/* Version 6: Version 4 with the workspace cards coloured by type (chip and a soft tint). */}
+          <Route path="/projects/workspaces-2/version-6/*" element={<Workspaces2Version6 />} />
+          {/* Version 7: Version 5 with workspace cards combining its overview with the product's Spaces cards. */}
+          <Route path="/projects/workspaces-2/version-7/*" element={<Workspaces2Version7 />} />
+          {/* Version 8: Version 7 with the workspace cards rearranged — one wide card per row, contents side by side. */}
+          <Route path="/projects/workspaces-2/version-8/*" element={<Workspaces2Version8 />} />
+          <Route path="/projects/workspaces-2/version-9/*" element={<Workspaces2Version9 />} />
+          <Route path="/projects/workspaces-2/version-10/*" element={<Workspaces2Version10 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

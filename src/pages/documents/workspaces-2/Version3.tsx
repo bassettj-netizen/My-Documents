@@ -4,9 +4,6 @@ import MyDocumentsV1 from '../my-documents/Version1'
 import ConnectionsPageV10 from './ConnectionsPage'
 import {
   Avatar,
-  Chip,
-  chipStyles,
-  chipVariants,
   avatarShapeEnum,
   avatarSizeEnum,
   ButtonDanger,
@@ -63,6 +60,7 @@ import {
   type Space,
   type SpaceFormValues,
   INITIAL_SPACES,
+  CLIENT_EXAMPLE_SPACE,
   getInitials,
   SpaceCard,
   getLastUpload,
@@ -75,9 +73,11 @@ import PersonalOfficePage from '../hackathon/PersonalOfficePage'
 import HrDokumentePage from './HrDokumentePage'
 import ZeugnisManagerPage from './ZeugnisManagerPage'
 import WorkspacesList from './WorkspacesList'
+import { AppGlyph, HR_DOKUMENTE_GLYPH, ZEUGNIS_MANAGER_GLYPH } from './appGlyphs'
 import { BookmarksTab, ContextTab, GuardrailsTab, TabEmptyState, TemplatesTab } from '../hackathon/WorkspaceTabs'
 import { EMPTY_EXTRAS, type HaufeDocument, type WorkspaceChat, type WorkspaceExtras, type WorkspaceReference } from '../hackathon/workspaceModel'
-import { seedBackground, seedChats, seedExtras } from '../hackathon/seedWorkspaceContent'
+import { seedBackground } from '../hackathon/seedWorkspaceContent'
+import { agedChats, agedDocs, agedExtras } from './seedAges'
 import { WorkspaceReady } from '../hackathon/WorkspaceReady'
 import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
 
@@ -270,6 +270,32 @@ const META_THEMES: Record<string, MetaTheme> = {
     deadlineLabels: ['Enrolment deadline', 'Review due', 'Consultation deadline', 'Submission due'],
     actionLabels: ['Agreed with works council', 'Signed', 'Published to staff', 'Submitted'],
   },
+  'space-bergmann': {
+    matters: [
+      'Monthly payroll 2026',
+      'Annual accounts 2025',
+      'Exemption certificate renewal',
+      'Reverse charge review',
+      'Wage tax audit 2023–2025',
+      'Stadtquartier Ost project',
+    ],
+    counterparties: [
+      { name: 'Finanzamt Stuttgart II', role: 'Tax authority' },
+      { name: 'SOKA-BAU', role: 'Social fund' },
+      { name: 'Markus Bergmann', role: 'Managing director' },
+      { name: 'Kraus Trockenbau GmbH', role: 'Subcontractor' },
+      { name: 'BW-Bank', role: 'Lender' },
+    ],
+    primaryRole: 'Client',
+    periods: [
+      { start: '2025-01-01', end: '2025-12-31' },
+      { start: '2026-09-01', end: '2026-09-30' },
+      { start: '2023-01-01', end: '2025-12-31' },
+      { start: '2026-07-01', end: '2026-09-30' },
+    ],
+    deadlineLabels: ['Filing deadline', 'Payment due', 'Certificate expires', 'Response due'],
+    actionLabels: ['Filed with tax office', 'Payroll approved', 'Certificate received', 'Signed'],
+  },
 }
 
 const TODAY_MS = new Date(new Date().toISOString().slice(0, 10)).getTime()
@@ -314,6 +340,16 @@ const EXTRA_PARTIES: Record<string, { name: string; role: string }[]> = {
     { name: 'Anna Schneider', role: 'Payroll specialist' },
     { name: 'Data Protection Officer', role: 'Reviewer' },
     { name: 'Staff Representatives', role: 'Employee body' },
+  ],
+  'space-bergmann': [
+    { name: 'Bergmann Tiefbau GmbH', role: 'Subsidiary' },
+    { name: 'BG BAU', role: 'Accident insurer' },
+    { name: 'AOK Baden-Württemberg', role: 'Health insurer' },
+    { name: 'Elektro Haas GmbH', role: 'Subcontractor' },
+    { name: 'Stadt Stuttgart', role: 'Building authority' },
+    { name: 'Petra Lang', role: 'Head of accounting' },
+    { name: 'Deutsche Rentenversicherung', role: 'Pension insurer' },
+    { name: 'Wohnbau Neckar AG', role: 'Customer' },
   ],
 }
 
@@ -462,14 +498,15 @@ function useMetadataStore(workspace: WorkspaceState): MetadataStore {
 }
 
 export default function Workspaces2Version3() {
-  // Starts with Metadata Table's workspaces (Acme Corp, Project Alpha, Internal HR) and their documents.
-  const workspace = useWorkspaceState(INITIAL_SPACES.map(space => ({ ...space, context: seedBackground('en', space.id) })))
+  // Starts with Metadata Table's workspaces (Acme Corp, Project Alpha, Internal HR) plus a second client, Bergmann Bau, and their documents,
+  // dated so some were updated recently and some a while ago (seedAges.ts).
+  const workspace = useWorkspaceState([...INITIAL_SPACES, CLIENT_EXAMPLE_SPACE].map(space => ({ ...space, context: seedBackground('en', space.id) })), 'en', agedDocs)
   const store = useMetadataStore(workspace)
   // The prefilled chats as CoPilot conversations, in their workspaces (CoPilot only reads these once).
   const dayLabel = (days: number) => days === 0 ? 'Today' : days === 1 ? 'Yesterday' : 'Earlier'
   // Context details, guardrails, bookmarks and templates per workspace — kept here so they survive leaving the page.
   // Prefilled My knowledge and Haufe knowledge for Metadata Table's workspaces (seedWorkspaceContent.ts).
-  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => seedExtras('en'))
+  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => agedExtras())
   // CoPilot's chats live here, so leaving CoPilot doesn't lose them and a chat can be reopened from a workspace.
   const [copilotSessions, setCopilotSessions] = useState<CoPilotChat[] | null>(null)
   // Workspaces whose "ready" animation has already played.
@@ -479,7 +516,7 @@ export default function Workspaces2Version3() {
     get: id => extrasBySpace[id] ?? EMPTY_EXTRAS,
     update: (id, patch) => setExtrasBySpace(prev => ({ ...prev, [id]: { ...(prev[id] ?? EMPTY_EXTRAS), ...patch } })),
   }
-  const prefilledChats: CoPilotChat[] = seedChats('en').flatMap(chat => {
+  const prefilledChats: CoPilotChat[] = agedChats().flatMap(chat => {
     const space = workspace.spaces.find(sp => sp.id === chat.spaceId)
     if (!space) return []
     return [{
@@ -536,7 +573,7 @@ function SpacesListRoute({ workspace, extras }: { workspace: WorkspaceState; ext
       // The newest chat or Haufe document made in the workspace.
       getLastUsed={id => { const e = extras.get(id); return Math.max(0, ...e.chats.map(c => c.createdAt), ...e.haufeDocuments.map(d => d.createdAt)) }}
       renderUsedIn={() => null}
-      // Version 1's card, with the Haufe apps the workspace is used in as chips.
+      // Version 1's card with the DS avatar, and the Haufe apps the workspace is used in as chips with counts.
       renderCard={(space, actions) => {
         const docs = workspace.getSpaceDocs(space.id)
         return (
@@ -548,7 +585,8 @@ function SpacesListRoute({ workspace, extras }: { workspace: WorkspaceState; ext
             onRequestEdit={actions.onEdit}
             onRequestDelete={actions.onDelete}
             organisationAccess
-            extra={<HaufeTypeChips extras={extras.get(space.id)} />}
+            extra={<HaufeAppChips extras={extras.get(space.id)} />}
+            avatar={<Avatar shape={avatarShapeEnum.SQUARE} size={avatarSizeEnum.SMALL} src={space.avatarUrl} srcPlaceholder={getInitials(space.name)} />}
           />
         )
       }}
@@ -1580,6 +1618,16 @@ const PROFILE_FACTS: Record<string, ProfileFact[]> = {
     { label: 'Industry', value: 'Electronics wholesale' },
     { label: 'Main contact', value: 'Jana Weber, CFO' },
   ],
+  'space-bergmann': [
+    { label: 'Legal form', value: 'GmbH' },
+    { label: 'Tax number', value: '99/052/31877' },
+    { label: 'VAT ID', value: 'DE 311 908 442' },
+    { label: 'Fiscal year', value: 'Calendar year' },
+    { label: 'Employees', value: '180' },
+    { label: 'Locations', value: 'Stuttgart · Esslingen' },
+    { label: 'Industry', value: 'Construction' },
+    { label: 'Main contact', value: 'Markus Bergmann, MD' },
+  ],
 }
 
 /** The Profile card's content: the workspace's background, then its facts in columns. */
@@ -1698,17 +1746,35 @@ function DashedEmptyState({ title, text }: { title: string; text: string }) {
   )
 }
 
-/** The Haufe apps a workspace has been used in, as chips on its card — as in Version 1. */
-function HaufeTypeChips({ extras }: { extras: WorkspaceExtras }) {
-  const types = [
-    extras.chats.length > 0 && 'CoPilot',
-    extras.haufeDocuments.some(doc => doc.app === 'zeugnismanager') && 'Haufe Zeugnis Manager',
-    extras.haufeDocuments.some(doc => doc.app === 'hr-dokumente') && 'HR Dokumente',
-  ].filter((t): t is string => !!t)
-  if (types.length === 0) return null
+/**
+ * The Haufe apps a workspace has been used in, as chips on its card: the app's mark, its name and how
+ * many items it has here (chats, references, documents); the tooltip says what they are. Built to match
+ * the DS Chip (small, neutral, subtle) because that only takes a label string and DS icons.
+ */
+function HaufeAppChips({ extras }: { extras: WorkspaceExtras }) {
+  const references = extras.haufeDocuments.filter(doc => doc.app === 'zeugnismanager').length
+  const hrDocuments = extras.haufeDocuments.filter(doc => doc.app === 'hr-dokumente').length
+  const apps = [
+    { name: 'CoPilot', count: extras.chats.length, noun: 'chat', icon: <CopilotIcon /> },
+    { name: 'Haufe Zeugnis Manager', count: references, noun: 'reference', icon: <AppGlyph d={ZEUGNIS_MANAGER_GLYPH} /> },
+    { name: 'HR Dokumente', count: hrDocuments, noun: 'document', icon: <AppGlyph d={HR_DOKUMENTE_GLYPH} /> },
+  ].filter(app => app.count > 0)
+  if (apps.length === 0) return null
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(2) }}>
-      {types.map(t => <Chip key={t} label={t} uppercase={false} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />)}
+      {apps.map(app => (
+        <Tooltip key={app.name} title={app.name} description={`${pluralise(app.count, app.noun)} in this workspace`} size={tooltipSizes.LARGE} placement={tooltipPlacements.TOP}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: spacing(1), height: 20, padding: '0 4px', borderRadius: 4,
+            border: `1px solid ${colorPalette.neutral.lighten2}`, backgroundColor: colorPalette.white,
+            fontSize: 12, fontWeight: 600, lineHeight: '18px', color: colorPalette.neutral.darken5, cursor: 'default',
+          }}>
+            <span style={{ display: 'inline-flex', color: colorPalette.neutral.darken3, transform: 'scale(0.875)' }}>{app.icon}</span>
+            {app.name}
+            <span style={{ color: colorPalette.neutral.darken2 }}>{app.count}</span>
+          </span>
+        </Tooltip>
+      ))}
     </div>
   )
 }

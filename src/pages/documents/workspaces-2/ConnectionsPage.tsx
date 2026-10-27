@@ -28,7 +28,7 @@ import {
   Typography,
   useNotifications,
 } from '@goat-ui/goat-ui-core'
-import { INITIAL_SPACES, type ConnectorType } from '../workspaces/shared'
+import { CLIENT_EXAMPLE_SPACE, INITIAL_SPACES, type ConnectorType } from '../workspaces/shared'
 import { useConnections } from '../../../contexts/ConnectionsContext'
 
 const { colorPalette, spacing, fontWeight } = constants
@@ -106,7 +106,7 @@ type FieldKey = 'clientId' | 'tenantId' | 'domain' | 'clientSecret'
 // so this page reflects what's actually connected across the app's workspaces.
 function initialAccountsFor(connectorId: ConnectorId): ConnectedAccount[] {
   const type = CONNECTOR_TYPE[connectorId]
-  return INITIAL_SPACES
+  return [...INITIAL_SPACES, CLIENT_EXAMPLE_SPACE]
     .filter(space => space.connectors.some(c => c.type === type))
     .map(space => ({
       id: space.id,
@@ -236,7 +236,7 @@ function SetUpConnectorModal({ visible, connector, onClose, onVerified }: {
 const PANEL = { backgroundColor: colorPalette.white, border: `1px solid ${colorPalette.neutral.lighten2}`, borderRadius: 12 } as const
 
 function isSpaceAccount(accountId: string) {
-  return INITIAL_SPACES.some(space => space.id === accountId)
+  return [...INITIAL_SPACES, CLIENT_EXAMPLE_SPACE].some(space => space.id === accountId)
 }
 
 // `background`: the page's background (Workspaces 2.0 Version 2 uses white).

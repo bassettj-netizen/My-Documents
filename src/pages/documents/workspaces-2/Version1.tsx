@@ -65,6 +65,7 @@ import {
   type Space,
   type SpaceFormValues,
   INITIAL_SPACES,
+  CLIENT_EXAMPLE_SPACE,
 } from '../workspaces/shared'
 import { BasicUploadModal, CopilotIcon } from '../workspaces/WorkspacesBasic'
 import HackathonCoPilotPageV10, { type ChatSession as CoPilotChat } from './CoPilotPage'
@@ -73,7 +74,8 @@ import { useProcessingUpload } from '../hackathon/uploadToasts'
 import PersonalOfficePage from '../hackathon/PersonalOfficePage'
 import { BookmarksTab, ContextTab, GuardrailsTab, TabEmptyState, TemplatesTab } from '../hackathon/WorkspaceTabs'
 import { EMPTY_EXTRAS, type HaufeDocument, type WorkspaceChat, type WorkspaceExtras, type WorkspaceReference } from '../hackathon/workspaceModel'
-import { seedBackground, seedChats, seedExtras } from '../hackathon/seedWorkspaceContent'
+import { seedBackground } from '../hackathon/seedWorkspaceContent'
+import { agedChats, agedDocs, agedExtras } from './seedAges'
 import { WorkspaceReady } from '../hackathon/WorkspaceReady'
 import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
 
@@ -266,6 +268,32 @@ const META_THEMES: Record<string, MetaTheme> = {
     deadlineLabels: ['Enrolment deadline', 'Review due', 'Consultation deadline', 'Submission due'],
     actionLabels: ['Agreed with works council', 'Signed', 'Published to staff', 'Submitted'],
   },
+  'space-bergmann': {
+    matters: [
+      'Monthly payroll 2026',
+      'Annual accounts 2025',
+      'Exemption certificate renewal',
+      'Reverse charge review',
+      'Wage tax audit 2023–2025',
+      'Stadtquartier Ost project',
+    ],
+    counterparties: [
+      { name: 'Finanzamt Stuttgart II', role: 'Tax authority' },
+      { name: 'SOKA-BAU', role: 'Social fund' },
+      { name: 'Markus Bergmann', role: 'Managing director' },
+      { name: 'Kraus Trockenbau GmbH', role: 'Subcontractor' },
+      { name: 'BW-Bank', role: 'Lender' },
+    ],
+    primaryRole: 'Client',
+    periods: [
+      { start: '2025-01-01', end: '2025-12-31' },
+      { start: '2026-09-01', end: '2026-09-30' },
+      { start: '2023-01-01', end: '2025-12-31' },
+      { start: '2026-07-01', end: '2026-09-30' },
+    ],
+    deadlineLabels: ['Filing deadline', 'Payment due', 'Certificate expires', 'Response due'],
+    actionLabels: ['Filed with tax office', 'Payroll approved', 'Certificate received', 'Signed'],
+  },
 }
 
 const TODAY_MS = new Date(new Date().toISOString().slice(0, 10)).getTime()
@@ -310,6 +338,16 @@ const EXTRA_PARTIES: Record<string, { name: string; role: string }[]> = {
     { name: 'Anna Schneider', role: 'Payroll specialist' },
     { name: 'Data Protection Officer', role: 'Reviewer' },
     { name: 'Staff Representatives', role: 'Employee body' },
+  ],
+  'space-bergmann': [
+    { name: 'Bergmann Tiefbau GmbH', role: 'Subsidiary' },
+    { name: 'BG BAU', role: 'Accident insurer' },
+    { name: 'AOK Baden-Württemberg', role: 'Health insurer' },
+    { name: 'Elektro Haas GmbH', role: 'Subcontractor' },
+    { name: 'Stadt Stuttgart', role: 'Building authority' },
+    { name: 'Petra Lang', role: 'Head of accounting' },
+    { name: 'Deutsche Rentenversicherung', role: 'Pension insurer' },
+    { name: 'Wohnbau Neckar AG', role: 'Customer' },
   ],
 }
 
@@ -458,14 +496,15 @@ function useMetadataStore(workspace: WorkspaceState): MetadataStore {
 }
 
 export default function Workspaces2Version1() {
-  // Starts with Metadata Table's workspaces (Acme Corp, Project Alpha, Internal HR) and their documents.
-  const workspace = useWorkspaceState(INITIAL_SPACES.map(space => ({ ...space, context: seedBackground('en', space.id) })))
+  // Starts with Metadata Table's workspaces (Acme Corp, Project Alpha, Internal HR) plus a second client, Bergmann Bau, and their documents,
+  // dated so some were updated recently and some a while ago (seedAges.ts).
+  const workspace = useWorkspaceState([...INITIAL_SPACES, CLIENT_EXAMPLE_SPACE].map(space => ({ ...space, context: seedBackground('en', space.id) })), 'en', agedDocs)
   const store = useMetadataStore(workspace)
   // The prefilled chats as CoPilot conversations, in their workspaces (CoPilot only reads these once).
   const dayLabel = (days: number) => days === 0 ? 'Today' : days === 1 ? 'Yesterday' : 'Earlier'
   // Context details, guardrails, bookmarks and templates per workspace — kept here so they survive leaving the page.
   // Prefilled My knowledge and Haufe knowledge for Metadata Table's workspaces (seedWorkspaceContent.ts).
-  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => seedExtras('en'))
+  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => agedExtras())
   // CoPilot's chats live here, so leaving CoPilot doesn't lose them and a chat can be reopened from a workspace.
   const [copilotSessions, setCopilotSessions] = useState<CoPilotChat[] | null>(null)
   // Workspaces whose "ready" animation has already played.
@@ -475,7 +514,7 @@ export default function Workspaces2Version1() {
     get: id => extrasBySpace[id] ?? EMPTY_EXTRAS,
     update: (id, patch) => setExtrasBySpace(prev => ({ ...prev, [id]: { ...(prev[id] ?? EMPTY_EXTRAS), ...patch } })),
   }
-  const prefilledChats: CoPilotChat[] = seedChats('en').flatMap(chat => {
+  const prefilledChats: CoPilotChat[] = agedChats().flatMap(chat => {
     const space = workspace.spaces.find(sp => sp.id === chat.spaceId)
     if (!space) return []
     return [{

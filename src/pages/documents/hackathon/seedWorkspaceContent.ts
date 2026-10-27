@@ -34,6 +34,7 @@ const CONTENT: Record<SeedLang, SeedContent> = {
       'space-acme': 'Mid-size manufacturing client since 2021. We handle tax advisory and compliance for the German entity; the fiscal year ends on 30 June. Prefers short written summaries over calls — the main contact is the CFO.',
       'space-alpha': 'Internal project to rewrite the company\'s HR policy handbook by the end of Q1 2027. Owned by People Operations; every draft goes to the works council for review before it\'s published.',
       'space-hr': 'The HR team\'s workspace for policies, compliance guides and employee documentation. Around 400 employees in Germany, with a works council in place.',
+      'space-bergmann': 'Family-owned construction company in Stuttgart, client since 2019. We run monthly payroll for around 180 site and office staff and prepare the annual accounts. Works with many subcontractors, so reverse charge and the construction tax exemption certificate come up often. The managing director prefers a quick call over long emails.',
     },
     extrasBySpace: {
       'space-acme': {
@@ -118,6 +119,32 @@ const CONTENT: Record<SeedLang, SeedContent> = {
           { id: 'hr-h4', app: 'hr-dokumente', kind: 'contract', title: 'Fixed-term employment contract — J. Weber', createdAt: ago(8) },
         ],
       },
+      'space-bergmann': {
+        details: [
+          { id: 'bergmann-d1', label: 'Client number', value: '10587' },
+          { id: 'bergmann-d2', label: 'Contact person', value: 'Markus Bergmann (Managing director)' },
+          { id: 'bergmann-d3', label: 'Fiscal year end', value: '31 December' },
+          { id: 'bergmann-d4', label: 'Tax office', value: 'Finanzamt Stuttgart II' },
+        ],
+        guardrails: [
+          { id: 'bergmann-g1', text: 'Only answer from the documents in this workspace', enabled: true },
+          { id: 'bergmann-g2', text: 'Never include individual employees\' salaries in answers', enabled: true },
+          { id: 'bergmann-g3', text: 'Flag anything that affects the construction tax exemption certificate', enabled: true },
+        ],
+        bookmarks: [
+          { id: 'bergmann-b1', title: 'Bergmann finance SharePoint site', url: 'https://bergmannbau.sharepoint.com/sites/finance', app: 'SharePoint' },
+          { id: 'bergmann-b2', title: 'Payroll month-end checklist', url: 'https://bergmannbau.sharepoint.com/sites/finance/payroll-checklist', app: 'SharePoint' },
+        ],
+        templates: [
+          { id: 'bergmann-t1', name: 'Monthly payroll report', app: 'Personal Office', description: 'Headcount, overtime, allowances and SOKA-BAU contributions' },
+          { id: 'bergmann-t2', name: 'Subcontractor checklist', app: 'Microsoft Word', description: 'Exemption certificate, insurance and minimum wage declaration' },
+        ],
+        chats: [],
+        haufeDocuments: [
+          { id: 'bergmann-h1', app: 'hr-dokumente', kind: 'contract', title: 'Employment contract — site foreman for Bergmann Bau', createdAt: ago(2) },
+          { id: 'bergmann-h2', app: 'zeugnismanager', kind: 'reference', title: 'Job reference — K. Albrecht (site manager)', createdAt: ago(11) },
+        ],
+      },
     },
     chats: [
       { id: 'seed-chat-acme-1', spaceId: 'space-acme', daysAgo: 0, title: 'VAT on Acme\'s deliveries to Austria',
@@ -141,6 +168,12 @@ const CONTENT: Record<SeedLang, SeedContent> = {
       { id: 'seed-chat-hr-3', spaceId: 'space-hr', daysAgo: 3, title: 'Warning letter for repeated lateness',
         question: 'Draft a warning letter for repeated unexcused lateness.',
         answer: '"Dear [Employee], on [dates] you started work after your scheduled start time without notice or an approved reason. This breaches your obligations under your employment contract. We formally warn you that any further unexcused lateness may lead to further steps, up to and including termination."' },
+      { id: 'seed-chat-bergmann-1', spaceId: 'space-bergmann', daysAgo: 0, title: 'Reverse charge on subcontractor invoices',
+        question: 'Do Bergmann\'s subcontractor invoices for construction work fall under the reverse charge rule?',
+        answer: 'Yes, in most cases. When a subcontractor provides **construction services** to Bergmann, which itself provides construction services, the VAT liability shifts to Bergmann (**§ 13b Abs. 2 Nr. 4 UStG**). The subcontractor invoices without VAT and notes "Steuerschuldnerschaft des Leistungsempfängers"; Bergmann reports and deducts the VAT in the same return.' },
+      { id: 'seed-chat-bergmann-2', spaceId: 'space-bergmann', daysAgo: 2, title: 'Construction tax exemption certificate',
+        question: 'What happens if a subcontractor\'s exemption certificate has expired?',
+        answer: 'Without a valid **Freistellungsbescheinigung** (§ 48b EStG), Bergmann must withhold **15% construction tax** (Bauabzugsteuer) from each payment and pay it to the subcontractor\'s tax office by the 10th of the following month. Otherwise Bergmann is liable for the amount. Ask the subcontractor for a current certificate before the next payment.' },
     ],
   },
 

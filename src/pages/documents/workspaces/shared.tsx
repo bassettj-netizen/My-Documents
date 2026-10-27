@@ -148,6 +148,19 @@ export const INITIAL_SPACES: Space[] = [
   },
 ]
 
+/** A second client workspace — only Workspaces 2.0 seeds it (alongside INITIAL_SPACES). */
+export const CLIENT_EXAMPLE_SPACE: Space = {
+  id: 'space-bergmann',
+  name: 'Bergmann Bau GmbH',
+  description: 'Client documents for Bergmann Bau — payroll, construction tax and annual accounts',
+  type: 'Client',
+  visibility: 'public',
+  connectors: [
+    { id: 'c6', type: 'datev', label: 'apps.datev.de/bergmann-bau' },
+    { id: 'c7', type: 'sharepoint', label: 'bergmannbau.sharepoint.com/sites/finance' },
+  ],
+}
+
 // ─── Synthetic document generation (deterministic — same input always yields the same output) ─
 
 type DocTheme = {
@@ -184,12 +197,21 @@ const SPACE_DOC_THEMES: Record<string, DocTheme> = {
     entities: ['Internal HR', 'People Team', 'HR Operations'],
     tags: ['ONBOARDING', 'BENEFITS', 'COMPLIANCE', 'TRAINING', 'PAYROLL', 'POLICY'],
   },
+  'space-bergmann': {
+    domain: 'Tax',
+    jurisdiction: 'Germany',
+    docTypes: ['Payroll Summary', 'Annual Accounts', 'Construction Tax Certificate', 'VAT Filing', 'Engagement Letter', 'Invoice', 'Subcontractor Agreement', 'Advisory Note', 'Social Security Report', 'Tax Assessment'],
+    subjects: ['Monthly Payroll', 'Annual Accounts', 'Reverse Charge Review', 'Exemption Certificate', 'SOKA-BAU Contributions', 'Year-End Closing', 'Site Allowances', 'Subcontractor Review', 'Fleet Leasing', 'Q3 Filing', 'Client Onboarding', 'Wage Tax Audit'],
+    entities: ['Bergmann Bau GmbH', 'Bergmann Tiefbau GmbH', 'Bergmann Holding GmbH'],
+    tags: ['CLIENT', 'PAYROLL', 'CONSTRUCTION', 'COMPLIANCE', 'YEAR-END', 'ADVISORY'],
+  },
 }
 
 const SPACE_DOC_COUNTS: Record<string, number> = {
   'space-acme': 100,
   'space-alpha': 56,
   'space-hr': 29,
+  'space-bergmann': 64,
 }
 
 const GENERATED_FILE_FORMATS: FileFormat[] = ['PDF', 'DOCX', 'XLSX', 'PPTX']
@@ -292,18 +314,30 @@ const SPACE_CHAT_PROMPTS: Record<string, string[]> = {
     'Compare diversity and inclusion goals year over year',
     'Summarize the workplace safety training requirements',
   ],
+  'space-bergmann': [
+    'Summarize this month\'s payroll and flag unusual overtime',
+    'Which subcontractor invoices fall under the reverse charge rule?',
+    'When does the construction tax exemption certificate expire?',
+    'Draft a summary of the annual accounts for the managing director',
+    'Compare SOKA-BAU contributions this year against last year',
+    'Which site allowances were paid without supporting timesheets?',
+    'Prepare a checklist for the upcoming wage tax audit',
+    'Summarize the open items from the last tax assessment',
+  ],
 }
 
 const SPACE_CHAT_SESSION_COUNTS: Record<string, number> = {
   'space-acme': 18,
   'space-alpha': 6,
   'space-hr': 7,
+  'space-bergmann': 6,
 }
 
 const SPACE_CHAT_UPLOADS: Record<string, string[]> = {
   'space-acme': ['Q3_Draft_Figures.xlsx', 'Signed_Engagement_Letter.pdf', 'Client_Correspondence.docx'],
   'space-alpha': ['Meeting_Notes_Draft.docx', 'Architecture_Diagram.pptx', 'Vendor_Quote.pdf'],
   'space-hr': ['Signed_Offer_Letter.pdf', 'Benefits_Comparison.xlsx', 'Policy_Draft_v2.docx'],
+  'space-bergmann': ['Timesheets_September.xlsx', 'Subcontractor_Invoice_Kraus.pdf', 'Freistellungsbescheinigung.pdf'],
 }
 
 function generateSessionsForSpace(space: Space, docs: MetadataDocument[]): ChatSession[] {
@@ -1039,7 +1073,7 @@ function UploadModal({ open, onClose, onUpload }: {
 
 // ─── Space card + Spaces list view ───────────────────────────────────────────
 
-export function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess, lang = 'en', extra }: {
+export function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onRequestDelete, organisationAccess, lang = 'en', extra, avatar }: {
   space: Space
   docs: MetadataDocument[]
   lastUpload: string
@@ -1050,6 +1084,8 @@ export function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onR
   lang?: UiLang
   // Extra content under the description, e.g. chips.
   extra?: ReactNode
+  // Replaces the space's avatar (Workspaces 2.0 Version 3 uses the DS Avatar).
+  avatar?: ReactNode
 }) {
   const de = lang === 'de'
   const [hovered, setHovered] = useState(false)
@@ -1077,7 +1113,7 @@ export function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onR
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <SpaceAvatar space={space} />
+        {avatar ?? <SpaceAvatar space={space} />}
         {isMyDocs ? (
           <Chip label="Personal library" chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />
         ) : (
@@ -1747,12 +1783,15 @@ export function ChatPanel({ space, docs, sessions, activeSessionId, onNewChat, o
 let msgCounter = 0
 function nextId(prefix: string) { msgCounter += 1; return `${prefix}-${Date.now()}-${msgCounter}` }
 
-/** `initialSpaces` lets a version start with fewer (or no) workspaces; the seed data itself stays put. */
-export function useWorkspaceState(initialSpaces: Space[] = INITIAL_SPACES, lang: UiLang = 'en') {
+/**
+ * `initialSpaces` lets a version start with fewer (or no) workspaces; the seed data itself stays put.
+ * `prepareDocs` adjusts a workspace's seeded documents (Workspaces 2.0 moves their dates).
+ */
+export function useWorkspaceState(initialSpaces: Space[] = INITIAL_SPACES, lang: UiLang = 'en', prepareDocs?: (spaceId: string, docs: MetadataDocument[]) => MetadataDocument[]) {
   const [spaces, setSpaces] = useState<Space[]>(initialSpaces)
   const [docsBySpace, setDocsBySpace] = useState<Record<string, MetadataDocument[]>>(() => {
     const map: Record<string, MetadataDocument[]> = {}
-    initialSpaces.forEach(s => { map[s.id] = seedDocsForSpace(s.id) })
+    initialSpaces.forEach(s => { map[s.id] = prepareDocs ? prepareDocs(s.id, seedDocsForSpace(s.id)) : seedDocsForSpace(s.id) })
     return map
   })
   const [sessionsBySpace, setSessionsBySpace] = useState<Record<string, ChatSession[]>>(() => {
@@ -1791,9 +1830,10 @@ export function useWorkspaceState(initialSpaces: Space[] = INITIAL_SPACES, lang:
     notification.success({ title: lang === 'de' ? `„${values.name}“ aktualisiert` : `"${values.name}" updated`, placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
   }, [notification, lang])
 
-  const updateSpaceContext = useCallback((id: string, context: string) => {
+  // `toastTitle` replaces "Context saved" (Workspaces 2.0 Version 5 saves it as part of the Profile).
+  const updateSpaceContext = useCallback((id: string, context: string, toastTitle?: string) => {
     setSpaces(prev => prev.map(s => s.id === id ? { ...s, context } : s))
-    notification.success({ title: lang === 'de' ? 'Kontext gespeichert' : 'Context saved', placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
+    notification.success({ title: toastTitle ?? (lang === 'de' ? 'Kontext gespeichert' : 'Context saved'), placement: toastPlacements.BOTTOM_LEFT, duration: 3 })
   }, [notification, lang])
 
   const deleteSpace = useCallback((id: string) => {
