@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { Avatar, avatarShapeEnum, avatarSizeEnum, ButtonSecondary, buttonSizes, Chip, chipSizes, chipStyles, chipVariants, Icon, iconType, Typography } from '@goat-ui/goat-ui-core'
+import { Avatar, avatarShapeEnum, avatarSizeEnum, ButtonSecondary, buttonSizes, Chip, chipSizes, chipStyles, chipVariants, Typography } from '@goat-ui/goat-ui-core'
 import { colorPalette, getInitials, spacing } from '../workspaces/shared'
 
 /**
@@ -173,13 +173,13 @@ function StackRow({ icon, title, text, haufe = false }: { icon: string; title: s
  * - The frame is 1192px wide; here the side columns shrink to fit the page (up to 434px each) and the
  *   middle card keeps its 274px, so the connectors always span the 25px gaps.
  * - Made easier to read than the frame: each side says where it stands ("Not added yet" on every card
- *   of yours, "Already connected" on Haufe's), both sides name things rather than actions, and each of
- *   your cards has its own button to add that kind of content. The middle card says it in one line.
+ *   of yours, "Already connected" on Haufe's) and each of your cards has its own button to add that
+ *   kind of content. The middle card says it in one line.
  */
 
 const HUB_DIR = 'v10'
 // `cta` only on your content: the card's own button.
-type HubItem = { key: string; icon: string; title: string; text: string; cta?: { label: string; icon: string; onClick: () => void } }
+type HubItem = { key: string; icon: string; title: string; text: string; cta?: { label: string; onClick: () => void } }
 const HAUFE_CONTENT: HubItem[] = [
   { key: 'laws', icon: `${HUB_DIR}/laws.svg`, title: 'Laws and rulings', text: 'Up-to-date labour, tax, and social law' },
   { key: 'commentary', icon: `${HUB_DIR}/commentary.svg`, title: 'Expert commentary', text: 'Guidance from Haufe editors' },
@@ -195,9 +195,9 @@ export function EmptyWorkspaceHub({ name, avatarUrl, onAddDocuments, onAddGuardr
   onAddReferences: () => void
 }) {
   const yourContent: HubItem[] = [
-    { key: 'documents', icon: `${HUB_DIR}/add-documents.svg`, title: 'Documents', text: 'Client details, contracts, correspondence, etc.', cta: { label: 'Upload', icon: iconType.UploadOutlined, onClick: onAddDocuments } },
-    { key: 'guardrails', icon: `${HUB_DIR}/guardrails.svg`, title: 'Guardrails', text: 'State rules and how you’d like to work.', cta: { label: 'Add', icon: iconType.PlusOutlined, onClick: onAddGuardrails } },
-    { key: 'references', icon: `${HUB_DIR}/references.svg`, title: 'References', text: 'Bookmark data and information from other apps.', cta: { label: 'Add', icon: iconType.PlusOutlined, onClick: onAddReferences } },
+    { key: 'documents', icon: `${HUB_DIR}/add-documents.svg`, title: 'Add documents', text: 'Client details, contracts, correspondence, etc.', cta: { label: 'Upload', onClick: onAddDocuments } },
+    { key: 'guardrails', icon: `${HUB_DIR}/guardrails.svg`, title: 'Provide Guardrails', text: 'State rules and how you’d like to work.', cta: { label: 'Set up', onClick: onAddGuardrails } },
+    { key: 'references', icon: `${HUB_DIR}/references.svg`, title: 'Save references', text: 'Bookmark data and information from other apps.', cta: { label: 'Add', onClick: onAddReferences } },
   ]
   return (
     // From the top of the summary area, just under the workspace's header.
@@ -209,30 +209,33 @@ export function EmptyWorkspaceHub({ name, avatarUrl, onAddDocuments, onAddGuardr
 
       <div style={{
         marginTop: 68, width: '100%', maxWidth: 434 * 2 + 274 + HUB_GAP * 2,
-        display: 'grid', gridTemplateColumns: `minmax(0, 434px) 274px minmax(0, 434px)`, columnGap: HUB_GAP, rowGap: 18, alignItems: 'start',
+        display: 'grid', gridTemplateColumns: `minmax(0, 434px) 274px minmax(0, 434px)`, columnGap: HUB_GAP, rowGap: 8, alignItems: 'stretch',
       }}>
-        <HubLabel color={colorPalette.pink.lighten1} inset={10}>Your content</HubLabel>
+        <HubLabel color={colorPalette.pink.lighten1} inset={10}>
+          Your content
+          <span style={{ marginLeft: spacing(3), textTransform: 'none', fontWeight: 400, color: colorPalette.neutral.darken2 }}>5 minute set up</span>
+        </HubLabel>
         {/* No label over the workspace card: its name says what it is. */}
         <div />
         <HubLabel color={colorPalette.blue.lighten1} inset={10}>
           Haufe knowledge
           {/* Says outright what the solid cards only hint at. */}
           <span style={{ marginLeft: spacing(3), display: 'inline-flex', alignItems: 'center', gap: 4, textTransform: 'none', fontWeight: 400, color: colorPalette.neutral.darken2 }}>
-            <Icon type={iconType.CheckCircleFilled} size={12} color="blue-lighten1" />Already connected
+            <img src={`${ICON_DIR}/${HUB_DIR}/check-circle.svg`} alt="" width={16} height={16} style={{ display: 'block' }} />Already connected
           </span>
         </HubLabel>
 
         <HubColumn items={yourContent} connector="connector-pink.svg" side="left" />
         <div style={{
-          height: 324, boxSizing: 'border-box', borderRadius: 16, padding: '0 25px', justifyContent: 'center',
+          boxSizing: 'border-box', borderRadius: 16, padding: '30px 25px',
           backgroundImage: 'linear-gradient(134.95deg, rgba(255, 191, 220, 0.5) 2.59%, rgba(173, 200, 255, 0.5) 96.4%)',
           display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
         }}>
           {/* The workspace's own avatar, as in the page header. */}
           <Avatar shape={avatarShapeEnum.SQUARE} size={avatarSizeEnum.MEDIUM} src={avatarUrl} srcPlaceholder={getInitials(name)} />
           {/* The workspace's own name; long names wrap. */}
-          <div style={{ marginTop: 24, maxWidth: '100%', fontSize: 20, lineHeight: '28px', fontWeight: 700, color: colorPalette.neutral.darken5, overflowWrap: 'anywhere' }}>{name}</div>
-          <div style={{ marginTop: 8, fontSize: 16, lineHeight: '24px', fontWeight: 600, color: colorPalette.neutral.darken4 }}>All context in one place</div>
+          <div style={{ marginTop: 30, maxWidth: '100%', fontSize: 18, lineHeight: '28px', fontWeight: 700, color: colorPalette.neutral.darken4, overflowWrap: 'anywhere' }}>{name}</div>
+          <div style={{ marginTop: 12, fontSize: 16, lineHeight: '24px', fontWeight: 600, color: colorPalette.neutral.darken4 }}>All context in one place</div>
           <div style={{ marginTop: 13, fontSize: 16, lineHeight: '24px', color: colorPalette.neutral.darken3 }}>
             Get answers that combine your content and Haufe knowledge.
           </div>
@@ -271,19 +274,23 @@ function HubRow({ item }: { item: HubItem }) {
     <div style={{
       height: 94, boxSizing: 'border-box', borderRadius: 16, padding: '0 20px 0 28px', display: 'flex', alignItems: 'center', gap: 21,
       backgroundColor: colorPalette.white,
-      border: `1px ${yours ? 'dashed' : 'solid'} ${yours ? colorPalette.neutral.lighten1 : colorPalette.neutral.lighten2}`,
+      border: `1px ${yours ? 'dashed' : 'solid'} ${yours ? colorPalette.pink.lighten1 : colorPalette.neutral.lighten2}`,
     }}>
       <img src={`${ICON_DIR}/${item.icon}`} alt="" width={32} height={32} style={{ display: 'block', flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
-          <span style={{ fontSize: 16, lineHeight: '24px', fontWeight: 600, color: colorPalette.neutral.darken4 }}>{item.title}</span>
-          {yours && <Chip label="Not added yet" size={chipSizes.SMALL} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.DASHED} uppercase={false} />}
+          <span style={{ fontSize: 16, lineHeight: '24px', fontWeight: 600, color: colorPalette.neutral.darken4, whiteSpace: 'nowrap' }}>{item.title}</span>
+          {yours && (
+            <span style={{ display: 'inline-flex', fontStyle: 'italic' }}>
+              <Chip label="Not added yet" size={chipSizes.SMALL} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.DASHED} uppercase={false} />
+            </span>
+          )}
         </div>
         <span style={{ fontSize: 14, lineHeight: '20px', color: colorPalette.neutral.darken2 }}>{item.text}</span>
       </div>
       {item.cta && (
         <div style={{ flexShrink: 0 }}>
-          <ButtonSecondary size={buttonSizes.SMALL} leftIcon={item.cta.icon} onClick={item.cta.onClick}>{item.cta.label}</ButtonSecondary>
+          <ButtonSecondary size={buttonSizes.SMALL} onClick={item.cta.onClick}>{item.cta.label}</ButtonSecondary>
         </div>
       )}
     </div>
