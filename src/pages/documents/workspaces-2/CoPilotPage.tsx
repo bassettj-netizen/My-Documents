@@ -723,6 +723,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
         showPhotoUpload={false}
         showType={false}
         organisationAccess
+        accessRadios
         onClose={() => setCreateOpen(false)}
         onSubmit={values => { selectWorkspace(onCreateWorkspace(values)); setCreateOpen(false) }}
       />

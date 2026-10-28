@@ -66,6 +66,7 @@ const groups = [
       { label: 'Version 8', path: '/projects/workspaces-2/version-8' },
       { label: 'Version 9', path: '/projects/workspaces-2/version-9' },
       { label: 'Version 10', path: '/projects/workspaces-2/version-10' },
+      { label: 'Version 11 (empty)', path: '/projects/workspaces-2/version-11' },
     ],
   },
   {

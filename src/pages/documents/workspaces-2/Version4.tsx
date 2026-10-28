@@ -81,7 +81,7 @@ import { BookmarksTab, GuardrailsTab, TabEmptyState, TemplatesTab } from '../hac
 import { EMPTY_EXTRAS, type HaufeDocument, type WorkspaceChat, type WorkspaceDetail, type WorkspaceExtras, type WorkspaceReference } from '../hackathon/workspaceModel'
 import { seedBackground } from '../hackathon/seedWorkspaceContent'
 import { agedChats, agedDocs, agedExtras } from './seedAges'
-import { WorkspaceReady } from '../hackathon/WorkspaceReady'
+import { EmptyWorkspace } from './EmptyWorkspace'
 import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
 
 /**
@@ -132,6 +132,7 @@ import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
  */
 
 // Workspaces 2.0 Version 4: Version 2 with the workspace cards' files and apps summarised as text.
+// A new, empty workspace opens on the Figma empty state (EmptyWorkspace.tsx).
 const BASE = '/projects/workspaces-2/version-4'
 // Every page in Version 2 is white; cards keep their borders to stand apart.
 const CONTENT_BG = colorPalette.white
@@ -1057,7 +1058,7 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenC
   // Opens CoPilot on one of this workspace's existing chats.
   onOpenChat: (chatId: string) => void
 }) {
-  // "Add my content" — in the My knowledge card, and on the workspace-ready view of a new workspace.
+  // "Add content" — on the empty state of a new workspace.
   // The Used in page's search — in the page title row, filtering the list below.
   const [activitySearch, setActivitySearch] = useState('')
   // The Profile modal (Edit on the Profile card, or "Add context").
@@ -1075,14 +1076,12 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenC
           trigger={dropdownTriggers.CLICK}
           placement={dropdownPlacement.BOTTOM_RIGHT}
         >
-          <ButtonPrimary leftIcon={iconType.PlusOutlined}>Add my content</ButtonPrimary>
+          <ButtonPrimary leftIcon={iconType.PlusOutlined}>Add content</ButtonPrimary>
         </Dropdown>
   )
   // A workspace with nothing in it yet opens on the animated "ready" view instead of the two cards.
   const isEmptyWorkspace = docs.length === 0 && !space.context?.trim() && extras.details.length === 0 && extras.guardrails.length === 0
     && extras.bookmarks.length === 0 && extras.templates.length === 0 && extras.chats.length === 0 && extras.haufeDocuments.length === 0
-  // It plays in full on the first visit only; afterwards it shows the finished picture.
-  const [playReady] = useState(() => !readySeen)
   useEffect(() => {
     if (area === 'summary' && isEmptyWorkspace && !readySeen) onReadySeen()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1372,7 +1371,8 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenC
     <div style={{ padding: `${spacing(6)}px ${spacing(10)}px`, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: CONTENT_BG, height: '100%', overflow: 'hidden' }}>
       <style>{TABLE_CSS}</style>
       {area === 'summary' ? (
-        <WorkspaceHero space={space} onBack={onBack} onAskCopilot={() => onAskCopilot()} />
+        // No Ask CoPilot while the workspace is empty — Add content is the one action there.
+        <WorkspaceHero space={space} onBack={onBack} onAskCopilot={isEmptyWorkspace ? undefined : () => onAskCopilot()} />
       ) : (
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
           {/* Back to the workspace's summary, named so it's clear where it goes. */}
@@ -1399,15 +1399,8 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenC
         // Padding so the tiles' hover shadow isn't clipped by the scroll area.
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: spacing(1), margin: -spacing(1) }}>
           {isEmptyWorkspace ? (
-            <WorkspaceReady
-              lang="en"
-              animate={playReady}
-              actions={<>
-                {addContentButton}
-                {/* Placeholder for now — no destination yet. */}
-                <ButtonTertiary leftIcon={iconType.CompassOutlined}>Explore Haufe content</ButtonTertiary>
-              </>}
-            />
+            // The Figma empty state (Workspaces 2.0, node 79:8809): the three-card equation and Add content.
+            <EmptyWorkspace action={addContentButton} />
           ) : (
           /* The client file on the left (profile, then what's in the workspace), where it's been used on the right. */
           <div style={{ display: 'flex', gap: spacing(5), alignItems: 'flex-start' }}>
@@ -1525,6 +1518,7 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenC
         showPhotoUpload={false}
         showType={false}
         organisationAccess
+        accessRadios
         initialValues={space}
         onClose={() => setEditSpaceOpen(false)}
         onSubmit={values => { onUpdateSpace(values); setEditSpaceOpen(false) }}
@@ -1586,7 +1580,8 @@ const pluralise = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'
 function WorkspaceHero({ space, onBack, onAskCopilot }: {
   space: Space
   onBack: () => void
-  onAskCopilot: () => void
+  // Left out on an empty workspace, which hides the button.
+  onAskCopilot?: () => void
 }) {
   return (
     <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
@@ -1603,9 +1598,11 @@ function WorkspaceHero({ space, onBack, onAskCopilot }: {
           {space.description && <Typography size="base" color="neutral-darken3">{space.description}</Typography>}
         </div>
         {/* The button's icon slot only takes DS icons, so the CoPilot mark sits in the label; it takes the label's colour. */}
-        <ButtonPrimary onClick={onAskCopilot}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot</span>
-        </ButtonPrimary>
+        {onAskCopilot && (
+          <ButtonPrimary onClick={onAskCopilot}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2) }}><CopilotIcon />Ask CoPilot</span>
+          </ButtonPrimary>
+        )}
       </div>
     </div>
   )

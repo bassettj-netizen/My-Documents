@@ -240,7 +240,8 @@ function isSpaceAccount(accountId: string) {
 }
 
 // `background`: the page's background (Workspaces 2.0 Version 2 uses white).
-export default function ConnectionsPageV10({ background = colorPalette.neutral.lighten5 }: { background?: string } = {}) {
+// `startEmpty`: leave out the workspaces' accounts, for a first-run state (Workspaces 2.0 Version 11).
+export default function ConnectionsPageV10({ background = colorPalette.neutral.lighten5, startEmpty = false }: { background?: string; startEmpty?: boolean } = {}) {
   const [selectedId, setSelectedId] = useState<ConnectorId>('microsoft-365')
   // Accounts manually added via "Set up connector" / "Add connector" — accounts
   // seeded from real workspace connectors (below) aren't stored here, since
@@ -257,7 +258,7 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
 
   const selected = CONNECTORS.find(c => c.id === selectedId)!
   const connectorType = CONNECTOR_TYPE[selectedId]
-  const seededAccounts = initialAccountsFor(selectedId).filter(a => !isWorkspaceConnectorDisconnected(a.id, connectorType))
+  const seededAccounts = (startEmpty ? [] : initialAccountsFor(selectedId)).filter(a => !isWorkspaceConnectorDisconnected(a.id, connectorType))
   const accounts = [...seededAccounts, ...manualAccounts[selectedId]]
 
   const handleVerified = (account: Omit<ConnectedAccount, 'id'>) => {

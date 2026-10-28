@@ -288,6 +288,7 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
         showPhotoUpload={false}
         showType={false}
         organisationAccess
+        accessRadios
         onClose={() => setCreateOpen(false)}
         onSubmit={values => { onCreateSpace(values); setCreateOpen(false) }}
       />
@@ -299,6 +300,7 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
         showPhotoUpload={false}
         showType={false}
         organisationAccess
+        accessRadios
         onClose={() => setEditId(null)}
         onSubmit={values => { if (editTarget) onUpdateSpace(editTarget.id, values); setEditId(null) }}
       />

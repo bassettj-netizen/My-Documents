@@ -60,6 +60,7 @@ import Workspaces2Version7 from './pages/documents/workspaces-2/Version7'
 import Workspaces2Version8 from './pages/documents/workspaces-2/Version8'
 import Workspaces2Version9 from './pages/documents/workspaces-2/Version9'
 import Workspaces2Version10 from './pages/documents/workspaces-2/Version10'
+import Workspaces2Version11 from './pages/documents/workspaces-2/Version11'
 import { AppGlyph, HR_DOKUMENTE_GLYPH, ZEUGNIS_MANAGER_GLYPH } from './pages/documents/workspaces-2/appGlyphs'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
@@ -248,6 +249,8 @@ const WORKSPACES_2_V7_BASE = '/projects/workspaces-2/version-7'
 const WORKSPACES_2_V8_BASE = '/projects/workspaces-2/version-8'
 const WORKSPACES_2_V9_BASE = '/projects/workspaces-2/version-9'
 const WORKSPACES_2_V10_BASE = '/projects/workspaces-2/version-10'
+// Version 11: Version 4 before the user has added anything — no workspaces, knowledge, chats or connectors.
+const WORKSPACES_2_V11_BASE = '/projects/workspaces-2/version-11'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -273,7 +276,7 @@ function AppShell() {
   const [productMenuCollapsed, setProductMenuCollapsed] = useState(false)
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -282,7 +285,7 @@ function AppShell() {
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
-  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE].find(b => b === metadataAppBase) ?? null
+  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE].find(b => b === metadataAppBase) ?? null
   const inHackathon = !!hackathonBase
   // Versions 5, 7, 9 and 11 are the German copies of 4, 6, 8 and 10, so their sidebar is in German too.
   const de = [HACKATHON_V5_BASE, HACKATHON_V7_BASE, HACKATHON_V9_BASE, HACKATHON_V11_BASE].includes(hackathonBase!)
@@ -370,7 +373,7 @@ function AppShell() {
   // Workspaces 2.0 Versions 2 and 3 use the product's full menu, with My Knowledge and Cowork as open groups. Items
   // without a page in this prototype (Calculators, Cowork, Workflows, Gesetzesradar,
   // Einstellungen, Abmelden) do nothing; the avatar stays at the foot as in Version 1.
-  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE || hackathonBase === WORKSPACES_2_V4_BASE || hackathonBase === WORKSPACES_2_V5_BASE || hackathonBase === WORKSPACES_2_V6_BASE || hackathonBase === WORKSPACES_2_V7_BASE || hackathonBase === WORKSPACES_2_V8_BASE || hackathonBase === WORKSPACES_2_V9_BASE || hackathonBase === WORKSPACES_2_V10_BASE
+  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE || hackathonBase === WORKSPACES_2_V4_BASE || hackathonBase === WORKSPACES_2_V5_BASE || hackathonBase === WORKSPACES_2_V6_BASE || hackathonBase === WORKSPACES_2_V7_BASE || hackathonBase === WORKSPACES_2_V8_BASE || hackathonBase === WORKSPACES_2_V9_BASE || hackathonBase === WORKSPACES_2_V10_BASE || hackathonBase === WORKSPACES_2_V11_BASE
   const productTopItems = [
     { ...copilotItem, label: 'Copilot Tax', icon: <CoPilotIcon outline /> },
     { key: 'calculators', label: 'Calculators', icon: <Icon type={iconType.CalculatorOutlined} /> },
@@ -524,6 +527,8 @@ function App() {
           <Route path="/projects/workspaces-2/version-8/*" element={<Workspaces2Version8 />} />
           <Route path="/projects/workspaces-2/version-9/*" element={<Workspaces2Version9 />} />
           <Route path="/projects/workspaces-2/version-10/*" element={<Workspaces2Version10 />} />
+          {/* Version 11: Version 4 empty — before the user has added a workspace or filled it with anything. */}
+          <Route path="/projects/workspaces-2/version-11/*" element={<Workspaces2Version11 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

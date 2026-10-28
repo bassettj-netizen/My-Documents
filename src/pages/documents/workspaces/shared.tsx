@@ -35,6 +35,8 @@ import {
   Table,
   TextArea,
   Toggle,
+  radioGroupDirection,
+  RadioGroup,
   toastPlacements,
   Tooltip,
   tooltipPlacements,
@@ -855,7 +857,7 @@ function AvatarPicker({ avatarUrl, name, onChange }: { avatarUrl?: string; name:
   )
 }
 
-export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace', showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en' }: {
+export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace', showPhotoUpload = true, showType = true, organisationAccess = false, accessRadios = false, lang = 'en' }: {
   open: boolean
   mode: 'create' | 'edit'
   initialValues?: SpaceFormValues
@@ -866,6 +868,8 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
   showType?: boolean
   // Access becomes a Private / Organisation toggle, private by default, instead of the Public / Private select.
   organisationAccess?: boolean
+  // With organisationAccess: Private and Organisation as radio buttons instead of the toggle (Workspaces 2.0).
+  accessRadios?: boolean
   // German labels (only for the hackathon's form: no photo, no type, the access toggle).
   lang?: UiLang
 }) {
@@ -928,7 +932,19 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
             onChange={v => setValues(prev => ({ ...prev, type: v as string }))}
           />
         )}
-        {organisationAccess ? (
+        {organisationAccess && accessRadios ? (
+          <RadioGroup
+            name="workspace-access"
+            label={de ? 'Zugriff' : 'Access'}
+            direction={radioGroupDirection.COLUMN}
+            value={values.visibility}
+            onChange={e => setValues(prev => ({ ...prev, visibility: e.target.value as SpaceVisibility }))}
+            options={[
+              { label: de ? 'Privat – nur Sie haben Zugriff' : 'Private — only you have access', value: 'private' },
+              { label: de ? 'Organisation – alle in Ihrer Organisation haben Zugriff' : 'Organisation — everyone in your organisation has access', value: 'public' },
+            ]}
+          />
+        ) : organisationAccess ? (
           <Toggle
             label={de ? 'Zugriff' : 'Access'}
             checked={values.visibility === 'private'}
@@ -1153,7 +1169,7 @@ export function SpaceCard({ space, docs, lastUpload, onClick, onRequestEdit, onR
   )
 }
 
-export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, lang = 'en', background = colorPalette.white, description, renderCardExtra }: {
+export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, showTitleIcon = true, noun = 'Workspace', renderEmptyState, showPhotoUpload = true, showType = true, organisationAccess = false, accessRadios = false, lang = 'en', background = colorPalette.white, description, renderCardExtra }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   onOpenSpace: (id: string) => void
@@ -1169,6 +1185,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
   showPhotoUpload?: boolean
   showType?: boolean
   organisationAccess?: boolean
+  accessRadios?: boolean
   // German title, buttons and dialogs ("Arbeitsbereich").
   lang?: UiLang
   // Page background behind the cards.
@@ -1248,6 +1265,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
         showPhotoUpload={showPhotoUpload}
         showType={showType}
         organisationAccess={organisationAccess}
+        accessRadios={accessRadios}
         lang={lang}
         onClose={() => setCreateModalOpen(false)}
         onSubmit={values => { onCreateSpace(values); setCreateModalOpen(false) }}
@@ -1260,6 +1278,7 @@ export function SpacesListView({ spaces, getSpaceDocs, onOpenSpace, onCreateSpac
         showPhotoUpload={showPhotoUpload}
         showType={showType}
         organisationAccess={organisationAccess}
+        accessRadios={accessRadios}
         lang={lang}
         onClose={() => setEditSpaceId(null)}
         onSubmit={values => { if (editTargetSpace) onUpdateSpace(editTargetSpace.id, values); setEditSpaceId(null) }}

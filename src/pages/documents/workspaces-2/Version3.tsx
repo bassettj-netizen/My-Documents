@@ -1512,6 +1512,7 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenC
         showPhotoUpload={false}
         showType={false}
         organisationAccess
+        accessRadios
         initialValues={space}
         onClose={() => setEditSpaceOpen(false)}
         onSubmit={values => { onUpdateSpace(values); setEditSpaceOpen(false) }}
