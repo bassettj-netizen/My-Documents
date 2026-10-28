@@ -105,7 +105,6 @@ function EquationCard({ card }: { card: (typeof CARDS)[number] }) {
  */
 
 const STACK_W = 458
-// The Haufe knowledge copy is as it stands in the Figma (the same line as Save references).
 const WORKSPACE_ROWS = [
   { key: 'documents', icon: 'add-documents.svg', title: 'Add documents', text: 'Client details, contracts, correspondence, etc.' },
   { key: 'guardrails', icon: 'guardrails.svg', title: 'Provide Guardrails', text: 'State rules and how you’d like to work.' },
@@ -144,7 +143,7 @@ export function EmptyWorkspaceStack({ name, action }: { name: string; action: Re
         </div>
         <div aria-hidden style={{ gridColumn: 2, gridRow: 3, textAlign: 'center', fontSize: 36, lineHeight: '44px', color: colorPalette.neutral.base, marginTop: 4 }}>+</div>
         <div style={{ gridColumn: 2, gridRow: 4, margin: '6px 12px 0' }}>
-          <StackRow icon="haufe-logo-strong.svg" title="Haufe knowledge" text="Bookmark data and information from other apps." haufe />
+          <StackRow icon="haufe-logo-strong.svg" title="Haufe knowledge" text="Legislation and expert guidance from your apps." haufe />
         </div>
       </div>
     </div>
