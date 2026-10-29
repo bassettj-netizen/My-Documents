@@ -2850,11 +2850,11 @@ const myDate = (docId: string, label: string, days: number, kind: 'deadline' | '
 const MY_FILES_META: Record<string, Omit<ExtractedMetadata, 'documentType' | 'edited'>> = {
   'my-file-1': {
     matterReference: 'Fee review 2026', summary: 'The firm’s fee schedule for 2026: hourly rates by role, fixed fees for annual accounts and payroll, and billing terms.',
-    parties: [myParty('my-file-1', 'Bassett & Partner Steuerberatung', 'Firm')], dates: [myDate('my-file-1', 'Valid until', 64, 'deadline')],
+    parties: [myParty('my-file-1', 'Hoffmann & Partner Steuerberatung', 'Firm')], dates: [myDate('my-file-1', 'Valid until', 64, 'deadline')],
   },
   'my-file-2': {
     matterReference: 'Client newsletter', summary: 'October’s client newsletter: changes to the minimum wage, e-invoicing from January and the new reporting thresholds.',
-    parties: [myParty('my-file-2', 'Bassett & Partner Steuerberatung', 'Publisher')], dates: [myDate('my-file-2', 'Sent', -3, 'action')],
+    parties: [myParty('my-file-2', 'Hoffmann & Partner Steuerberatung', 'Publisher')], dates: [myDate('my-file-2', 'Sent', -3, 'action')],
   },
   'my-file-4': {
     matterReference: 'Q4 planning', summary: 'Notes from the tax team’s weekly meeting: year-end deadlines, holiday cover and the move to e-invoicing.',
