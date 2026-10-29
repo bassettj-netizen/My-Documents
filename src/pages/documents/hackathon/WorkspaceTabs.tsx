@@ -134,7 +134,11 @@ function DetailRow({ detail, onChange, onRemove }: { detail: WorkspaceDetail; on
 
 // ─── Guardrails ───────────────────────────────────────────────────────────────
 
-export function GuardrailsTab({ guardrails, onChange }: { guardrails: Guardrail[]; onChange: (guardrails: Guardrail[]) => void }) {
+export const GUARDRAILS_INTRO = 'Rules CoPilot always follows when it works with this workspace. Switch one off to pause it without deleting it.'
+
+// `plain` (Workspaces 2.0 V15/V16): no intro — the page has its own title — and the rules as plain rows between lines,
+// like the Used in page's, instead of in a bordered card.
+export function GuardrailsTab({ guardrails, onChange, plain = false }: { guardrails: Guardrail[]; onChange: (guardrails: Guardrail[]) => void; plain?: boolean }) {
   const [draft, setDraft] = useState('')
   const add = (text: string) => {
     if (!text.trim()) return
@@ -145,7 +149,7 @@ export function GuardrailsTab({ guardrails, onChange }: { guardrails: Guardrail[
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(6), maxWidth: 760 }}>
-      <TabIntro title="Guardrails" text="Rules CoPilot always follows when it works with this workspace. Switch one off to pause it without deleting it." />
+      {!plain && <TabIntro title="Guardrails" text={GUARDRAILS_INTRO} />}
 
       <div style={{ display: 'flex', gap: spacing(2), alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }} onKeyDown={e => { if (e.key === 'Enter') add(draft) }}>
@@ -161,9 +165,13 @@ export function GuardrailsTab({ guardrails, onChange }: { guardrails: Guardrail[
           text="Add one above, or start with a suggestion below."
         />
       ) : (
-        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ ...(plain ? {} : cardStyle), display: 'flex', flexDirection: 'column' }}>
           {guardrails.map((g, i) => (
-            <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: spacing(3), padding: `${spacing(3)}px ${spacing(4)}px`, borderTop: i ? `1px solid ${colorPalette.neutral.lighten2}` : undefined }}>
+            <div key={g.id} style={{
+              display: 'flex', alignItems: 'center', gap: spacing(3), padding: plain ? `${spacing(3)}px ${spacing(2)}px` : `${spacing(3)}px ${spacing(4)}px`,
+              borderTop: plain ? (i ? `1px solid ${colorPalette.neutral.lighten3}` : undefined) : (i ? `1px solid ${colorPalette.neutral.lighten2}` : undefined),
+              borderBottom: plain && i === guardrails.length - 1 ? `1px solid ${colorPalette.neutral.lighten3}` : undefined,
+            }}>
               <Toggle checked={g.enabled} onChange={enabled => onChange(guardrails.map(x => x.id === g.id ? { ...x, enabled } : x))} />
               <div style={{ flex: 1 }}>
                 <Typography size="base" color={g.enabled ? 'neutral-darken5' : 'neutral-darken2'}>{g.text}</Typography>

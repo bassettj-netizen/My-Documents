@@ -4,6 +4,7 @@ import {
   avatarShapeEnum,
   avatarSizeEnum,
   ButtonGhost,
+  ButtonPrimary,
   ButtonSecondary,
   buttonShapes,
   buttonSizes,
@@ -169,7 +170,7 @@ function AskCopilotIconButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, renderUsedIn, renderFooter, renderMeta, getCardTone, renderCard, renderList, showSort = true, onAskCopilot, minCardWidth = 320, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, description, renderEmptyState }: {
+export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, renderUsedIn, renderFooter, renderMeta, getCardTone, renderCard, renderList, showSort = true, onAskCopilot, minCardWidth = 320, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, description, renderEmptyState, createInToolbar = false }: {
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   // When the workspace was last used (a chat or Haufe document made in it), for "Recently used".
@@ -199,6 +200,9 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
   description?: ReactNode
   // Replaces the list when there are no workspaces; gets a callback that opens the create dialog.
   renderEmptyState: (openCreate: () => void) => ReactNode
+  // "+ Workspace" as a primary button at the end of the toolbar, right of the search (Workspaces 2.0 Version 15),
+  // instead of a secondary button beside the title. With no workspaces yet, the empty state is the way in.
+  createInToolbar?: boolean
 }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('recent')
@@ -235,7 +239,7 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
           <Typography size="heading-lg" weight="bold">Workspaces</Typography>
           {description && <Typography size="base" color="neutral-darken2">{description}</Typography>}
         </div>
-        <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>Workspace</ButtonSecondary>
+        {!createInToolbar && <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>Workspace</ButtonSecondary>}
       </div>
 
       {spaces.length === 0 ? renderEmptyState(() => setCreateOpen(true)) : (
@@ -253,6 +257,7 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
             <div style={{ width: 300 }}>
               <SearchBar placeholder="Search workspaces" value={search} onChange={setSearch} width={searchbarWidth.EXPANDED} />
             </div>
+            {createInToolbar && <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>Workspace</ButtonPrimary>}
           </div>
 
           {shown.length === 0 ? (

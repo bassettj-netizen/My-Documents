@@ -11,6 +11,7 @@ import {
   ButtonGhost,
   buttonShapes,
   ButtonSecondary,
+  ButtonPrimary,
   ButtonTertiary,
   buttonVariants,
   constants,
@@ -241,7 +242,11 @@ function isSpaceAccount(accountId: string) {
 
 // `background`: the page's background (Workspaces 2.0 Version 2 uses white).
 // `startEmpty`: leave out the workspaces' accounts, for a first-run state (Workspaces 2.0 Version 11).
-export default function ConnectionsPageV10({ background = colorPalette.neutral.lighten5, startEmpty = false }: { background?: string; startEmpty?: boolean } = {}) {
+// `plain`: laid out like Metadata Table's Connectors page (projects/metadata/table/connectors) — no containers: the
+// connector types as a plain list, a full-height divider, and the accounts as plain rows — with the Workspaces
+// list's margins (24px all round, 24px under the header) and description, and Add connector as a primary button
+// (Workspaces 2.0 Version 15).
+export default function ConnectionsPageV10({ background = colorPalette.neutral.lighten5, startEmpty = false, plain = false }: { background?: string; startEmpty?: boolean; plain?: boolean } = {}) {
   const [selectedId, setSelectedId] = useState<ConnectorId>('microsoft-365')
   // Accounts manually added via "Set up connector" / "Add connector" — accounts
   // seeded from real workspace connectors (below) aren't stored here, since
@@ -288,12 +293,16 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
         </Typography>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', gap: spacing(4), padding: spacing(6) }}>
-        {/* Connector types, in their own white container like a sub-menu. */}
-        <div style={{ ...PANEL, width: 300, flexShrink: 0, padding: spacing(2), display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
-          <div style={{ padding: `${spacing(2)}px ${spacing(3)}px` }}>
-            <Typography size="base-sm" color="neutral-darken2" weight={fontWeight.SEMIBOLD}>Connector types</Typography>
-          </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: plain ? 'stretch' : 'flex-start', gap: spacing(4), padding: spacing(6) }}>
+        {/* Connector types, in their own white container like a sub-menu (plain: just the list). */}
+        <div style={plain
+          ? { width: 450, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }
+          : { ...PANEL, width: 300, flexShrink: 0, padding: spacing(2), display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+          {!plain && (
+            <div style={{ padding: `${spacing(2)}px ${spacing(3)}px` }}>
+              <Typography size="base-sm" color="neutral-darken2" weight={fontWeight.SEMIBOLD}>Connector types</Typography>
+            </div>
+          )}
           {CONNECTORS.map(connector => {
             const isSelected = connector.id === selectedId
             return (
@@ -302,7 +311,7 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
                 onClick={() => setSelectedId(connector.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: spacing(3),
-                  padding: `${spacing(3)}px ${spacing(3)}px`, borderRadius: 6, cursor: 'pointer',
+                  padding: plain ? spacing(4) : `${spacing(3)}px ${spacing(3)}px`, borderRadius: plain ? 8 : 6, cursor: 'pointer',
                   backgroundColor: isSelected ? colorPalette.neutral.lighten4 : undefined,
                 }}
               >
@@ -312,34 +321,40 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
                     {connector.name}
                   </Typography>
                 </span>
-                <Icon type={iconType.ChevronRightOutlined} size={16} color={isSelected ? 'neutral-darken4' : 'neutral-lighten1'} />
+                {!plain && <Icon type={iconType.ChevronRightOutlined} size={16} color={isSelected ? 'neutral-darken4' : 'neutral-lighten1'} />}
               </div>
             )
           })}
         </div>
 
+        {plain && <div style={{ width: 1, alignSelf: 'stretch', backgroundColor: colorPalette.neutral.lighten1 }} />}
+
         {/* The selected type: its connected accounts, or how to set it up. */}
-        <div style={{ ...PANEL, flex: 1, minWidth: 0, padding: spacing(6), display: 'flex', flexDirection: 'column' }}>
+        <div style={plain
+          ? { flex: 1, minWidth: 0, paddingTop: spacing(1), display: 'flex', flexDirection: 'column' }
+          : { ...PANEL, flex: 1, minWidth: 0, padding: spacing(6), display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(3) }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
               {selected.icon(24)}
               <Typography size="base-lg" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{selected.name}</Typography>
             </div>
-            {accounts.length > 0 && (
+            {accounts.length > 0 && (plain ? (
+              <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setModalOpen(true)}>Add connector</ButtonPrimary>
+            ) : (
               <ButtonTertiary leftIcon={iconType.PlusOutlined} onClick={() => setModalOpen(true)}>
                 Add connector
               </ButtonTertiary>
-            )}
+            ))}
           </div>
 
           {accounts.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3), marginTop: spacing(5) }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3), marginTop: plain ? spacing(4) : spacing(5) }}>
               <Typography size="base-sm" color="neutral-darken2" weight={fontWeight.SEMIBOLD}>
                 {accounts.length === 1 ? 'Connected Account' : 'Connected Accounts'}
               </Typography>
-              <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${colorPalette.neutral.lighten2}`, borderRadius: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', ...(plain ? {} : { border: `1px solid ${colorPalette.neutral.lighten2}`, borderRadius: 8 }) }}>
                 {accounts.map((account, i) => (
-                  <div key={account.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(3), padding: `${spacing(3)}px ${spacing(4)}px`, borderTop: i ? `1px solid ${colorPalette.neutral.lighten3}` : undefined }}>
+                  <div key={account.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(3), padding: `${spacing(3)}px ${spacing(4)}px`, borderTop: i && !plain ? `1px solid ${colorPalette.neutral.lighten3}` : undefined }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3), minWidth: 0 }}>
                       {selected.icon(24)}
                       <div style={{ minWidth: 0 }}>

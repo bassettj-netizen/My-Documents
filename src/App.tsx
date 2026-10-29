@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
   Avatar,
+  avatarShapeEnum,
   avatarSizeEnum,
   constants,
   HaufeLogo,
@@ -16,6 +17,7 @@ import {
 const { colorPalette } = constants
 import type { SidebarItem, ThemeVariantValue } from '@goat-ui/goat-ui-core'
 import ProfilePage from './pages/ProfilePage'
+import { getInitials } from './pages/documents/workspaces/shared'
 import DocumentsV1 from './pages/documents/V1'
 import DocumentsV2 from './pages/documents/V2'
 import DocumentsV3 from './pages/documents/V3'
@@ -61,6 +63,12 @@ import Workspaces2Version8 from './pages/documents/workspaces-2/Version8'
 import Workspaces2Version9 from './pages/documents/workspaces-2/Version9'
 import Workspaces2Version10 from './pages/documents/workspaces-2/Version10'
 import Workspaces2Version11 from './pages/documents/workspaces-2/Version11'
+import Workspaces2Version12 from './pages/documents/workspaces-2/Version12'
+import Workspaces2Version13 from './pages/documents/workspaces-2/Version13'
+import Workspaces2Version14 from './pages/documents/workspaces-2/Version14'
+import Workspaces2Version15 from './pages/documents/workspaces-2/Version15'
+import Workspaces2Version16 from './pages/documents/workspaces-2/Version16'
+import { byRecent, sidebarWorkspaces, useSidebarWorkspaces } from './pages/documents/workspaces-2/sidebarWorkspaces'
 import { AppGlyph, HR_DOKUMENTE_GLYPH, ZEUGNIS_MANAGER_GLYPH } from './pages/documents/workspaces-2/appGlyphs'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
 import FileSyncVersion2 from './pages/documents/file-sync/Version2'
@@ -167,6 +175,18 @@ function ConnectorIcon() {
 }
 
 const CURRENT_USER = { name: 'Alex Mustermensch', initials: 'AM' }
+
+// Version 13: a workspace's own avatar as its sidebar icon — the DS's smallest square avatar (32px) scaled to the
+// 24px icon slot, like the user's avatar at the foot of the sidebar.
+function WorkspaceMenuAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
+  return (
+    <div className="goat-menu-item-icon" style={{ width: 24, height: 24, flexShrink: 0 }}>
+      <div style={{ width: 32, height: 32, transform: 'scale(0.75)', transformOrigin: 'top left' }}>
+        <Avatar shape={avatarShapeEnum.SQUARE} size={avatarSizeEnum.SMALL} src={avatarUrl} srcPlaceholder={getInitials(name)} />
+      </div>
+    </div>
+  )
+}
 const HIDDEN_HEADER_ID = 'hidden-layout-header'
 
 // Personal Office's product logo (screenshots/Haufe-haufe-personal-office-platin.avif) — a brand mark,
@@ -197,6 +217,33 @@ function OfficeLineGlyph() {
         <rect x="3.75" y="3.75" width="16.5" height="16.5" rx="3" stroke="currentColor" strokeWidth="1.5" />
         <circle cx="15.5" cy="8.5" r="2" fill="currentColor" />
         <path d="M7.75 17V11.25H9.75C10.716 11.25 11.5 12.034 11.5 13S10.716 14.75 9.75 14.75H7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  )
+}
+
+// The design system's Connector icon (COSmos foundations, variant=outlined), which the installed GOAT-UI
+// package doesn't ship yet. In the menu's own icon colour (grey, blue when active) like the DS icons around it.
+function ConnectorOutlinedGlyph() {
+  return (
+    <div className="goat-menu-item-icon">
+      <svg width={24} height={24} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <path fillRule="evenodd" clipRule="evenodd" d="M13.7699 2.77026C14.6486 1.89185 16.0739 1.8916 16.9526 2.77026C17.8308 3.6488 17.8306 5.07324 16.9526 5.9519L14.8608 8.04272L16.2621 9.44507L18.3315 7.37671C19.2102 6.49829 20.6355 6.49805 21.5141 7.37671C22.3926 8.25537 22.3925 9.68066 21.5141 10.5593L19.4408 12.6306C20.2251 13.4785 20.2077 14.7997 19.3842 15.6238L17.0912 17.9177L16.8598 18.1394C14.4364 20.3689 10.9117 20.7275 8.13224 19.2185L5.99845 21.3533L5.83439 21.5017C5.04262 22.1476 3.89969 22.1475 3.10783 21.5017L2.94376 21.3533C2.15301 20.5624 2.10332 19.311 2.79533 18.4626L2.94376 18.2986L5.08048 16.1609C3.58017 13.3834 3.9421 9.86633 6.16837 7.44702L6.39005 7.21655L8.68302 4.92261C9.50656 4.09961 10.8273 4.08118 11.6752 4.86401L13.7699 2.77026ZM9.74357 5.98413C10.0022 5.72559 10.4218 5.72498 10.6801 5.98315L18.3227 13.6277C18.5809 13.8861 18.581 14.3048 18.3227 14.5632L16.0297 16.8572C14.0865 18.8 11.1499 19.1498 8.84806 17.9001C8.79006 17.8687 8.73068 17.8413 8.67031 17.8181C7.81435 17.3226 7.09424 16.6213 6.57469 15.7788L6.48377 15.6321C6.46019 15.5696 6.43223 15.5081 6.39982 15.448C5.15763 13.1482 5.51036 10.2174 7.4506 8.2771L9.74357 5.98413ZM5.92508 17.4375C6.2079 17.7758 6.51997 18.0883 6.8575 18.3713L4.93693 20.2927C4.6792 20.5502 4.26196 20.5503 4.00431 20.2927C3.74661 20.0349 3.7467 19.6168 4.00431 19.3591L5.92508 17.4375ZM19.392 8.43726C19.6849 8.14453 20.1607 8.14441 20.4535 8.43726C20.7461 8.72998 20.7458 9.20483 20.4535 9.4978L19.4189 10.532L18.3842 11.5662L17.3236 10.5056L19.392 8.43726ZM14.8305 3.83081C15.1233 3.53821 15.5982 3.53821 15.891 3.83081C16.1838 4.12366 16.1837 4.59839 15.891 4.89136L13.8002 6.98218L12.7387 5.92163L14.8305 3.83081Z" fill="currentColor" />
+      </svg>
+    </div>
+  )
+}
+
+// Version 15: a brain for My Knowledge. The DS has no brain icon, so this is drawn on its 24px grid with its
+// 1.5px outline, in the menu's own icon colour (grey, blue when active).
+function BrainGlyph() {
+  return (
+    <div className="goat-menu-item-icon">
+      <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <path d="M12 5.5C12 4.12 10.88 3 9.5 3S7 4.12 7 5.5v.1A2.75 2.75 0 0 0 4.75 8.5c0 .5.13.97.37 1.37A3 3 0 0 0 4 12.25c0 1.03.52 1.94 1.3 2.48A2.75 2.75 0 0 0 7.75 18.5H8a2 2 0 0 0 4 0" />
+        <path d="M12 5.5C12 4.12 13.12 3 14.5 3S17 4.12 17 5.5v.1a2.75 2.75 0 0 1 2.25 2.9c0 .5-.13.97-.37 1.37A3 3 0 0 1 20 12.25c0 1.03-.52 1.94-1.3 2.48a2.75 2.75 0 0 1-2.45 3.77H16a2 2 0 0 1-4 0" />
+        <path d="M12 5.5v13" />
+        <path d="M8.5 9.25c1 0 1.75.6 2 1.5M15.5 9.25c-1 0-1.75.6-2 1.5M8 14.25c.8-.6 1.8-.6 2.5 0M16 14.25c-.8-.6-1.8-.6-2.5 0" />
       </svg>
     </div>
   )
@@ -251,6 +298,16 @@ const WORKSPACES_2_V9_BASE = '/projects/workspaces-2/version-9'
 const WORKSPACES_2_V10_BASE = '/projects/workspaces-2/version-10'
 // Version 11: Version 4 before the user has added anything — no workspaces, knowledge, chats or connectors.
 const WORKSPACES_2_V11_BASE = '/projects/workspaces-2/version-11'
+// Version 12: Version 4 with a slimmer sidebar (no Calculators, Cowork, Workflows or Gesetzesradar; Connectors under My Knowledge).
+const WORKSPACES_2_V12_BASE = '/projects/workspaces-2/version-12'
+// Version 13: Version 12 with the user's workspaces in the sidebar, to jump straight into one.
+const WORKSPACES_2_V13_BASE = '/projects/workspaces-2/version-13'
+// Version 14: Version 12 built around My files — one library of files, with workspaces on top of it.
+const WORKSPACES_2_V14_BASE = '/projects/workspaces-2/version-14'
+// Version 15: Version 14 with My Documents, Workspaces and Connectors grouped under My Knowledge.
+const WORKSPACES_2_V15_BASE = '/projects/workspaces-2/version-15'
+// Version 16: Version 15 with My Knowledge opening on a secondary menu (My Documents, Workspaces, Connectors).
+const WORKSPACES_2_V16_BASE = '/projects/workspaces-2/version-16'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -276,7 +333,7 @@ function AppShell() {
   const [productMenuCollapsed, setProductMenuCollapsed] = useState(false)
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, WORKSPACES_2_V12_BASE, WORKSPACES_2_V13_BASE, WORKSPACES_2_V14_BASE, WORKSPACES_2_V15_BASE, WORKSPACES_2_V16_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -285,7 +342,7 @@ function AppShell() {
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
-  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE].find(b => b === metadataAppBase) ?? null
+  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, WORKSPACES_2_V12_BASE, WORKSPACES_2_V13_BASE, WORKSPACES_2_V14_BASE, WORKSPACES_2_V15_BASE, WORKSPACES_2_V16_BASE].find(b => b === metadataAppBase) ?? null
   const inHackathon = !!hackathonBase
   // Versions 5, 7, 9 and 11 are the German copies of 4, 6, 8 and 10, so their sidebar is in German too.
   const de = [HACKATHON_V5_BASE, HACKATHON_V7_BASE, HACKATHON_V9_BASE, HACKATHON_V11_BASE].includes(hackathonBase!)
@@ -297,10 +354,18 @@ function AppShell() {
     location.pathname === `${hackathonBase}/zeugnis-manager` ? 'zeugnis-manager' :
     location.pathname === `${hackathonBase}/copilot` ? 'copilot' :
     location.pathname === '/connectors' || location.pathname === `${WORKSPACES_NUVIO_BASE}/connectors` || location.pathname === `${WORKSPACES_BASIC_BASE}/connectors` || location.pathname === `${metadataAppBase}/connectors` ? 'connectors' :
-    location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` || location.pathname === `${WORKSPACES_BASIC_BASE}/my-documents` || location.pathname === `${metadataAppBase}/my-documents` ? 'documents' :
+    location.pathname === `${metadataAppBase}/my-files` ||
+    location.pathname === `${WORKSPACES_NUVIO_BASE}/my-documents` || location.pathname === `${WORKSPACES_BASIC_BASE}/my-documents` || location.pathname.startsWith(`${metadataAppBase}/my-documents`) ? 'documents' :
     location.pathname.startsWith('/projects/workspaces') || (!!metadataAppBase && location.pathname.startsWith(`${metadataAppBase}/workspaces`)) ? 'workspaces' :
     location.pathname.startsWith('/projects') ? 'documents' :
     ''
+  // Version 16: My Documents, Workspaces and Connectors are all under the one My Knowledge item.
+  const inV16Knowledge = hackathonBase === WORKSPACES_2_V16_BASE && ['my-documents', 'workspaces', 'connectors'].some(area => location.pathname.startsWith(`${hackathonBase}/${area}`))
+  // Version 13 lists the user's workspaces in the sidebar; inside one, its own item is the active one.
+  const sidebarWs = useSidebarWorkspaces()
+  const openWorkspace = hackathonBase === WORKSPACES_2_V13_BASE
+    ? sidebarWs.workspaces.find(w => location.pathname === `${hackathonBase}/workspaces/${w.slug}` || location.pathname.startsWith(`${hackathonBase}/workspaces/${w.slug}/`))
+    : undefined
 
   const homeItem = {
     key: 'home',
@@ -373,7 +438,7 @@ function AppShell() {
   // Workspaces 2.0 Versions 2 and 3 use the product's full menu, with My Knowledge and Cowork as open groups. Items
   // without a page in this prototype (Calculators, Cowork, Workflows, Gesetzesradar,
   // Einstellungen, Abmelden) do nothing; the avatar stays at the foot as in Version 1.
-  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE || hackathonBase === WORKSPACES_2_V4_BASE || hackathonBase === WORKSPACES_2_V5_BASE || hackathonBase === WORKSPACES_2_V6_BASE || hackathonBase === WORKSPACES_2_V7_BASE || hackathonBase === WORKSPACES_2_V8_BASE || hackathonBase === WORKSPACES_2_V9_BASE || hackathonBase === WORKSPACES_2_V10_BASE || hackathonBase === WORKSPACES_2_V11_BASE
+  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE || hackathonBase === WORKSPACES_2_V4_BASE || hackathonBase === WORKSPACES_2_V5_BASE || hackathonBase === WORKSPACES_2_V6_BASE || hackathonBase === WORKSPACES_2_V7_BASE || hackathonBase === WORKSPACES_2_V8_BASE || hackathonBase === WORKSPACES_2_V9_BASE || hackathonBase === WORKSPACES_2_V10_BASE || hackathonBase === WORKSPACES_2_V11_BASE || hackathonBase === WORKSPACES_2_V12_BASE || hackathonBase === WORKSPACES_2_V13_BASE || hackathonBase === WORKSPACES_2_V14_BASE || hackathonBase === WORKSPACES_2_V15_BASE || hackathonBase === WORKSPACES_2_V16_BASE
   const productTopItems = [
     { ...copilotItem, label: 'Copilot Tax', icon: <CoPilotIcon outline /> },
     { key: 'calculators', label: 'Calculators', icon: <Icon type={iconType.CalculatorOutlined} /> },
@@ -392,6 +457,62 @@ function AppShell() {
     { key: 'gesetzesradar', label: 'Gesetzesradar', icon: <Icon type={iconType.WorldOutlined} /> },
     { ...connectorsItem, icon: <Icon type={iconType.LinkOutlined} /> },
   ] as unknown as SidebarItem[]
+  // Version 12: only the apps and Workspaces, which holds its Overview (the workspaces list) and Connectors.
+  const productTopItemsV12 = [
+    { ...copilotItem, label: 'Copilot Tax', icon: <CoPilotIcon outline /> },
+    { ...personalOfficeItem, label: 'Haufe Office Line', icon: <OfficeLineGlyph /> },
+    { key: 'hr-dokumente', label: 'HR Dokumente', icon: <MenuAppGlyph d={HR_DOKUMENTE_GLYPH} />, onClick: () => navigate(`${hackathonBase}/hr-dokumente`) },
+    { key: 'zeugnis-manager', label: 'Haufe Zeugnis Manager', icon: <MenuAppGlyph d={ZEUGNIS_MANAGER_GLYPH} />, onClick: () => navigate(`${hackathonBase}/zeugnis-manager`) },
+    { key: 'content', label: 'Workspaces', icon: <Icon type={iconType.ElementsOutlined} />, children: [
+      { ...workspacesItem, label: 'Overview', icon: <Icon type={iconType.ElementsOutlined} /> },
+      { ...connectorsItem, icon: <ConnectorOutlinedGlyph /> },
+    ] },
+  ] as unknown as SidebarItem[]
+  // Version 13: Version 12's menu, plus the five most recently opened workspaces under Workspaces and a
+  // "Find a workspace" switcher (also ⌘K) for the rest. The "Recent" heading isn't a sidebar item type the DS
+  // has — it's an item drawn as a heading (index.css).
+  const productTopItemsV13 = [
+    ...productTopItemsV12.slice(0, 4),
+    { key: 'content', label: 'Workspaces', icon: <Icon type={iconType.ElementsOutlined} />, children: [
+      { ...workspacesItem, label: 'Overview', icon: <Icon type={iconType.ElementsOutlined} /> },
+      { ...connectorsItem, icon: <ConnectorOutlinedGlyph /> },
+      { key: 'ws-recent-heading', label: <span className="sidebar-section-heading">Recent</span> },
+      ...byRecent(sidebarWs).slice(0, 5).map(w => ({
+        key: `ws-${w.id}`,
+        label: w.name,
+        icon: <WorkspaceMenuAvatar name={w.name} avatarUrl={w.avatarUrl} />,
+        onClick: () => navigate(`${hackathonBase}/workspaces/${w.slug}`),
+      })),
+      {
+        key: 'ws-find',
+        label: <span title="Find a workspace (⌘K)">Find a workspace</span>,
+        icon: <Icon type={iconType.SearchOutlined} />,
+        onClick: () => sidebarWorkspaces.setSwitcherOpen(true),
+      },
+    ] },
+  ] as unknown as SidebarItem[]
+  // Version 14: My files first — the landing page and the one place files live — then Workspaces, built on
+  // top of it, and Connectors, which feed My files.
+  const productTopItemsV14 = [
+    ...productTopItemsV12.slice(0, 4),
+    { key: 'documents', label: 'My files', icon: <Icon type={iconType.FolderOutlined} />, onClick: () => navigate(`${hackathonBase}/my-files`) },
+    { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} /> },
+    { ...connectorsItem, icon: <ConnectorOutlinedGlyph /> },
+  ] as unknown as SidebarItem[]
+  // Version 15: Version 14's three, grouped under My Knowledge, with My files renamed My Documents.
+  const productTopItemsV15 = [
+    ...productTopItemsV12.slice(0, 4),
+    { key: 'content', label: 'My Knowledge', icon: <BrainGlyph />, children: [
+      { key: 'documents', label: 'My Documents', icon: <Icon type={iconType.FolderOutlined} />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
+      { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} /> },
+      { ...connectorsItem, icon: <ConnectorOutlinedGlyph /> },
+    ] },
+  ] as unknown as SidebarItem[]
+  // Version 16: My Knowledge as one item; its areas are in its own secondary menu (Version16's KnowledgeShell).
+  const productTopItemsV16 = [
+    ...productTopItemsV12.slice(0, 4),
+    { key: 'knowledge', label: 'My Knowledge', icon: <BrainGlyph />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
+  ] as unknown as SidebarItem[]
   const productBottomItems = [
     { key: 'settings', label: 'Einstellungen', icon: <Icon type={iconType.GearOutlined} /> },
     { key: 'logout', label: 'Abmelden', icon: <Icon type={iconType.LogoutOutlined} /> },
@@ -408,11 +529,11 @@ function AppShell() {
         },
       }}
       sidebar={{
-        topItems: productMenu ? productTopItems : sidebarTopItems,
+        topItems: productMenu ? (hackathonBase === WORKSPACES_2_V16_BASE ? productTopItemsV16 : hackathonBase === WORKSPACES_2_V15_BASE ? productTopItemsV15 : hackathonBase === WORKSPACES_2_V14_BASE ? productTopItemsV14 : hackathonBase === WORKSPACES_2_V13_BASE ? productTopItemsV13 : hackathonBase === WORKSPACES_2_V12_BASE ? productTopItemsV12 : productTopItems) : sidebarTopItems,
         bottomItems: productMenu ? productBottomItems : sidebarBottomItems,
         collapsible: true,
         ...(productMenu ? { collapsed: productMenuCollapsed, onCollapsedChange: setProductMenuCollapsed, defaultOpenKeys: ['content', 'cowork'] } : {}),
-        activeKeys: [activeKey],
+        activeKeys: [openWorkspace ? `ws-${openWorkspace.id}` : inV16Knowledge ? 'knowledge' : activeKey],
         mode: 'light',
         logoProps: {
           src: (
@@ -529,6 +650,16 @@ function App() {
           <Route path="/projects/workspaces-2/version-10/*" element={<Workspaces2Version10 />} />
           {/* Version 11: Version 4 empty — before the user has added a workspace or filled it with anything. */}
           <Route path="/projects/workspaces-2/version-11/*" element={<Workspaces2Version11 />} />
+          {/* Version 12: Version 4 with a slimmer sidebar, for working on the menu. */}
+          <Route path="/projects/workspaces-2/version-12/*" element={<Workspaces2Version12 />} />
+          {/* Version 13: Version 12 with the user's workspaces in the sidebar. */}
+          <Route path="/projects/workspaces-2/version-13/*" element={<Workspaces2Version13 />} />
+          {/* Version 14: Version 12 built around My files, with workspaces on top of it. */}
+          <Route path="/projects/workspaces-2/version-14/*" element={<Workspaces2Version14 />} />
+          {/* Version 15: My Documents, Workspaces and Connectors under My Knowledge; My Documents as the Metadata Table, with filters. */}
+          <Route path="/projects/workspaces-2/version-15/*" element={<Workspaces2Version15 />} />
+          {/* Version 16: My Knowledge opens on a secondary menu with My Documents, Workspaces and Connectors. */}
+          <Route path="/projects/workspaces-2/version-16/*" element={<Workspaces2Version16 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

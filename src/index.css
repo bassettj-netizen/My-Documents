@@ -92,3 +92,21 @@ body {
   background: #fff;
 }
 
+
+/* Workspaces 2.0 Version 13: the sidebar's "Recent" heading is a menu item drawn as a heading — not clickable,
+   no hover or icon space — since the DS sidebar has no heading item type. */
+li:has(> .goat-menu-title-content > .sidebar-section-heading) {
+  pointer-events: none;
+  background: transparent !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin-top: 12px !important;
+}
+.sidebar-section-heading {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #8c9ac0;
+}
