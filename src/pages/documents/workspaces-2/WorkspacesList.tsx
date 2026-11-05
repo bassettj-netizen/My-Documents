@@ -6,6 +6,7 @@ import {
   ButtonGhost,
   ButtonPrimary,
   ButtonSecondary,
+  ButtonTertiary,
   buttonShapes,
   buttonSizes,
   buttonVariants,
@@ -43,6 +44,7 @@ import {
   type SpaceFormValues,
 } from '../workspaces/shared'
 import { CopilotIcon } from '../workspaces/WorkspacesBasic'
+import { KnowledgePage, KnowledgePageHeader, KnowledgeToolbar } from './knowledgeLayout'
 
 /**
  * Workspaces 2.0 Version 2 — the Workspaces list as compact cards (Figma "B · Compact cards", 30:8017).
@@ -170,7 +172,18 @@ function AskCopilotIconButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, renderUsedIn, renderFooter, renderMeta, getCardTone, renderCard, renderList, showSort = true, onAskCopilot, minCardWidth = 320, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, description, renderEmptyState, createInToolbar = false }: {
+export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, renderUsedIn, renderFooter, renderMeta, getCardTone, renderCard, renderList, showSort = true, onAskCopilot, minCardWidth = 320, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, description, renderEmptyState, createInToolbar = false, aligned = false, createIntro, showType = false, showCount = false, myDocumentsToolbar = false, hideHeaderWhenEmpty = false }: {
+  // With no workspaces, leave out the page heading — the empty state has its own (Version 21).
+  hideHeaderWhenEmpty?: boolean
+  // Version 21: the toolbar laid out like My Documents' — search and Sort (tertiary, sort icon) on the left,
+  // + Workspace on the right — with the type tabs on their own row underneath.
+  myDocumentsToolbar?: boolean
+  // "Workspaces · 4" in the heading once there are some (Version 21).
+  showCount?: boolean
+  // The workspace type in the create and edit dialogs, as radio buttons (Version 21).
+  showType?: boolean
+  // Shown at the top of the Create workspace dialog.
+  createIntro?: ReactNode
   spaces: Space[]
   getSpaceDocs: (id: string) => MetadataDocument[]
   // When the workspace was last used (a chat or Haufe document made in it), for "Recently used".
@@ -203,6 +216,9 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
   // "+ Workspace" as a primary button at the end of the toolbar, right of the search (Workspaces 2.0 Version 15),
   // instead of a secondary button beside the title. With no workspaces yet, the empty state is the way in.
   createInToolbar?: boolean
+  /** Version 17: the header and toolbar shared with My Documents and Connectors (knowledgeLayout.tsx) — New workspace
+   *  as the header's primary action, and sorting as a secondary button after the search. */
+  aligned?: boolean
 }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('recent')
@@ -215,13 +231,13 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
 
   const matches = (space: Space, f: Filter) => f === 'all' || (f === 'private' ? space.visibility === 'private' : space.type === f)
   const count = (f: Filter) => spaces.filter(s => matches(s, f)).length
-  const tabs: { key: Filter; label: string }[] = [
-    { key: 'all', label: `All (${count('all')})` },
-    { key: 'Client', label: `Clients (${count('Client')})` },
-    { key: 'Project', label: `Projects (${count('Project')})` },
-    { key: 'Internal', label: `Internal (${count('Internal')})` },
-    { key: 'private', label: `Private (${count('private')})` },
-  ]
+  const tabs = ([
+    { key: 'all', label: 'All' },
+    { key: 'Client', label: 'Clients' },
+    { key: 'Project', label: 'Projects' },
+    { key: 'Internal', label: 'Internal' },
+    { key: 'private', label: 'Private' },
+  ] as { key: Filter; label: string }[]).map(t => ({ ...t, count: count(t.key) }))
 
   const query = search.trim().toLowerCase()
   const shown = spaces
@@ -232,33 +248,71 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
         : sort === 'documents' ? getSpaceDocs(b.id).length - getSpaceDocs(a.id).length
           : getLastUsed(b.id) - getLastUsed(a.id))
 
+  const sortMenu = (
+    <Dropdown
+      items={(Object.keys(SORT_LABELS) as Sort[]).map(key => ({ key, label: SORT_LABELS[key], onClick: () => setSort(key) }))}
+      trigger={dropdownTriggers.CLICK}
+      placement={dropdownPlacement.BOTTOM_RIGHT}
+    >
+      {myDocumentsToolbar ? (
+        // Version 21: tertiary like My Documents' Filters, with the up/down arrows saying it sorts.
+        <ButtonTertiary leftIcon={iconType.ArrowSwapOutlined} rightIcon={iconType.ChevronDownOutlined}>{SORT_LABELS[sort]}</ButtonTertiary>
+      ) : aligned ? <ButtonTertiary rightIcon={iconType.ChevronDownOutlined}>{SORT_LABELS[sort]}</ButtonTertiary> : (
+        <ButtonGhost rightIcon={iconType.ChevronDownOutlined}>{SORT_LABELS[sort]}</ButtonGhost>
+      )}
+    </Dropdown>
+  )
+
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: spacing(6), backgroundColor: colorPalette.white, minHeight: '100%' }}>
+    <KnowledgePage style={{ backgroundColor: colorPalette.white, minHeight: '100%' }}>
+      {aligned ? (
+        <KnowledgePageHeader
+          title="Workspaces"
+          description={description}
+          action={<ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>New workspace</ButtonPrimary>}
+        />
+      ) : hideHeaderWhenEmpty && spaces.length === 0 ? null : (
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing(6) }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1), minWidth: 0 }}>
-          <Typography size="heading-lg" weight="bold">Workspaces</Typography>
+          <Typography size="heading-lg" weight="bold">{showCount && spaces.length > 0 ? `Workspaces · ${spaces.length}` : 'Workspaces'}</Typography>
           {description && <Typography size="base" color="neutral-darken2">{description}</Typography>}
         </div>
         {!createInToolbar && <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>Workspace</ButtonSecondary>}
       </div>
+      )}
 
       {spaces.length === 0 ? renderEmptyState(() => setCreateOpen(true)) : (
         <>
+          {myDocumentsToolbar ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing(4) }}>
+                <div style={{ width: 320 }}>
+                  <SearchBar placeholder="Search workspaces" value={search} onChange={setSearch} width={searchbarWidth.EXPANDED} />
+                </div>
+                {/* Sort next to the search, where My Documents has Filters. */}
+                {showSort && sortMenu}
+                <div style={{ flex: 1 }} />
+                <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>Workspace</ButtonPrimary>
+              </div>
+              <div style={{ marginTop: -spacing(3) }}>
+                <Tabs options={tabs.map(t => ({ key: t.key, label: `${t.label} (${t.count})`, content: null }))} activeKey={filter} onChange={key => setFilter(key as Filter)} />
+              </div>
+            </>
+          ) : aligned ? (
+            <KnowledgeToolbar tabs={tabs} activeTab={filter} onTab={setFilter} search={search} onSearch={setSearch} searchPlaceholder="Search workspaces">
+              {showSort && sortMenu}
+            </KnowledgeToolbar>
+          ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
-            <Tabs options={tabs.map(t => ({ key: t.key, label: t.label, content: null }))} activeKey={filter} onChange={key => setFilter(key as Filter)} />
+            <Tabs options={tabs.map(t => ({ key: t.key, label: `${t.label} (${t.count})`, content: null }))} activeKey={filter} onChange={key => setFilter(key as Filter)} />
             <div style={{ flex: 1 }} />
-            {showSort && <Dropdown
-              items={(Object.keys(SORT_LABELS) as Sort[]).map(key => ({ key, label: SORT_LABELS[key], onClick: () => setSort(key) }))}
-              trigger={dropdownTriggers.CLICK}
-              placement={dropdownPlacement.BOTTOM_RIGHT}
-            >
-              <ButtonGhost rightIcon={iconType.ChevronDownOutlined}>{SORT_LABELS[sort]}</ButtonGhost>
-            </Dropdown>}
+            {showSort && sortMenu}
             <div style={{ width: 300 }}>
               <SearchBar placeholder="Search workspaces" value={search} onChange={setSearch} width={searchbarWidth.EXPANDED} />
             </div>
             {createInToolbar && <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>Workspace</ButtonPrimary>}
           </div>
+          )}
 
           {shown.length === 0 ? (
             <Typography size="base" color="neutral-darken2">No workspaces match.</Typography>
@@ -291,9 +345,12 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
         mode="create"
         noun="Workspace"
         showPhotoUpload={false}
-        showType={false}
+        showType={showType}
+        typeRadios={showType}
+        defaultType={showType ? 'Client' : undefined}
         organisationAccess
         accessRadios
+        intro={createIntro}
         onClose={() => setCreateOpen(false)}
         onSubmit={values => { onCreateSpace(values); setCreateOpen(false) }}
       />
@@ -303,7 +360,8 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
         noun="Workspace"
         initialValues={editTarget ?? undefined}
         showPhotoUpload={false}
-        showType={false}
+        showType={showType}
+        typeRadios={showType}
         organisationAccess
         accessRadios
         onClose={() => setEditId(null)}
@@ -321,6 +379,6 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
       >
         <Typography size="base" color="neutral-darken5">Delete <strong>{deleteTarget?.name}</strong>? This cannot be undone.</Typography>
       </Modal>
-    </div>
+    </KnowledgePage>
   )
 }

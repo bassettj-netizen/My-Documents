@@ -857,9 +857,15 @@ function AvatarPicker({ avatarUrl, name, onChange }: { avatarUrl?: string; name:
   )
 }
 
-export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace', showPhotoUpload = true, showType = true, organisationAccess = false, accessRadios = false, lang = 'en' }: {
+export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, noun = 'Workspace', showPhotoUpload = true, showType = true, organisationAccess = false, accessRadios = false, lang = 'en', intro, typeRadios = false, defaultType }: {
+  // When creating: the type that's selected to start with (Workspaces 2.0 Version 21 starts on Client).
+  defaultType?: string
+  // With showType: the type as radio buttons with a line each, instead of a Select (Workspaces 2.0 Version 21).
+  typeRadios?: boolean
   open: boolean
   mode: 'create' | 'edit'
+  // A line above the fields saying what a workspace is (Workspaces 2.0 Version 19, when creating).
+  intro?: ReactNode
   initialValues?: SpaceFormValues
   onClose: () => void
   onSubmit: (values: SpaceFormValues) => void
@@ -874,7 +880,7 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
   lang?: UiLang
 }) {
   const de = lang === 'de'
-  const emptyForm: SpaceFormValues = organisationAccess ? { ...EMPTY_SPACE_FORM, visibility: 'private' } : EMPTY_SPACE_FORM
+  const emptyForm: SpaceFormValues = { ...(organisationAccess ? { ...EMPTY_SPACE_FORM, visibility: 'private' as const } : EMPTY_SPACE_FORM), ...(defaultType ? { type: defaultType } : {}) }
   const [values, setValues] = useState<SpaceFormValues>(emptyForm)
 
   useEffect(() => {
@@ -901,6 +907,7 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
       ]}}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+        {intro && <Typography size="base" color="neutral-darken2">{intro}</Typography>}
         {showPhotoUpload && (
           <AvatarPicker
             avatarUrl={values.avatarUrl}
@@ -923,7 +930,21 @@ export function SpaceFormModal({ open, mode, initialValues, onClose, onSubmit, n
           placeholder={de ? 'Beschreiben Sie, wofür dieser Arbeitsbereich gedacht ist' : 'Describe the purpose of this workspace'}
           onChange={e => setValues(v => ({ ...v, description: e.target.value }))}
         />
-        {showType && (
+        {showType && typeRadios && (
+          <RadioGroup
+            name="workspace-type"
+            label="Type"
+            direction={radioGroupDirection.COLUMN}
+            value={values.type || undefined}
+            onChange={e => setValues(prev => ({ ...prev, type: e.target.value as string }))}
+            options={[
+              { label: 'Client — documents and context for one client', value: 'Client' },
+              { label: 'Project — a matter, audit or deal', value: 'Project' },
+              { label: 'Internal — policies and guides for your team', value: 'Internal' },
+            ]}
+          />
+        )}
+        {showType && !typeRadios && (
           <Select
             label="Type" isRequired
             value={values.type || undefined}

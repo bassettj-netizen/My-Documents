@@ -72,6 +72,11 @@ const groups = [
       { label: 'Version 14 (My files)', path: '/projects/workspaces-2/version-14' },
       { label: 'Version 15 (My Knowledge)', path: '/projects/workspaces-2/version-15' },
       { label: 'Version 16 (My Knowledge menu)', path: '/projects/workspaces-2/version-16' },
+      { label: 'Version 17 (aligned screens)', path: '/projects/workspaces-2/version-17' },
+      { label: 'Version 18 (aligned Connectors)', path: '/projects/workspaces-2/version-18' },
+      { label: 'Version 19 (Version 21 with sample workspaces)', path: '/projects/workspaces-2/version-19' },
+      { label: 'Version 20 (no workspaces yet, illustrated empty workspace)', path: '/projects/workspaces-2/version-20' },
+      { label: 'Version 21 (no workspaces yet, empty containers)', path: '/projects/workspaces-2/version-21' },
     ],
   },
   {

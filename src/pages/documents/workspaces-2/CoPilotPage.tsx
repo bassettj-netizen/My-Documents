@@ -17,8 +17,11 @@ import {
   dropdownPlacement,
   dropdownTriggers,
   Input,
+  Avatar,
+  avatarShapeEnum,
+  avatarSizeEnum,
 } from '@goat-ui/goat-ui-core'
-import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, type DocSource, type MetadataDocument, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
+import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, getInitials, type DocSource, type MetadataDocument, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
 import { MessageComposer } from '../workspaces/Version6'
 import { CoPilotMark } from '../workspaces/CoPilotPage'
 import type { WorkspaceReference } from '../hackathon/workspaceModel'
@@ -298,6 +301,24 @@ function MentionComposer({ value, onChange, workspaces, onPick, seedAttachments,
 }
 
 /** A workspace dropdown option: a 20px avatar or icon, then the name. */
+/**
+ * A workspace's avatar. With dsAvatars (Workspaces 2.0 Version 19) it's the DS square Avatar, as on the workspace
+ * list and summary; otherwise the older SpaceAvatar at the given pixel size.
+ */
+function WorkspaceAvatar({ workspace, size, ds }: { workspace: WorkspaceReference; size: number; ds: boolean }) {
+  if (!ds) return <SpaceAvatar space={{ id: workspace.id, name: workspace.name } as Space} size={size} />
+  const avatar = <Avatar shape={avatarShapeEnum.SQUARE} size={avatarSizeEnum.SMALL} srcPlaceholder={getInitials(workspace.name)} />
+  if (size >= 32) return avatar
+  // The DS's smallest Avatar is 32px; the dropdown and chat header need it smaller, so only its size is overridden.
+  return (
+    <span className={`copilot-ds-avatar-${size}`} style={{ display: 'inline-flex', width: size, height: size, flexShrink: 0 }}>
+      <style>{`.copilot-ds-avatar-${size} .goat-avatar { width: ${size}px !important; height: ${size}px !important; line-height: ${size - 2}px !important; }
+        .copilot-ds-avatar-${size} .goat-avatar-string, .copilot-ds-avatar-${size} .goat-avatar-string * { font-size: ${size <= 20 ? 9 : 10}px !important; line-height: ${size - 2}px !important; }`}</style>
+      {avatar}
+    </span>
+  )
+}
+
 function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <span className="copilot-ws-option" style={{ display: 'flex', alignItems: 'center', gap: spacing(2), minWidth: 0 }}>
@@ -315,7 +336,8 @@ function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode 
  * obvious — its avatar and name (a link back to it), then the chat title — and Save as PDF / Actions on
  * the right. Chats outside a workspace show "My workspace" in the workspace's place.
  */
-function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete }: {
+function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, dsAvatars }: {
+  dsAvatars: boolean
   session: ChatSession
   workspace: WorkspaceReference | null
   onOpenWorkspace: (ws: WorkspaceReference) => void
@@ -337,7 +359,7 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete }:
             onClick={() => onOpenWorkspace(workspace)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2), padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
           >
-            <SpaceAvatar space={{ id: workspace.id, name: workspace.name } as Space} size={24} />
+            <WorkspaceAvatar workspace={workspace} size={24} ds={dsAvatars} />
             <span style={{ fontSize: 14, fontWeight: 600, color: colorPalette.blue.base }}>{workspace.name}</span>
           </button>
         ) : (
@@ -373,8 +395,16 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete }:
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace, onSaveDocuments, onChatStarted, savedSessions, onSessionsChange, extraSessions = [], background = colorPalette.neutral.lighten5 }: {
+export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace, onSaveDocuments, onChatStarted, savedSessions, onSessionsChange, extraSessions = [], background = colorPalette.neutral.lighten5, renderSummary, dsAvatars = false, createWorkspaceIntro, workspaceTypes = false }: {
   workspaces: WorkspaceReference[]
+  // Replaces the In this workspace card with the version's own summary (Workspaces 2.0 Version 19).
+  renderSummary?: (workspace: WorkspaceReference) => ReactNode
+  // Workspace avatars in the DS square style, as on the workspace list (Workspaces 2.0 Version 19).
+  dsAvatars?: boolean
+  // Shown at the top of the Create workspace dialog.
+  createWorkspaceIntro?: ReactNode
+  // The workspace type in the Create workspace dialog, as radio buttons (Workspaces 2.0 Version 21).
+  workspaceTypes?: boolean
   // "Create workspace" at the foot of the workspace dropdown; returns the new workspace's id.
   onCreateWorkspace: (values: SpaceFormValues) => string
   // Files sent with a question while in a workspace are saved to that workspace's documents.
@@ -542,7 +572,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                 { label: <OptionLabel icon={<Icon type={iconType.UserOutlined} size={16} color="inherit" />}>My workspace</OptionLabel>, value: GENERAL },
                 ...workspaces.map(w => ({
                   // Workspaces here have no photo, so the avatar only needs the name for its initials.
-                  label: <OptionLabel icon={<SpaceAvatar space={{ id: w.id, name: w.name } as Space} size={20} />}>{w.name}</OptionLabel>,
+                  label: <OptionLabel icon={<WorkspaceAvatar workspace={w} size={20} ds={dsAvatars} />}>{w.name}</OptionLabel>,
                   value: w.id,
                 })),
                 // Not a workspace but a button at the foot of the list. The DS Select has no footer slot, so it sits in a
@@ -616,6 +646,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
               session={activeSession}
               workspace={activeSession.workspace ? workspaces.find(w => w.id === activeSession.workspace!.id) ?? activeSession.workspace : null}
               onOpenWorkspace={ws => navigate(ws.path)}
+              dsAvatars={dsAvatars}
               onRename={title => setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, title } : s))}
               onDelete={() => { setSessions(prev => prev.filter(s => s.id !== activeSession.id)); setActiveId(null) }}
             />
@@ -658,7 +689,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
                   {/* In a workspace, the welcome is headed with it instead of CoPilot HR. */}
                   {attached
-                    ? <SpaceAvatar space={{ id: attached.id, name: attached.name } as Space} size={40} />
+                    ? <WorkspaceAvatar workspace={attached} size={40} ds={dsAvatars} />
                     : <CoPilotMark size={40} />}
                   <span style={{ fontSize: 24, lineHeight: '1.3', fontWeight: 700, color: '#001344' }}>{attached ? attached.name : 'Welcome to CoPilot HR,'}</span>
                   <Typography size="base" color={attached && !attached.description.trim() ? 'neutral-darken2' : 'neutral-darken5'}>
@@ -713,7 +744,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
           onClose={() => setSourcesView(null)}
         />
         </SourcesPanelSlot>
-      ) : attached && <WorkspaceSummary workspace={attached} />}
+      ) : attached && (renderSummary ? renderSummary(attached) : <WorkspaceSummary workspace={attached} />)}
 
       {/* Same dialog as on the Workspaces page; the new workspace becomes the current one. */}
       <SpaceFormModal
@@ -721,10 +752,13 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
         mode="create"
         noun="Workspace"
         showPhotoUpload={false}
-        showType={false}
+        showType={workspaceTypes}
+        typeRadios={workspaceTypes}
+        defaultType={workspaceTypes ? 'Client' : undefined}
         organisationAccess
         accessRadios
         onClose={() => setCreateOpen(false)}
+        intro={createWorkspaceIntro}
         onSubmit={values => { selectWorkspace(onCreateWorkspace(values)); setCreateOpen(false) }}
       />
     </div>
@@ -782,3 +816,4 @@ function WorkspaceSummary({ workspace }: { workspace: WorkspaceReference }) {
     </div>
   )
 }
+

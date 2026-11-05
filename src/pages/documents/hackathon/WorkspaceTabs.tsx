@@ -136,16 +136,21 @@ function DetailRow({ detail, onChange, onRemove }: { detail: WorkspaceDetail; on
 
 export const GUARDRAILS_INTRO = 'Rules CoPilot always follows when it works with this workspace. Switch one off to pause it without deleting it.'
 
+/** An example guardrail with what it's for (Workspaces 2.0 Version 21's empty Guardrails page). */
+export type GuardrailExample = { category: string; icon: string; text: string; why: string }
+
 // `plain` (Workspaces 2.0 V15/V16): no intro — the page has its own title — and the rules as plain rows between lines,
 // like the Used in page's, instead of in a bordered card.
-export function GuardrailsTab({ guardrails, onChange, plain = false }: { guardrails: Guardrail[]; onChange: (guardrails: Guardrail[]) => void; plain?: boolean }) {
+// `examples` (Version 21): with no guardrails yet, a grid of example cards to add from, instead of the empty state and
+// suggestion chips; once there are some, the examples not yet added stay below as the same cards.
+export function GuardrailsTab({ guardrails, onChange, plain = false, examples }: { guardrails: Guardrail[]; onChange: (guardrails: Guardrail[]) => void; plain?: boolean; examples?: GuardrailExample[] }) {
   const [draft, setDraft] = useState('')
   const add = (text: string) => {
     if (!text.trim()) return
     onChange([...guardrails, { id: newId('guardrail'), text: text.trim(), enabled: true }])
     setDraft('')
   }
-  const suggestions = SUGGESTED_GUARDRAILS.filter(s => !guardrails.some(g => g.text === s))
+  const suggestions = (examples ? examples.map(e => e.text) : SUGGESTED_GUARDRAILS).filter(s => !guardrails.some(g => g.text === s))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(6), maxWidth: 760 }}>
@@ -158,7 +163,9 @@ export function GuardrailsTab({ guardrails, onChange, plain = false }: { guardra
         <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => add(draft)} disabled={!draft.trim()}>Add</ButtonPrimary>
       </div>
 
-      {guardrails.length === 0 ? (
+      {guardrails.length === 0 && examples ? (
+        <GuardrailExamples examples={examples} onAdd={add} title="Start with an example" text="Add one as it is, or write your own above. You can switch any rule off or delete it later." />
+      ) : guardrails.length === 0 ? (
         <TabEmptyState
           icon={<Icon type={iconType.ShieldCheckOutlined} size={24} color="blue-base" />}
           title="No guardrails yet"
@@ -182,7 +189,12 @@ export function GuardrailsTab({ guardrails, onChange, plain = false }: { guardra
         </div>
       )}
 
-      {suggestions.length > 0 && (
+      {/* With examples (Version 21): the ones not added yet stay below the rules, as the same cards. */}
+      {examples && guardrails.length > 0 && suggestions.length > 0 && (
+        <GuardrailExamples examples={examples.filter(e => suggestions.includes(e.text))} onAdd={add} title="More examples" />
+      )}
+
+      {suggestions.length > 0 && !examples && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
           <Typography size="base-sm" weight="semibold" color="neutral-darken2">Suggestions</Typography>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(2) }}>
@@ -192,6 +204,42 @@ export function GuardrailsTab({ guardrails, onChange, plain = false }: { guardra
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * No guardrails yet (Version 21): examples to start from, each a card with its category and icon, the rule, why it
+ * helps and Add — so it's clear what a guardrail is and one click adds a first one.
+ */
+function GuardrailExamples({ examples, onAdd, title, text }: { examples: GuardrailExample[]; onAdd: (text: string) => void; title: string; text?: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+        <Typography size="base" weight="semibold" color="neutral-darken5">{title}</Typography>
+        {text && <Typography size="base-sm" color="neutral-darken2">{text}</Typography>}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: spacing(3) }}>
+        {examples.map(example => (
+          <div key={example.text} style={{
+            display: 'flex', flexDirection: 'column', gap: spacing(2), padding: spacing(4), borderRadius: 12,
+            border: `1px solid ${colorPalette.neutral.lighten2}`, backgroundColor: colorPalette.white,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colorPalette.blue.lighten5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon type={example.icon as never} size={16} color="blue-base" />
+              </div>
+              <span style={{ fontSize: 11, lineHeight: '16px', fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase', color: colorPalette.neutral.darken2 }}>{example.category}</span>
+            </div>
+            <Typography size="base" weight="semibold" color="neutral-darken5">{example.text}</Typography>
+            <Typography size="base-sm" color="neutral-darken2">{example.why}</Typography>
+            <div style={{ flex: 1 }} />
+            <div style={{ marginTop: spacing(1) }}>
+              <ButtonTertiary size={buttonSizes.SMALL} leftIcon={iconType.PlusOutlined} onClick={() => onAdd(example.text)}>Add</ButtonTertiary>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
