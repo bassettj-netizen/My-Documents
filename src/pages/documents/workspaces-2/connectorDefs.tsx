@@ -88,3 +88,20 @@ export function initialAccountsFor(connectorId: ConnectorId): ConnectedAccount[]
 export function isSpaceAccount(accountId: string) {
   return [...INITIAL_SPACES, CLIENT_EXAMPLE_SPACE].some(space => space.id === accountId)
 }
+
+// ─── Personio (Workspaces 2.0 Versions 19 and 21: listed on the Connectors page, not connected) ───────────
+
+// Personio's logomark (black), cropped to the mark so it sits at the same size as the other connectors' icons.
+function PersonioIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="119 119 331 331" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M367.283 189.797L338.352 138.198C333.441 129.434 324.166 124 314.113 124H213.847C164.224 124 124 164.175 124 213.74V335.591H206.84V226.335C206.84 215.516 215.625 206.741 226.457 206.741H342.764C353.586 206.741 362.352 215.506 362.352 226.306V342.896C362.352 353.706 353.577 362.461 342.764 362.461H231.446V445.192H315.045C325.108 445.192 334.393 439.759 339.304 430.994L366.831 381.929C370.301 375.756 376.836 371.926 383.92 371.926H425.604C436.427 371.926 445.192 363.161 445.192 352.362V219.375C445.192 208.565 436.417 199.81 425.604 199.81H384.381C377.288 199.81 370.752 195.98 367.283 189.797Z" fill="black" />
+    </svg>
+  )
+}
+
+/** A connector the page lists — Personio has no workspace connector type, so nothing is seeded for it. */
+export type ListedConnectorId = ConnectorId | 'personio'
+export type ListedConnectorDef = Omit<ConnectorDef, 'id'> & { id: ListedConnectorId }
+
+export const PERSONIO: ListedConnectorDef = { id: 'personio', name: 'Personio', shortName: 'Personio', icon: size => <PersonioIcon size={size} /> }

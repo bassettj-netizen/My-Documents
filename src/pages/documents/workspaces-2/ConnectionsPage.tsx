@@ -29,7 +29,7 @@ import {
   Typography,
   useNotifications,
 } from '@goat-ui/goat-ui-core'
-import { CONNECTOR_TYPE, CONNECTORS, initialAccountsFor, isSpaceAccount, type ConnectedAccount, type ConnectorDef, type ConnectorId } from './connectorDefs'
+import { CONNECTOR_TYPE, CONNECTORS, initialAccountsFor, isSpaceAccount, PERSONIO, type ConnectedAccount, type ConnectorDef, type ListedConnectorDef, type ListedConnectorId } from './connectorDefs'
 import { useConnections } from '../../../contexts/ConnectionsContext'
 
 const { colorPalette, spacing, fontWeight } = constants
@@ -40,7 +40,7 @@ type FieldKey = 'clientId' | 'tenantId' | 'domain' | 'clientSecret'
 
 export function SetUpConnectorModal({ visible, connector, onClose, onVerified }: {
   visible: boolean
-  connector: ConnectorDef
+  connector: Pick<ConnectorDef, 'name' | 'shortName'>
   onClose: () => void
   onVerified: (account: Omit<ConnectedAccount, 'id'>) => void
 }) {
@@ -165,31 +165,33 @@ const PANEL = { backgroundColor: colorPalette.white, border: `1px solid ${colorP
 // (Workspaces 2.0 Version 15).
 // `showCount` (Workspaces 2.0 Version 21): "Connectors · 3" in the heading — every connected account, across the connector types.
 // `compactMenu` (Version 21, with plain): the connector list as in Workspaces 2.0 Version 18 — a narrow column of 40px rows
-// with each type's account count, a lighter divider, and "Active Connectors" for the accounts.
+// with each type's account count, a lighter divider, and "Active Connectors" for the accounts. It also lists Personio (not
+// connected — nothing is seeded for it) and puts the connector types in alphabetical order (Versions 19 and 21).
 export default function ConnectionsPageV10({ background = colorPalette.neutral.lighten5, startEmpty = false, plain = false, showCount = false, compactMenu = false }: { background?: string; startEmpty?: boolean; plain?: boolean; showCount?: boolean; compactMenu?: boolean } = {}) {
-  const [selectedId, setSelectedId] = useState<ConnectorId>('microsoft-365')
+  const connectors: ListedConnectorDef[] = compactMenu
+    ? [...CONNECTORS, PERSONIO].sort((a, b) => a.name.localeCompare(b.name))
+    : CONNECTORS
+  const [selectedId, setSelectedId] = useState<ListedConnectorId>('microsoft-365')
   // Accounts manually added via "Set up connector" / "Add connector" — accounts
   // seeded from real workspace connectors (below) aren't stored here, since
   // their connected/disconnected status lives in ConnectionsContext instead.
-  const [manualAccounts, setManualAccounts] = useState<Record<ConnectorId, ConnectedAccount[]>>({
+  const [manualAccounts, setManualAccounts] = useState<Record<ListedConnectorId, ConnectedAccount[]>>({
     'microsoft-365': [],
     'google-drive': [],
     'datev': [],
+    'personio': [],
   })
   const [modalOpen, setModalOpen] = useState(false)
   const [pendingDisconnect, setPendingDisconnect] = useState<ConnectedAccount | null>(null)
   const { notification } = useNotifications()
   const { isWorkspaceConnectorDisconnected, disconnectWorkspaceConnector } = useConnections()
 
-  const selected = CONNECTORS.find(c => c.id === selectedId)!
-  const connectorType = CONNECTOR_TYPE[selectedId]
-  const seededAccounts = (startEmpty ? [] : initialAccountsFor(selectedId)).filter(a => !isWorkspaceConnectorDisconnected(a.id, connectorType))
-  const accounts = [...seededAccounts, ...manualAccounts[selectedId]]
-  const accountsFor = (id: ConnectorId) => [
-    ...(startEmpty ? [] : initialAccountsFor(id)).filter(a => !isWorkspaceConnectorDisconnected(a.id, CONNECTOR_TYPE[id])),
-    ...manualAccounts[id],
-  ]
-  const totalAccounts = CONNECTORS.reduce((n, c) => n + accountsFor(c.id).length, 0)
+  const selected = connectors.find(c => c.id === selectedId)!
+  // Accounts from the workspaces' connectors — none for Personio, which has no workspace connector type.
+  const seededFor = (id: ListedConnectorId) => id === 'personio' || startEmpty ? [] : initialAccountsFor(id).filter(a => !isWorkspaceConnectorDisconnected(a.id, CONNECTOR_TYPE[id]))
+  const accountsFor = (id: ListedConnectorId) => [...seededFor(id), ...manualAccounts[id]]
+  const accounts = accountsFor(selectedId)
+  const totalAccounts = connectors.reduce((n, c) => n + accountsFor(c.id).length, 0)
 
   const handleVerified = (account: Omit<ConnectedAccount, 'id'>) => {
     setManualAccounts(prev => ({ ...prev, [selectedId]: [...prev[selectedId], { id: `manual-${Date.now()}`, ...account }] }))
@@ -199,8 +201,8 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
 
   const handleConfirmDisconnect = () => {
     if (!pendingDisconnect) return
-    if (isSpaceAccount(pendingDisconnect.id)) {
-      disconnectWorkspaceConnector(pendingDisconnect.id, connectorType)
+    if (selectedId !== 'personio' && isSpaceAccount(pendingDisconnect.id)) {
+      disconnectWorkspaceConnector(pendingDisconnect.id, CONNECTOR_TYPE[selectedId])
     } else {
       setManualAccounts(prev => ({ ...prev, [selectedId]: prev[selectedId].filter(a => a.id !== pendingDisconnect.id) }))
     }
@@ -227,7 +229,7 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
         {/* Connector types, in their own white container like a sub-menu (plain: just the list). */}
         {compactMenu ? (
           <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
-            {CONNECTORS.map(connector => (
+            {connectors.map(connector => (
               <div
                 key={connector.id}
                 className={`v21-connector${connector.id === selectedId ? ' is-selected' : ''}`}
@@ -248,7 +250,7 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
               <Typography size="base-sm" color="neutral-darken2" weight={fontWeight.SEMIBOLD}>Connector types</Typography>
             </div>
           )}
-          {CONNECTORS.map(connector => {
+          {connectors.map(connector => {
             const isSelected = connector.id === selectedId
             return (
               <div
@@ -279,7 +281,9 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
         <div style={plain
           ? { flex: 1, minWidth: 0, paddingTop: spacing(1), display: 'flex', flexDirection: 'column' }
           : { ...PANEL, flex: 1, minWidth: 0, padding: spacing(6), display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(3) }}>
+          {/* compactMenu: as tall as the Add connector button even without it (a type with no accounts, e.g. Personio),
+              so the heading doesn't shift when moving between types. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing(3), minHeight: compactMenu ? 32 : undefined }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
               {selected.icon(24)}
               <Typography size="base-lg" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{selected.name}</Typography>
