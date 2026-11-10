@@ -236,18 +236,29 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
         `}</style>}
         {/* Connector types, in their own white container like a sub-menu (plain: just the list). */}
         {compactMenu ? (
+          // Versions 19 and 21: split into the apps with at least one account (Connected) and the rest (Available) —
+          // an app moves across as soon as it's connected or its last account is disconnected.
           <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
-            {connectors.map(connector => (
-              <div
-                key={connector.id}
-                className={`v21-connector${connector.id === selectedId ? ' is-selected' : ''}`}
-                onClick={() => setSelectedId(connector.id)}
-              >
-                <span style={{ display: 'inline-flex', flexShrink: 0 }}>{connector.icon(20)}</span>
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{connector.name}</span>
-                <span style={{ fontSize: 13, fontWeight: 400, color: colorPalette.neutral.darken2 }}>{accountsFor(connector.id).length}</span>
-              </div>
-            ))}
+            {([['Connected', connectors.filter(c => accountsFor(c.id).length > 0)], ['Available', connectors.filter(c => accountsFor(c.id).length === 0)]] as const)
+              .filter(([, group]) => group.length > 0)
+              .map(([label, group], gi) => (
+                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: spacing(1), marginTop: gi ? spacing(4) : 0 }}>
+                  <div style={{ padding: `0 ${spacing(3)}px ${spacing(1)}px`, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', color: colorPalette.neutral.darken2 }}>
+                    {label}
+                  </div>
+                  {group.map(connector => (
+                    <div
+                      key={connector.id}
+                      className={`v21-connector${connector.id === selectedId ? ' is-selected' : ''}`}
+                      onClick={() => setSelectedId(connector.id)}
+                    >
+                      <span style={{ display: 'inline-flex', flexShrink: 0 }}>{connector.icon(20)}</span>
+                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{connector.name}</span>
+                      {label === 'Connected' && <span style={{ fontSize: 13, fontWeight: 400, color: colorPalette.neutral.darken2 }}>{accountsFor(connector.id).length}</span>}
+                    </div>
+                  ))}
+                </div>
+              ))}
           </div>
         ) : (
         <div style={plain
