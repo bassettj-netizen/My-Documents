@@ -243,7 +243,7 @@ const MODIFIED = ['Yesterday', '10 days ago', 'June 23', 'June 23', 'May 06', 'A
 const MODIFIED_BY = [CURRENT_USER, 'Albert Berg', 'Sabine Hoffmann', 'Claudia Richter', 'Albert Berg', 'Albert Berg', CURRENT_USER, 'Claudia Richter', 'Albert Berg']
 const TILE_COLORS = ['#ee0411', '#04a8ee', '#8a3ffc', '#107c10', '#f7630c']
 
-type PickerFile = { id: string; name: string; format: FileFormat; sizeKb: number; modified: string; modifiedBy: string; accountId: string; recency: number }
+type PickerFile = { id: string; name: string; format: FileFormat; sizeKb: number; modified: string; modifiedBy: string; accountId: string; recency: number; dateIndex: number }
 
 /** An account's files in the app — the same every time, so a synced file is recognised when the picker opens again. */
 function filesFor(type: ConnectorType, account: ConnectedAccount, accountIndex: number): PickerFile[] {
@@ -252,7 +252,7 @@ function filesFor(type: ConnectorType, account: ConnectedAccount, accountIndex: 
     const [name, format] = list[(i + accountIndex * 2) % list.length]
     return {
       id: `sync-${type}-${account.id}-${i}`, name, format, sizeKb: 180 + ((i * 397 + accountIndex * 131) % 2400),
-      modified: MODIFIED[i], modifiedBy: MODIFIED_BY[(i + accountIndex) % MODIFIED_BY.length], accountId: account.id, recency: i * 10 + accountIndex,
+      modified: MODIFIED[i], modifiedBy: MODIFIED_BY[(i + accountIndex) % MODIFIED_BY.length], accountId: account.id, recency: i * 10 + accountIndex, dateIndex: i,
     }
   })
 }
@@ -283,19 +283,27 @@ function SelectedCheck({ muted = false }: { muted?: boolean }) {
 
 type Place = { kind: 'nav'; index: number } | { kind: 'account'; id: string }
 
-function SyncFilePicker({ app, existingIds, onClose, onSync }: {
+type PickerProps = {
   app: ConnectedApp
   existingIds: Set<string>
   onClose: () => void
   onSync: (docs: MetadataDocument[], source: ConnectorType) => void
-}) {
+}
+
+/** Each app's own file picker: Microsoft's (as in Figma), Google Drive's and DATEV's. They share what's in them and how picking works. */
+function SyncFilePicker(props: PickerProps) {
+  if (props.app.type === 'google-drive') return <GoogleDrivePicker {...props} />
+  if (props.app.type === 'datev') return <DatevPicker {...props} />
+  return <MicrosoftPicker {...props} />
+}
+
+/** The files, where the user is, the search and the selection — the same in every app's picker. */
+function usePicker({ app, existingIds, onSync }: PickerProps) {
   const [place, setPlace] = useState<Place>({ kind: 'nav', index: 0 })
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [hovered, setHovered] = useState<string | null>(null)
 
   const allFiles = useMemo(() => app.accounts.flatMap((a, i) => filesFor(app.type, a, i)), [app])
-  const places = PLACES[app.type]
   const files = useMemo(() => {
     let list = allFiles
     if (place.kind === 'account') list = list.filter(f => f.accountId === place.id)
@@ -308,16 +316,26 @@ function SyncFilePicker({ app, existingIds, onClose, onSync }: {
     return q ? list.filter(f => f.name.toLowerCase().includes(q)) : list
   }, [allFiles, place, query])
 
-  const title = place.kind === 'account' ? app.accounts.find(a => a.id === place.id)?.name ?? '' : place.index === 0 ? 'Recents' : places.nav[place.index]
   const selectable = files.filter(f => !existingIds.has(f.id))
   const allSelected = selectable.length > 0 && selectable.every(f => selected.has(f.id))
-  const toggle = (id: string) => setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  const toggle = (id: string) => { if (!existingIds.has(id)) setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next }) }
   const toggleAll = () => setSelected(prev => {
     const next = new Set(prev)
     selectable.forEach(f => allSelected ? next.delete(f.id) : next.add(f.id))
     return next
   })
   const sync = () => onSync(allFiles.filter(f => selected.has(f.id)).map(toDoc), app.type)
+  const isSynced = (id: string) => existingIds.has(id)
+  return { place, setPlace, query, setQuery, selected, files, selectable, allSelected, toggle, toggleAll, sync, isSynced }
+}
+
+/** Microsoft's picker (SharePoint, OneDrive), as in Figma 5116:94514, inside the DS modal. */
+function MicrosoftPicker(props: PickerProps) {
+  const { app, existingIds, onClose } = props
+  const { place, setPlace, query, setQuery, selected, files, selectable, allSelected, toggle, toggleAll, sync } = usePicker(props)
+  const [hovered, setHovered] = useState<string | null>(null)
+  const places = PLACES[app.type]
+  const title = place.kind === 'account' ? app.accounts.find(a => a.id === place.id)?.name ?? '' : place.index === 0 ? 'Recents' : places.nav[place.index]
 
   const navItem = (label: ReactNode, active: boolean, onClick: () => void, icon: ReactNode, key: string) => (
     <button key={key} type="button" onClick={onClick} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 36, padding: '0 0 0 18px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}>
@@ -422,5 +440,252 @@ function SyncFilePicker({ app, existingIds, onClose, onSync }: {
         </div>
       </div>
     </Modal>
+  )
+}
+
+// ─── Pickers in the other apps' own style ───────────────────────────────────
+
+/** A full-window dim with the app's own dialog centred on it; Escape or a click outside closes it, like the real pickers. */
+function PickerOverlay({ onClose, children, label }: { onClose: () => void; children: ReactNode; label: string }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div role="dialog" aria-modal aria-label={label} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 2000, backgroundColor: 'rgba(32, 33, 36, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, boxSizing: 'border-box' }}>
+      {children}
+    </div>
+  )
+}
+
+/** A small file-type mark in Drive's style: a coloured page with a folded corner and the type's letter. */
+function DriveFileIcon({ format }: { format: FileFormat }) {
+  const color = format === 'PDF' ? '#ea4335' : format === 'XLSX' ? '#0f9d58' : format === 'PPTX' ? '#f4b400' : '#4285f4'
+  const letter = format === 'PDF' ? 'PDF' : format === 'XLSX' ? 'X' : format === 'PPTX' ? 'P' : 'W'
+  return (
+    <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden style={{ flexShrink: 0 }}>
+      <path d="M4 1h8.5L17 5.5V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2Z" fill={color} />
+      <path d="M12.5 1v3a1.5 1.5 0 0 0 1.5 1.5h3Z" fill="white" opacity={0.45} />
+      <text x="9.5" y="14.5" textAnchor="middle" fontSize={letter.length > 1 ? 5.2 : 8} fontWeight={700} fill="white" fontFamily="Roboto, Arial, sans-serif">{letter}</text>
+    </svg>
+  )
+}
+
+const gText = (size: number, color = '#1f1f1f', weight = 400): CSSProperties => ({ fontFamily: "'Google Sans', Roboto, Arial, sans-serif", fontSize: size, color, fontWeight: weight })
+
+/** Google Drive's picker: tabs for its places, a search, a list, and Select / Cancel at the bottom left. */
+function GoogleDrivePicker(props: PickerProps) {
+  const { app, onClose } = props
+  const { place, setPlace, query, setQuery, selected, files, toggle, sync, isSynced } = usePicker(props)
+  // "Shared drives" lists the connected accounts first; opening one shows its files.
+  const [drivesOpen, setDrivesOpen] = useState(false)
+  const tabs: { key: string; label: string; active: boolean; onClick: () => void }[] = [
+    ...['Recent', 'My Drive', 'Shared with me', 'Starred'].map((label, index) => ({
+      key: label, label, active: !drivesOpen && place.kind === 'nav' && place.index === index,
+      onClick: () => { setDrivesOpen(false); setPlace({ kind: 'nav', index }) },
+    })),
+    { key: 'drives', label: 'Shared drives', active: drivesOpen || place.kind === 'account', onClick: () => { setDrivesOpen(true); setPlace({ kind: 'nav', index: 0 }) } },
+  ]
+  const openDrive = place.kind === 'account' ? app.accounts.find(a => a.id === place.id) : undefined
+  const DriveIcon = app.def.icon
+  const columns = 'minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, 1fr) 90px'
+
+  return (
+    <PickerOverlay onClose={onClose} label="Google Drive — select files">
+      <div style={{ width: 'min(1050px, 100%)', height: 'min(720px, 100%)', backgroundColor: 'white', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header: the Drive mark and title, search, close. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 16px 8px 24px' }}>
+          <span style={{ display: 'inline-flex' }}>{DriveIcon(24)}</span>
+          <span style={{ ...gText(22, '#1f1f1f'), whiteSpace: 'nowrap' }}>Select files</span>
+          <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, height: 44, padding: '0 16px', borderRadius: 22, backgroundColor: '#e9eef6', marginLeft: 16 }}>
+            <Icon type={iconType.SearchOutlined} size={20} color="neutral-darken3" />
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search in Drive" aria-label="Search in Drive"
+              style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'none', ...gText(16) }} />
+          </label>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ width: 40, height: 40, border: 'none', borderRadius: 20, background: 'none', cursor: 'pointer', fontSize: 22, color: '#444746' }}>×</button>
+        </div>
+
+        {/* Tabs */}
+        <div role="tablist" style={{ display: 'flex', gap: 4, padding: '0 16px', borderBottom: '1px solid #e0e3e7' }}>
+          {tabs.map(t => (
+            <button key={t.key} type="button" role="tab" aria-selected={t.active} onClick={t.onClick}
+              style={{ position: 'relative', height: 48, padding: '0 16px', border: 'none', background: 'none', cursor: 'pointer', ...gText(14, t.active ? '#0b57d0' : '#444746', 500) }}>
+              {t.label}
+              {t.active && <span style={{ position: 'absolute', left: 12, right: 12, bottom: 0, height: 3, borderRadius: '3px 3px 0 0', backgroundColor: '#0b57d0' }} />}
+            </button>
+          ))}
+        </div>
+
+        {/* Where you are, when inside a shared drive. */}
+        {openDrive && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 24px 0', ...gText(14, '#444746') }}>
+            <button type="button" onClick={() => { setDrivesOpen(true); setPlace({ kind: 'nav', index: 0 }) }} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', ...gText(14, '#0b57d0', 500) }}>Shared drives</button>
+            <span>›</span><span style={{ color: '#1f1f1f' }}>{openDrive.name}</span>
+          </div>
+        )}
+
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 16px' }}>
+          {drivesOpen && place.kind === 'nav' ? (
+            // The connected accounts, as shared drives.
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, padding: 8 }}>
+              {app.accounts.map(a => (
+                <button key={a.id} type="button" onClick={() => { setDrivesOpen(false); setPlace({ kind: 'account', id: a.id }) }} title={a.domain}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, height: 56, padding: '0 16px', border: '1px solid #c4c7c5', borderRadius: 12, backgroundColor: '#f8fafd', cursor: 'pointer', textAlign: 'left' }}>
+                  <svg width={24} height={24} viewBox="0 0 24 24" aria-hidden><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h4l2 2.5h7A2.5 2.5 0 0 1 21 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5Z" fill="#5f6368" /><circle cx="12" cy="13" r="1.6" fill="white" /><circle cx="8.8" cy="15.4" r="1.2" fill="white" /><circle cx="15.2" cy="15.4" r="1.2" fill="white" /></svg>
+                  <span style={{ ...gText(14, '#1f1f1f', 500), ...ellipsis }}>{a.name}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div role="grid">
+              <div style={{ display: 'grid', gridTemplateColumns: columns, alignItems: 'center', gap: 16, height: 48, padding: '0 16px', borderBottom: '1px solid #e0e3e7', ...gText(14, '#444746', 500) }}>
+                <span>Name</span><span>Owner</span><span>Last modified</span><span>File size</span>
+              </div>
+              {files.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', ...gText(14, '#444746') }}>{query ? `No results for “${query.trim()}”` : 'No files here'}</div>
+              ) : files.map(f => {
+                const synced = isSynced(f.id)
+                const isSelected = selected.has(f.id)
+                return (
+                  <div key={f.id} role="row" aria-selected={isSelected} onClick={() => toggle(f.id)}
+                    style={{ display: 'grid', gridTemplateColumns: columns, alignItems: 'center', gap: 16, height: 48, padding: '0 16px', borderBottom: '1px solid #e0e3e7', borderRadius: isSelected ? 0 : undefined, cursor: synced ? 'default' : 'pointer', backgroundColor: isSelected ? '#c2e7ff' : undefined, opacity: synced ? 0.55 : 1 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+                      {isSelected
+                        ? <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden style={{ flexShrink: 0 }}><circle cx="10" cy="10" r="10" fill="#0b57d0" /><path d="m5.8 10.2 2.8 2.8 5.6-5.8" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        : <DriveFileIcon format={f.format} />}
+                      <span style={{ ...gText(14, '#1f1f1f', 500), ...ellipsis }} title={`${f.name}.${f.format.toLowerCase()}`}>{f.name}.{f.format.toLowerCase()}</span>
+                      {synced && <span style={{ flexShrink: 0, ...gText(12, '#444746'), padding: '2px 8px', borderRadius: 8, backgroundColor: '#e9eef6' }}>Already synced</span>}
+                    </span>
+                    <span style={{ ...gText(14, '#444746'), ...ellipsis }}>{f.modifiedBy === CURRENT_USER ? 'me' : f.modifiedBy}</span>
+                    <span style={{ ...gText(14, '#444746'), ...ellipsis }}>{f.modified}</span>
+                    <span style={{ ...gText(14, '#444746') }}>{fileSize(f.sizeKb)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Select / Cancel bottom left, as in Google's picker. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px 16px', borderTop: '1px solid #e0e3e7' }}>
+          <button type="button" disabled={selected.size === 0} onClick={sync}
+            style={{ height: 40, padding: '0 24px', border: 'none', borderRadius: 20, cursor: selected.size ? 'pointer' : 'default', backgroundColor: selected.size ? '#0b57d0' : '#1f1f1f1f', ...gText(14, selected.size ? 'white' : '#1f1f1f61', 500) }}>
+            Select
+          </button>
+          <button type="button" onClick={onClose} style={{ height: 40, padding: '0 16px', border: 'none', borderRadius: 20, background: 'none', cursor: 'pointer', ...gText(14, '#0b57d0', 500) }}>Cancel</button>
+          {selected.size > 0 && <span style={{ marginLeft: 8, ...gText(14, '#444746') }}>{selected.size} selected</span>}
+        </div>
+      </div>
+    </PickerOverlay>
+  )
+}
+
+// DATEV shows dates the German way.
+const DATEV_DATES = ['09.11.2026', '31.10.2026', '23.06.2026', '23.06.2026', '06.05.2026', '09.04.2026', '09.12.2025', '11.11.2025', '11.11.2025']
+const dText = (size: number, color = '#1d1d1b', weight = 400): CSSProperties => ({ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: size, color, fontWeight: weight })
+
+/** A square checkbox in DATEV's green. */
+function DatevCheckbox({ checked, disabled = false }: { checked: boolean; disabled?: boolean }) {
+  return (
+    <span aria-hidden style={{ width: 16, height: 16, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${checked ? '#00a443' : '#8c8c8c'}`, backgroundColor: disabled ? '#e6e6e6' : checked ? '#00a443' : 'white', borderRadius: 2 }}>
+      {(checked || disabled) && <svg width={10} height={10} viewBox="0 0 10 10"><path d="m1.5 5.2 2.3 2.3 4.7-5" fill="none" stroke={disabled ? '#8c8c8c' : 'white'} strokeWidth="1.6" /></svg>}
+    </span>
+  )
+}
+
+/** DATEV's document filing (Dokumentenablage): clients on the left, a document table, Übernehmen / Abbrechen. In German, like DATEV. */
+function DatevPicker(props: PickerProps) {
+  const { app, onClose } = props
+  const { place, setPlace, query, setQuery, selected, files, selectable, allSelected, toggle, toggleAll, sync, isSynced } = usePicker(props)
+  const DatevIcon = app.def.icon
+  const clientNumber = (i: number) => String(10001 + i * 117)
+  const accountName = (id: string) => app.accounts.find(a => a.id === id)?.name ?? ''
+  const nav = ['Zuletzt verwendet', 'Meine Dokumente', 'Freigegeben', 'Favoriten']
+  const title = place.kind === 'account' ? `${clientNumber(app.accounts.findIndex(a => a.id === place.id))} ${accountName(place.id)}` : nav[place.index]
+  const columns = '36px minmax(0, 2.4fr) minmax(0, 1.4fr) 100px 90px minmax(0, 1.2fr)'
+  const navButton = (label: string, active: boolean, onClick: () => void, key: string, prefix?: ReactNode) => (
+    <button key={key} type="button" onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 32, padding: '6px 12px', border: 'none', borderLeft: `3px solid ${active ? '#00a443' : 'transparent'}`, backgroundColor: active ? '#e5f5ec' : 'transparent', cursor: 'pointer', textAlign: 'left', ...dText(13, '#1d1d1b', active ? 700 : 400) }}>
+      {prefix}<span style={ellipsis}>{label}</span>
+    </button>
+  )
+  const folder = <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden style={{ flexShrink: 0 }}><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.6l1.5 1.6h5.9A1.5 1.5 0 0 1 15 5.1v7.4a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5Z" fill="#f2b705" /></svg>
+
+  return (
+    <PickerOverlay onClose={onClose} label="DATEV — Dokumente auswählen">
+      <div style={{ width: 'min(1100px, 100%)', height: 'min(720px, 100%)', backgroundColor: 'white', borderRadius: 2, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* DATEV's header bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: 52, padding: '0 8px 0 20px', borderBottom: '3px solid #00a443' }}>
+          {DatevIcon(28)}
+          <span style={dText(16, '#1d1d1b', 700)}>DATEV</span>
+          <span style={{ width: 1, height: 20, backgroundColor: '#d0d0d0' }} />
+          <span style={dText(15, '#4b4b4b')}>Dokumentenablage</span>
+          <span style={{ flex: 1 }} />
+          <span style={dText(13, '#4b4b4b')}>{CURRENT_USER}</span>
+          <button type="button" onClick={onClose} aria-label="Schließen" style={{ width: 36, height: 36, border: 'none', background: 'none', cursor: 'pointer', fontSize: 22, color: '#4b4b4b' }}>×</button>
+        </div>
+
+        <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+          {/* Places and clients (Mandanten) */}
+          <nav style={{ width: 250, flexShrink: 0, borderRight: '1px solid #d0d0d0', backgroundColor: '#f7f7f7', padding: '12px 0', overflowY: 'auto' }}>
+            {nav.map((label, index) => navButton(label, place.kind === 'nav' && place.index === index, () => setPlace({ kind: 'nav', index }), label))}
+            <div style={{ ...dText(12, '#6b6b6b', 700), textTransform: 'uppercase', letterSpacing: 0.4, padding: '18px 15px 6px' }}>Mandanten</div>
+            {app.accounts.map((a, i) => navButton(`${clientNumber(i)} ${a.name}`, place.kind === 'account' && place.id === a.id, () => setPlace({ kind: 'account', id: a.id }), a.id, folder))}
+          </nav>
+
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '16px 20px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ flex: 1, minWidth: 0, ...dText(20), ...ellipsis }}>{title}</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, width: 260, height: 32, padding: '0 10px', border: '1px solid #8c8c8c', borderRadius: 2, boxSizing: 'border-box' }}>
+                <Icon type={iconType.SearchOutlined} size={16} color="neutral-darken3" />
+                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Dokumente durchsuchen" aria-label="Dokumente durchsuchen"
+                  style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'none', ...dText(13) }} />
+              </label>
+            </div>
+
+            <div style={{ flex: 1, minHeight: 0, marginTop: 14, border: '1px solid #d0d0d0', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: columns, alignItems: 'center', gap: 12, height: 36, padding: '0 12px', backgroundColor: '#f2f2f2', borderBottom: '1px solid #d0d0d0', flexShrink: 0, ...dText(13, '#1d1d1b', 700) }}>
+                <button type="button" onClick={toggleAll} aria-label="Alle auswählen" style={{ display: 'inline-flex', padding: 0, border: 'none', background: 'none', cursor: selectable.length ? 'pointer' : 'default' }}><DatevCheckbox checked={allSelected} /></button>
+                <span>Dokument</span><span>Mandant</span><span>Datum</span><span>Größe</span><span>Bearbeiter</span>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                {files.length === 0 ? (
+                  <div style={{ padding: 24, ...dText(13, '#4b4b4b') }}>{query ? `Keine Dokumente zu „${query.trim()}“ gefunden.` : 'Keine Dokumente vorhanden.'}</div>
+                ) : files.map((f, i) => {
+                  const synced = isSynced(f.id)
+                  const isSelected = selected.has(f.id)
+                  return (
+                    <div key={f.id} role="row" aria-selected={isSelected} onClick={() => toggle(f.id)}
+                      style={{ display: 'grid', gridTemplateColumns: columns, alignItems: 'center', gap: 12, height: 38, padding: '0 12px', borderBottom: '1px solid #e6e6e6', cursor: synced ? 'default' : 'pointer', backgroundColor: isSelected ? '#e5f5ec' : i % 2 ? '#fafafa' : 'white', color: synced ? '#8c8c8c' : undefined }}>
+                      <DatevCheckbox checked={isSelected} disabled={synced} />
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <img src={FILE_ICON[f.format]} alt={f.format} width={20} height={20} style={{ flexShrink: 0, opacity: synced ? 0.5 : 1 }} />
+                        <span style={{ ...dText(13, synced ? '#8c8c8c' : '#1d1d1b'), ...ellipsis }} title={`${f.name}.${f.format.toLowerCase()}`}>{f.name}.{f.format.toLowerCase()}</span>
+                        {synced && <span style={{ flexShrink: 0, ...dText(11, '#4b4b4b'), padding: '1px 6px', border: '1px solid #c8c8c8', borderRadius: 2 }}>bereits übernommen</span>}
+                      </span>
+                      <span style={{ ...dText(13, '#4b4b4b'), ...ellipsis }}>{accountName(f.accountId)}</span>
+                      <span style={dText(13, '#4b4b4b')}>{DATEV_DATES[f.dateIndex]}</span>
+                      <span style={dText(13, '#4b4b4b')}>{fileSize(f.sizeKb).replace('.', ',')}</span>
+                      <span style={{ ...dText(13, '#4b4b4b'), ...ellipsis }}>{f.modifiedBy}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 0 16px' }}>
+              <span style={{ flex: 1, ...dText(13, '#4b4b4b') }}>{selected.size === 0 ? 'Kein Dokument ausgewählt' : selected.size === 1 ? '1 Dokument ausgewählt' : `${selected.size} Dokumente ausgewählt`}</span>
+              <button type="button" onClick={onClose} style={{ height: 34, padding: '0 20px', border: '1px solid #8c8c8c', backgroundColor: 'white', cursor: 'pointer', ...dText(14) }}>Abbrechen</button>
+              <button type="button" disabled={selected.size === 0} onClick={sync}
+                style={{ height: 34, padding: '0 24px', border: 'none', backgroundColor: selected.size ? '#00a443' : '#c8c8c8', cursor: selected.size ? 'pointer' : 'default', ...dText(14, 'white', 700) }}>
+                Übernehmen
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </PickerOverlay>
   )
 }
