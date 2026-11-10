@@ -12,15 +12,20 @@ const TEXT = {
   en: { uploading: 'Uploading...', extracting: 'Extracting metadata...', done: 'Upload successful', one: '1 document', many: (n: number) => `${n} documents` },
   de: { uploading: 'Wird hochgeladen …', extracting: 'Metadaten werden extrahiert …', done: 'Upload erfolgreich', one: '1 Dokument', many: (n: number) => `${n} Dokumente` },
 }
+// Files synced from a connected app (Workspaces 2.0 Versions 19 and 21) say so instead of "upload".
+const SYNC_TEXT = {
+  en: { uploading: 'Syncing...', done: 'Sync successful' },
+  de: { uploading: 'Wird synchronisiert …', done: 'Synchronisierung erfolgreich' },
+}
 
 let runCounter = 0
 
 export function useProcessingUpload(lang: 'en' | 'de' = 'en') {
   const { notification } = useNotifications()
 
-  return useCallback((fileNames: string[], commit: () => void) => {
+  return useCallback((fileNames: string[], commit: () => void, mode: 'upload' | 'sync' = 'upload') => {
     if (fileNames.length === 0) return
-    const t = TEXT[lang]
+    const t = mode === 'sync' ? { ...TEXT[lang], ...SYNC_TEXT[lang] } : TEXT[lang]
     // A key per run, so two uploads in quick succession each keep their own toast.
     runCounter += 1
     const key = `hackathon-upload-${runCounter}`

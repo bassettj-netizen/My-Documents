@@ -164,7 +164,7 @@ export function GuardrailsTab({ guardrails, onChange, plain = false, examples }:
       </div>
 
       {guardrails.length === 0 && examples ? (
-        <GuardrailExamples examples={examples} onAdd={add} title="Start with an example" text="Add one as it is, or write your own above. You can switch any rule off or delete it later." />
+        <GuardrailExamples examples={examples} onAdd={add} title="Start with an example" text="Guardrails apply to this workspace only. Add an example as it is, or write your own above. You can switch any rule off or delete it later." />
       ) : guardrails.length === 0 ? (
         <TabEmptyState
           icon={<Icon type={iconType.ShieldCheckOutlined} size={24} color="blue-base" />}

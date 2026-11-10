@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import MyDocumentsV1 from '../my-documents/Version1'
 import ConnectionsPage from '../../connections/ConnectionsPage'
@@ -848,7 +848,7 @@ function BasicDocumentPreview({ space, doc, originalDoc, docIndex, source, summa
  * local files, plus one row per connector actually present in this space's
  * table, so the user can see where else they could pull documents from.
  */
-export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en', uploadImmediately = false }: {
+export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en', uploadImmediately = false, connectorsSection }: {
   open: boolean
   connectors: Connector[]
   onClose: () => void
@@ -857,6 +857,8 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
   lang?: UiLang
   // Uploads files as soon as they're chosen or dropped and closes, instead of listing them for an Upload button.
   uploadImmediately?: boolean
+  // Replaces the connector rows with the page's own (Workspaces 2.0 Versions 19 and 21: the connected apps, each opening its sync flow).
+  connectorsSection?: ReactNode
 }) {
   const de = lang === 'de'
   const [queuedFiles, setQueuedFiles] = useState<File[]>([])
@@ -927,7 +929,7 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
           </div>
         )}
 
-        {connectors.length > 0 && (
+        {connectorsSection ?? (connectors.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
             <Typography size="base-sm" color="neutral-darken5" weight={fontWeight.SEMIBOLD} uppercase>{de ? 'Verbundene Apps' : 'Connected apps'}</Typography>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -943,7 +945,7 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
               ))}
             </div>
           </div>
-        )}
+        ))}
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(2), marginBottom: spacing(2) }}>
           <Icon type={iconType.LockOutlined} size={16} color="neutral-darken2" />

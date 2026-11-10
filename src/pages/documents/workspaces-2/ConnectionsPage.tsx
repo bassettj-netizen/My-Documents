@@ -167,7 +167,7 @@ const PANEL = { backgroundColor: colorPalette.white, border: `1px solid ${colorP
 // `compactMenu` (Version 21, with plain): the connector list as in Workspaces 2.0 Version 18 — a narrow column of 40px rows
 // with each type's account count, a lighter divider, and "Active Connectors" for the accounts. It also lists Personio (not
 // connected — nothing is seeded for it) and puts the connector types in alphabetical order (Versions 19 and 21).
-export default function ConnectionsPageV10({ background = colorPalette.neutral.lighten5, startEmpty = false, plain = false, showCount = false, compactMenu = false }: { background?: string; startEmpty?: boolean; plain?: boolean; showCount?: boolean; compactMenu?: boolean } = {}) {
+export default function ConnectionsPageV10({ background = colorPalette.neutral.lighten5, startEmpty = false, plain = false, showCount = false, compactMenu = false, sharedAccounts = false, accountName = (name: string) => name }: { background?: string; startEmpty?: boolean; plain?: boolean; showCount?: boolean; compactMenu?: boolean; sharedAccounts?: boolean; accountName?: (name: string) => string } = {}) {
   const connectors: ListedConnectorDef[] = compactMenu
     ? [...CONNECTORS, PERSONIO].sort((a, b) => a.name.localeCompare(b.name))
     : CONNECTORS
@@ -175,12 +175,20 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
   // Accounts manually added via "Set up connector" / "Add connector" — accounts
   // seeded from real workspace connectors (below) aren't stored here, since
   // their connected/disconnected status lives in ConnectionsContext instead.
-  const [manualAccounts, setManualAccounts] = useState<Record<ListedConnectorId, ConnectedAccount[]>>({
+  const [localManualAccounts, setLocalManualAccounts] = useState<Record<ListedConnectorId, ConnectedAccount[]>>({
     'microsoft-365': [],
     'google-drive': [],
     'datev': [],
     'personio': [],
   })
+  // sharedAccounts (Versions 19 and 21): added accounts live in ConnectionsContext, so the Upload or sync modal
+  // lists them too and they're still there after leaving the page.
+  const { addedConnectorAccounts, setAddedConnectorAccounts } = useConnections()
+  const manualAccounts: Record<ListedConnectorId, ConnectedAccount[]> = sharedAccounts
+    ? { 'microsoft-365': [], 'google-drive': [], 'datev': [], 'personio': [], ...addedConnectorAccounts }
+    : localManualAccounts
+  const setManualAccounts = (update: (prev: Record<ListedConnectorId, ConnectedAccount[]>) => Record<ListedConnectorId, ConnectedAccount[]>) =>
+    sharedAccounts ? setAddedConnectorAccounts(prev => update({ 'microsoft-365': [], 'google-drive': [], 'datev': [], 'personio': [], ...prev })) : setLocalManualAccounts(update)
   const [modalOpen, setModalOpen] = useState(false)
   const [pendingDisconnect, setPendingDisconnect] = useState<ConnectedAccount | null>(null)
   const { notification } = useNotifications()
@@ -188,7 +196,7 @@ export default function ConnectionsPageV10({ background = colorPalette.neutral.l
 
   const selected = connectors.find(c => c.id === selectedId)!
   // Accounts from the workspaces' connectors — none for Personio, which has no workspace connector type.
-  const seededFor = (id: ListedConnectorId) => id === 'personio' || startEmpty ? [] : initialAccountsFor(id).filter(a => !isWorkspaceConnectorDisconnected(a.id, CONNECTOR_TYPE[id]))
+  const seededFor = (id: ListedConnectorId) => id === 'personio' || startEmpty ? [] : initialAccountsFor(id).filter(a => !isWorkspaceConnectorDisconnected(a.id, CONNECTOR_TYPE[id])).map(a => ({ ...a, name: accountName(a.name) }))
   const accountsFor = (id: ListedConnectorId) => [...seededFor(id), ...manualAccounts[id]]
   const accounts = accountsFor(selectedId)
   const totalAccounts = connectors.reduce((n, c) => n + accountsFor(c.id).length, 0)

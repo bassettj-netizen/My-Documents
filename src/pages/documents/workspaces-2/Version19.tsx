@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import ConnectionsPageV10 from './ConnectionsPage'
+import { UploadOrSyncFlow } from './ConnectedAppSync'
 import {
   Avatar,
   ClickableContainer,
@@ -66,7 +67,6 @@ import {
   useMountLoading,
   useSidebarWidth,
   useWorkspaceState,
-  type Connector,
   type DocSource,
   type MetadataDocument,
   type Space,
@@ -77,7 +77,7 @@ import {
   seedDocsForSpace,
   type ConnectorType,
 } from '../workspaces/shared'
-import { BasicUploadModal, CopilotIcon } from '../workspaces/WorkspacesBasic'
+import { CopilotIcon } from '../workspaces/WorkspacesBasic'
 import { HistoryPanel, liveEvent, seedHistory, type HistoryEvent } from './WorkspaceHistory'
 import HackathonCoPilotPageV10, { type ChatSession as CoPilotChat } from './CoPilotPage'
 import HackathonHomePage from '../hackathon/HomePage'
@@ -107,7 +107,7 @@ import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
 
 /**
  * Workspaces 2.0 — Version 19 is kept in line with Version 21: the same screens and behaviour, with the sample workspaces
- * (Acme Corp, Internal HR, Project Alpha, Bergmann Bau), their documents, profiles and history filled in. Version 21 is the
+ * (Acme Corp, Internal HR, Project A, Bergmann Bau), their documents, profiles and history filled in. Version 21 is the
  * same app before any workspace exists.
  *
  * Workspaces 2.0 — Version 21: Version 19 with no workspaces yet. A new workspace opens straight on its summary — Profile, Documents,
@@ -139,7 +139,7 @@ import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
  * bookmarks, a template library picker, and a set-up checklist in the My knowledge card.
  *
  * Hackathon Oct '26 — Version 6: Version 4 populated with Metadata Table's workspaces and documents
- * (Acme Corp, Project Alpha, Internal HR), with all of Version 4's functionality available for them.
+ * (Acme Corp, Project A, Internal HR), with all of Version 4's functionality available for them.
  * Version 7 is its German counterpart.
  *
  * Hackathon Oct '26 — Version 4: Version 3 with a lighter header and the summary as two side-by-side
@@ -281,7 +281,7 @@ const META_THEMES: Record<string, MetaTheme> = {
       'OCR vendor evaluation',
     ],
     counterparties: [
-      { name: 'Alpha Steering Committee', role: 'Approver' },
+      { name: 'A Steering Committee', role: 'Approver' },
       { name: 'Nordlicht Software GmbH', role: 'Vendor' },
       { name: 'Maria Schulz', role: 'Project lead' },
       { name: 'IT Security Office', role: 'Reviewer' },
@@ -455,6 +455,151 @@ function seedMetadata(doc: MetadataDocument, spaceId: string, index: number): Ex
   }
 }
 
+// ─── Extraction for uploaded and synced files ─────────────────────────────────
+//
+// There's no real extraction service behind the prototype, so this reads what it can from the file name — the
+// document type, the tax topic, the period or year, and any party it names — and, for demoing, fills whatever the
+// name doesn't give with plausible values from the workspace's theme (or a general tax-firm one in My Documents).
+
+const UPLOAD_TYPE_RULES: [RegExp, string][] = [
+  [/umsatzsteuer.?voranmeldung|ust.?va\b/i, 'VAT Return'],
+  [/gewerbesteuererkl/i, 'Trade Tax Return'],
+  [/steuerbescheid|bescheid|assessment/i, 'Tax Assessment'],
+  [/betriebspr(ü|ue|u)fungsbericht|audit.?report/i, 'Tax Audit Report'],
+  [/betriebspr(ü|ue|u)fung|tax.?audit/i, 'Tax Audit Correspondence'],
+  [/jahresabschluss|annual.?(accounts|statement)/i, 'Annual Financial Statement'],
+  [/lohnsteuerbescheinigung/i, 'Payroll Tax Certificate'],
+  [/lohnabrechnung|payslip/i, 'Payslip'],
+  [/lohnjournal|payroll/i, 'Payroll Journal'],
+  [/buchungsjournal/i, 'Booking Journal'],
+  [/(^|[^a-z])bwa([^a-z]|$)/i, 'Business Analysis (BWA)'],
+  [/summen.?und.?saldenliste|trial.?balance/i, 'Trial Balance'],
+  [/kassenbuch|cash.?book/i, 'Cash Book'],
+  [/anlagenverzeichnis|asset.?register/i, 'Fixed Asset Register'],
+  [/vollmacht|power.?of.?attorney/i, 'Power of Attorney'],
+  [/protokoll|minutes|meeting/i, 'Meeting Notes'],
+  [/angebot|offer|quote|proposal/i, 'Offer'],
+  [/checkliste|checklist/i, 'Checklist'],
+  [/projektplan|project.?plan|roadmap/i, 'Project Plan'],
+  [/mandantenliste|client.?list/i, 'Client List'],
+  [/budget/i, 'Budget'],
+  [/fristen|deadline/i, 'Deadline Overview'],
+  [/einspruch|objection/i, 'Objection'],
+  [/vertrag|contract|agreement/i, 'Contract'],
+  [/rechnung|invoice/i, 'Invoice'],
+  [/nachweis|proof|evidence/i, 'Supporting Evidence'],
+  [/antwort|reply|response/i, 'Reply Letter'],
+  [/anlage|appendix|annex/i, 'Appendix'],
+  [/erkl(ä|ae|a)rung|tax.?return/i, 'Tax Return'],
+  [/notiz|notes/i, 'Notes'],
+  [/brief|schreiben|letter/i, 'Letter'],
+  [/bericht|report/i, 'Report'],
+  [/screenshot/i, 'Screenshot'],
+  [/policy|richtlinie/i, 'Policy'],
+]
+// When the name gives no type: something that fits the format.
+const UPLOAD_FALLBACK_TYPES: Record<string, string[]> = {
+  PDF: ['Letter', 'Notice', 'Report'], DOCX: ['Memo', 'Letter', 'Draft'], XLSX: ['Calculation', 'Spreadsheet'], PPTX: ['Presentation'],
+}
+const UPLOAD_TOPICS: [RegExp, string][] = [
+  [/umsatzsteuer|(^|[^a-z])ust([^a-z]|$)|vat/i, 'VAT'],
+  [/k(ö|oe|o)rperschaftsteuer|(^|[^a-z])kst([^a-z]|$)|corporate.?tax/i, 'Corporate tax'],
+  [/gewerbesteuer|(^|[^a-z])gewst([^a-z]|$)|trade.?tax/i, 'Trade tax'],
+  [/einkommensteuer|(^|[^a-z])est([^a-z]|$)|income.?tax/i, 'Income tax'],
+  [/lohn|payroll|gehalt/i, 'Payroll'],
+  [/jahresabschluss|year.?end/i, 'Year-end closing'],
+  [/betriebspr(ü|ue|u)fung|audit/i, 'Tax audit'],
+  [/beteiligung|holding/i, 'Shareholdings'],
+  [/innergemeinschaftlich|intra.?community/i, 'Intra-EU supplies'],
+]
+const UPLOAD_PARTIES: [RegExp, { name: string; role: string }][] = [
+  [/bundesfinanz|bundeszentralamt|bzst/i, { name: 'Bundeszentralamt für Steuern', role: 'Tax authority' }],
+  [/finanzamt/i, { name: 'Finanzamt München', role: 'Tax authority' }],
+  [/bergmann/i, { name: 'Bergmann Bau GmbH', role: 'Client' }],
+  [/acme/i, { name: 'Acme Corp', role: 'Client' }],
+  [/meier/i, { name: 'Meier GmbH', role: 'Client' }],
+  [/fischer/i, { name: 'Fischer & Co', role: 'Client' }],
+  [/wagner/i, { name: 'Wagner Konsumgüter', role: 'Client' }],
+  [/datev/i, { name: 'DATEV eG', role: 'Software provider' }],
+]
+// My Documents and new workspaces have no theme of their own.
+const GENERAL_THEME: MetaTheme = {
+  matters: ['Annual tax compliance 2025', 'VAT return Q3 2026', 'Year-end closing 2025', 'Payroll 2026', 'Tax audit 2023–2025'],
+  counterparties: [
+    { name: 'Finanzamt München', role: 'Tax authority' },
+    { name: 'Hoffmann & Partner Steuerberatung', role: 'Tax adviser' },
+    { name: 'Deutsche Rentenversicherung', role: 'Pension insurer' },
+    { name: 'IHK München', role: 'Chamber of commerce' },
+  ],
+  primaryRole: 'Client',
+  periods: [{ start: '2025-01-01', end: '2025-12-31' }, { start: '2026-07-01', end: '2026-09-30' }],
+  deadlineLabels: ['Reply due', 'Filing deadline', 'Review by'],
+  actionLabels: ['Received', 'Signed', 'Filed'],
+}
+const MONTH_NAMES: [RegExp, number][] = [
+  [/januar|january|(^|[^a-z])jan([^a-z]|$)/i, 1], [/februar|february|(^|[^a-z])feb([^a-z]|$)/i, 2], [/m(ä|ae)rz|march/i, 3], [/april/i, 4],
+  [/(^|[^a-z])(mai|may)([^a-z]|$)/i, 5], [/juni|june/i, 6], [/juli|july/i, 7], [/august/i, 8], [/september|(^|[^a-z])sept?([^a-z]|$)/i, 9],
+  [/oktober|october/i, 10], [/november/i, 11], [/dezember|december/i, 12],
+]
+// Lower-cases words for running text but keeps acronyms: "VAT Return" → "VAT return", "Tax Assessment" → "tax assessment".
+const inSentence = (text: string) => text.split(' ').map(w => /^[A-ZÄÖÜ][a-zäöü]/.test(w) ? w.toLowerCase() : w).join(' ')
+const nameHash = (text: string) => [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
+const lastDay = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate()
+const isoDate = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+
+/** The period a file name refers to: a quarter, a month, a span of years or one year. */
+function periodFromName(name: string): { start: string; end: string } | undefined {
+  const quarter = name.match(/q([1-4])[\s_-]*(20\d\d)/i)
+  if (quarter) { const q = +quarter[1], y = +quarter[2]; return { start: isoDate(y, q * 3 - 2, 1), end: isoDate(y, q * 3, lastDay(y, q * 3)) } }
+  const year = name.match(/(20\d\d)(?!\d)/)
+  const month = MONTH_NAMES.find(([re]) => re.test(name))?.[1] ?? +(name.match(/(?:^|[^\d])(0[1-9]|1[0-2])[\s_./-](20\d\d)/)?.[1] ?? 0)
+  if (year && month) { const y = +year[1]; return { start: isoDate(y, month, 1), end: isoDate(y, month, lastDay(y, month)) } }
+  const span = name.match(/(20\d\d)\s*[-–]\s*(20\d\d)/)
+  if (span) return { start: isoDate(+span[1], 1, 1), end: isoDate(+span[2], 12, 31) }
+  if (year) return { start: isoDate(+year[1], 1, 1), end: isoDate(+year[1], 12, 31) }
+  return undefined
+}
+
+/** What extraction "finds" in an uploaded or synced file — from its name where possible, made up where not. */
+function extractUploadMetadata(doc: MetadataDocument, space?: Space): ExtractedMetadata {
+  const name = doc.name.replace(/[_]+/g, ' ')
+  const seed = nameHash(doc._id + doc.name)
+  const theme = (space && META_THEMES[space.id]) || GENERAL_THEME
+
+  const documentType = UPLOAD_TYPE_RULES.find(([re]) => re.test(name))?.[1] ?? pick(UPLOAD_FALLBACK_TYPES[doc.fileFormat] ?? ['Document'], seed)
+  const topic = UPLOAD_TOPICS.find(([re]) => re.test(name))?.[1]
+  const period = periodFromName(name)
+  const periodLabel = period ? formatPeriod(period.start, period.end) : ''
+  const matterReference = topic ? `${topic}${periodLabel ? ` ${periodLabel}` : ''}`.slice(0, MATTER_MAX) : pick(theme.matters, seed)
+
+  // The workspace's client first, then anyone the name mentions; if nobody is named, one of the usual counterparties.
+  const named = UPLOAD_PARTIES.filter(([re]) => re.test(name)).map(([, p]) => p)
+  const found = [
+    ...(space ? [{ name: space.name, role: theme.primaryRole }] : []),
+    ...named,
+    ...(named.length ? [] : [pick(theme.counterparties, seed)]),
+  ].filter((p, i, all) => all.findIndex(q => q.name === p.name) === i)
+  const parties: Party[] = found.map((p, i) => ({ id: `${doc._id}-xp${i}`, ...p }))
+
+  // The document date, the period it covers, and one key date that fits its type.
+  const dates: KeyDate[] = [{ id: `${doc._id}-xd0`, label: 'Document date', date: isoFromOffset(-(seed % 20) - 1), isDeadline: false }]
+  if (period) dates.push({ id: `${doc._id}-xper`, label: 'Period', date: period.start, endDate: period.end, isDeadline: false })
+  const deadline = (label: string, days: number) => dates.push({ id: `${doc._id}-xdl`, label, date: isoFromOffset(days), isDeadline: true })
+  const action = (label: string, days: number) => dates.push({ id: `${doc._id}-xact`, label, date: isoFromOffset(days), isDeadline: false, isAction: true })
+  if (/assessment|objection/i.test(documentType)) deadline('Objection deadline', 20 + (seed % 12))
+  else if (/vat return|tax return/i.test(documentType)) deadline('Filing deadline', 5 + (seed % 25))
+  else if (/audit/i.test(documentType)) deadline('Reply due', 7 + (seed % 14))
+  else if (/offer/i.test(documentType)) deadline('Valid until', 30)
+  else if (/payslip|payroll|certificate/i.test(documentType)) action('Paid', -(seed % 10) - 2)
+  else if (/contract|power of attorney/i.test(documentType)) action('Signed', -(seed % 20) - 3)
+  else if (!period) deadline(pick(theme.deadlineLabels, seed), 10 + (seed % 40))
+
+  const about = topic ? ` on ${inSentence(topic)}${periodLabel ? ` for ${periodLabel}` : ''}` : ''
+  const type = inSentence(documentType)
+  const opening = `${/^[aeiou]/.test(type) ? 'An' : 'A'} ${type}${about}`
+  return { documentType, matterReference, summary: composeSummary([opening], { parties, dates }), parties, dates, edited: {} }
+}
+
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function formatLongDate(iso: string) {
@@ -520,6 +665,8 @@ type MetadataStore = {
   get: (doc: MetadataDocument) => ExtractedMetadata
   getOriginal: (doc: MetadataDocument) => ExtractedMetadata
   update: (docId: string, field: FieldKey, patch: Partial<ExtractedMetadata>) => void
+  /** Runs "extraction" on uploaded or synced files (in a workspace, it draws on that workspace). */
+  extract: (docs: MetadataDocument[], space?: Space) => void
 }
 
 function useMetadataStore(workspace: WorkspaceState): MetadataStore {
@@ -536,35 +683,40 @@ function useMetadataStore(workspace: WorkspaceState): MetadataStore {
     return map
   })
   const [overrides, setOverrides] = useState<Record<string, ExtractedMetadata>>({})
+  // What extraction found for files uploaded or synced since.
+  const [extracted, setExtracted] = useState<Record<string, ExtractedMetadata>>({})
 
-  // Freshly uploaded files come back with a type but nothing else yet; the user's own files in My Documents keep their type.
-  const getOriginal = (doc: MetadataDocument) => original[doc._id] ?? { ...EMPTY_METADATA, documentType: doc._id.startsWith('my-file-') ? doc.documentType : '' }
+  // Uploaded and synced files get what extractUploadMetadata finds (until it has run, nothing); the user’s own files in My Documents keep their type.
+  const getOriginal = (doc: MetadataDocument) => original[doc._id] ?? extracted[doc._id] ?? { ...EMPTY_METADATA, documentType: doc._id.startsWith('my-file-') ? doc.documentType : '' }
   const get = (doc: MetadataDocument) => overrides[doc._id] ?? getOriginal(doc)
 
   const update = (docId: string, field: FieldKey, patch: Partial<ExtractedMetadata>) => {
     setOverrides(prev => {
-      const base = prev[docId] ?? original[docId] ?? EMPTY_METADATA
+      const base = prev[docId] ?? original[docId] ?? extracted[docId] ?? EMPTY_METADATA
       return { ...prev, [docId]: { ...base, ...patch, edited: { ...base.edited, [field]: true } } }
     })
   }
 
-  return { get, getOriginal, update }
+  const extract = (docs: MetadataDocument[], space?: Space) =>
+    setExtracted(prev => ({ ...prev, ...Object.fromEntries(docs.map(d => [d._id, extractUploadMetadata(d, space)])) }))
+
+  return { get, getOriginal, update, extract }
 }
 
 export default function Workspaces2Version19() {
   const navigate = useNavigate()
-  // Starts with Metadata Table's workspaces (Acme Corp, Project Alpha, Internal HR) plus a second client, Bergmann Bau, and their documents,
+  // Starts with Metadata Table's workspaces (Acme Corp, Project A, Internal HR) plus a second client, Bergmann Bau, and their documents,
   // dated so some were updated recently and some a while ago (seedAges.ts).
-  // Starts with Metadata Table's workspaces (Acme Corp, Project Alpha, Internal HR) plus a second client, Bergmann Bau, and their documents,
+  // Starts with Metadata Table's workspaces (Acme Corp, Project A, Internal HR) plus a second client, Bergmann Bau, and their documents,
   // dated so some were updated recently and some a while ago (seedAges.ts). (Version 21 starts with none.)
-  const workspace = useWorkspaceState([...INITIAL_SPACES, CLIENT_EXAMPLE_SPACE].map(space => ({ ...space, context: seedBackground('en', space.id) })), 'en', withSharedFiles)
+  const workspace = useWorkspaceState([...INITIAL_SPACES, CLIENT_EXAMPLE_SPACE].map(space => ({ ...space, name: space.id === 'space-alpha' ? 'Project A' : space.name, context: seedBackground('en', space.id) })), 'en', withSharedFiles)
   const store = useMetadataStore(workspace)
   const library = useLibrary(workspace)
   // The prefilled chats as CoPilot conversations, in their workspaces (CoPilot only reads these once).
   const dayLabel = (days: number) => days === 0 ? 'Today' : days === 1 ? 'Yesterday' : 'Earlier'
   // Context details, guardrails, bookmarks and templates per workspace — kept here so they survive leaving the page.
   // Prefilled My knowledge and Haufe knowledge for Metadata Table's workspaces (seedWorkspaceContent.ts).
-  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => withMoreActivity(seedProfileDetails(agedExtras())))
+  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => withMoreActivity(seedProfileDetails(renameAlpha(agedExtras()))))
   // CoPilot's chats live here, so leaving CoPilot doesn't lose them and a chat can be reopened from a workspace.
   const [copilotSessions, setCopilotSessions] = useState<CoPilotChat[] | null>(null)
   // Each workspace's document history (History Version 6's log), seeded the first time it's written to.
@@ -650,7 +802,7 @@ export default function Workspaces2Version19() {
       <Route path="personal-office" element={<PersonalOfficePage copilotPath={`${BASE}/copilot`} background={CONTENT_BG} />} />
       <Route path="hr-dokumente" element={<HrDokumentePage background={CONTENT_BG} />} />
       <Route path="zeugnis-manager" element={<ZeugnisManagerPage background={CONTENT_BG} />} />
-      <Route path="connectors" element={<ConnectionsPageV10 background={CONTENT_BG} plain showCount compactMenu />} />
+      <Route path="connectors" element={<ConnectionsPageV10 background={CONTENT_BG} plain showCount compactMenu sharedAccounts accountName={toProjectA} />} />
       <Route path="*" element={<Navigate to="my-documents" replace />} />
     </Routes>
   )
@@ -840,7 +992,7 @@ function workspaceReference(space: Space, workspace: WorkspaceState, extras: Ext
 
 // What a workspace is and why, at the top of every Create workspace dialog.
 // The same line as the empty Workspaces page, so the page and the dialog explain a workspace in the same words.
-const CREATE_WORKSPACE_INTRO = 'Bring a client’s or project’s documents and context together so advice always fits the case.'
+const CREATE_WORKSPACE_INTRO = 'Bring a client’s or project’s documents and context together so answers always fit the case.'
 
 const WORKSPACE_AREAS = ['documents', 'context', 'guardrails', 'bookmarks', 'templates'] as const
 type WorkspaceArea = typeof WORKSPACE_AREAS[number]
@@ -1330,10 +1482,6 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenH
 
   // A file's source is its own, whichever workspaces it's in.
   const sourceMap = useMemo(() => new Map(docs.map(d => [d._id, library.sourceOf(d._id)])), [docs, library])
-  const presentConnectors = useMemo(() => {
-    const present = new Set(sourceMap.values())
-    return space.connectors.filter(c => present.has(c.type))
-  }, [space.connectors, sourceMap])
 
   const filteredDocs = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -1599,14 +1747,16 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenH
 
       <HistoryPanel visible={historyOpen} events={history} onClose={() => setHistoryOpen(false)} textOnlyNoResults />
 
-      <BasicUploadModal
+      {/* Upload, or sync from a connected app: its sign-in, then its file picker (Figma: My Documents, Microsoft Integration). */}
+      <UploadOrSyncFlow
         open={uploadOpen}
-        // New workspaces have no connected apps yet, so offer the ones Acme Corp has in Metadata Table.
-        connectors={presentConnectors.length > 0 ? presentConnectors : PRESET_CONNECTORS}
-        uploadImmediately
         onClose={() => setUploadOpen(false)}
         // Bulk Edit V3's processing toasts; the documents appear once "extraction" is done.
-        onUpload={newDocs => runUpload(newDocs.map(d => d.name), () => onAddDocs(newDocs))}
+        onUpload={newDocs => runUpload(newDocs.map(d => d.name), () => { store.extract(newDocs, space); onAddDocs(newDocs) })}
+        onSync={(newDocs, source) => { library.markSynced(newDocs, source); runUpload(newDocs.map(d => d.name), () => { store.extract(newDocs, space); onAddDocs(newDocs) }, 'sync') }}
+        existingIds={new Set(docs.map(d => d._id))}
+        connectorsPath={`${BASE}/connectors`}
+        accountName={toProjectA}
       />
 
       <FiltersPanel
@@ -1963,7 +2113,7 @@ function SummaryDocuments({ docs, store, sourceOf, onOpenDoc, onUpload }: {
 /** The summary's Guardrails card (secondary): how many are on, and the first few rules. */
 function SummaryGuardrails({ guardrails, onAdd }: { guardrails: { id: string; text: string; enabled: boolean }[]; onAdd: () => void }) {
   if (guardrails.length === 0) {
-    return <PreviewEmptyState preview={<GuardrailsPreview />} title="Set rules your apps follow, like which sources to use" action={<ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={onAdd}>Add guardrail</ButtonSecondary>} />
+    return <PreviewEmptyState preview={<GuardrailsPreview />} title="Set rules your apps follow, like which sources to use" text="Guardrails apply to this workspace only." action={<ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={onAdd}>Add guardrail</ButtonSecondary>} />
   }
   const active = guardrails.filter(g => g.enabled)
   return (
@@ -2209,10 +2359,6 @@ function ProfileBody({ space, extras, onAdd }: { space: Space; extras: Workspace
   )
 }
 
-const PRESET_CONNECTORS: Connector[] = [
-  { id: 'preset-sharepoint', type: 'sharepoint', label: 'SharePoint' },
-  { id: 'preset-google-drive', type: 'google-drive', label: 'Google Drive' },
-]
 
 
 /** One knowledge stream: an icon, title and line about it, an optional action, then its content. */
@@ -3077,9 +3223,17 @@ function GeneratedDocumentBody({ doc, meta }: { doc: MetadataDocument; meta: Ext
 
 // ─── My Documents: the user's own files, shared to workspaces when ready ─────────────
 
-/** Project Alpha also uses three of Internal HR's policy files — one file, two workspaces. */
+/** The shared seed calls the sample project "Project Alpha"; this version calls it "Project A", so every "Alpha" becomes "A". */
+const toProjectA = (text: string) => text.replace(/\bAlpha\b/g, 'A').replace(/\/ALPHA\b/g, '/A')
+function renameAlpha(extras: Record<string, WorkspaceExtras>): Record<string, WorkspaceExtras> {
+  const alpha = extras['space-alpha']
+  if (!alpha) return extras
+  return { ...extras, 'space-alpha': { ...alpha, bookmarks: alpha.bookmarks.map(b => ({ ...b, title: toProjectA(b.title), url: toProjectA(b.url) })) } }
+}
+
+/** Project A also uses three of Internal HR's policy files — one file, two workspaces. */
 function withSharedFiles(spaceId: string, docs: MetadataDocument[]): MetadataDocument[] {
-  const aged = agedDocs(spaceId, docs)
+  const aged = agedDocs(spaceId, docs).map(d => ({ ...d, namedEntity: toProjectA(d.namedEntity) }))
   return spaceId === 'space-alpha' ? [...aged, ...agedDocs('space-hr', seedDocsForSpace('space-hr')).slice(0, 3)] : aged
 }
 
@@ -3168,7 +3322,7 @@ const MY_FILES_META: Record<string, Omit<ExtractedMetadata, 'documentType' | 'ed
   p17: meta('p17', '', '', [['Finanzamt Berlin Mitte', 'Sender']]),
   p37: meta('p37', '', 'Reminder that receipts for the 2025 return are still outstanding.', [['Bundeszentralamt für Steuern', 'Sender']], [['Documents due', 4, 'deadline']]),
   p19: meta('p19', '', '', [['Hoffmann & Partner Steuerberatung', 'Firm']]),
-  p23: meta('p23', 'Project Alpha', '', [['Project Alpha', 'Client']]),
+  p23: meta('p23', 'Project A', '', [['Project A', 'Client']]),
   p24: meta('p24', '', 'Open question: can last year’s loss be carried back, or only forward?'),
   p27: meta('p27', 'CPE 2026', '', [], [['Completed', -58, 'action']]),
 }).map(([id, m]) => [`my-file-${id}`, m]))
@@ -3180,6 +3334,8 @@ type Library = {
   /** The workspaces a file has been shared to. */
   workspacesOf: (id: string) => Space[]
   upload: (docs: MetadataDocument[]) => void
+  /** Records where synced files came from, so they show their app's icon wherever they're listed. */
+  markSynced: (docs: MetadataDocument[], source: DocSource) => void
   addToWorkspace: (spaceId: string, docs: MetadataDocument[]) => void
   removeFromWorkspace: (spaceId: string, ids: Set<string>) => void
   /** A workspace's new file list. Files taken out are gone from the workspace; the user's own copies stay in My Documents. */
@@ -3200,6 +3356,8 @@ function useLibrary(workspace: WorkspaceState): Library {
     return map
   })
   const { spaces, getSpaceDocs, addDocsToSpace, updateSpaceDocs, setSpaceDocs, deleteSpace } = workspace
+  // Files synced from a connected app, and which app.
+  const [syncedSources, setSyncedSources] = useState<Map<string, DocSource>>(new Map())
 
   const membership = useMemo(() => {
     const map = new Map<string, Space[]>()
@@ -3211,7 +3369,8 @@ function useLibrary(workspace: WorkspaceState): Library {
 
   return {
     files,
-    sourceOf: id => seedSources.get(id) ?? 'local',
+    sourceOf: id => syncedSources.get(id) ?? seedSources.get(id) ?? 'local',
+    markSynced: (docs, source) => setSyncedSources(prev => { const next = new Map(prev); docs.forEach(d => next.set(d._id, source)); return next }),
     workspacesOf: id => membership.get(id) ?? [],
     upload: docs => setOwnFiles(prev => {
       const have = new Set(prev.map(d => d._id))
@@ -3507,12 +3666,14 @@ function MyDocumentsPage({ library, spaces, store, onOpenWorkspace, onOpenDoc, o
         </Typography>
       </Modal>
 
-      <BasicUploadModal
+      <UploadOrSyncFlow
         open={uploadOpen}
-        connectors={PRESET_CONNECTORS}
-        uploadImmediately
         onClose={() => setUploadOpen(false)}
-        onUpload={newDocs => runUpload(newDocs.map(d => d.name), () => library.upload(newDocs))}
+        onUpload={newDocs => runUpload(newDocs.map(d => d.name), () => { store.extract(newDocs); library.upload(newDocs) })}
+        onSync={(newDocs, source) => { library.markSynced(newDocs, source); runUpload(newDocs.map(d => d.name), () => { store.extract(newDocs); library.upload(newDocs) }, 'sync') }}
+        existingIds={new Set(library.files.map(d => d._id))}
+        connectorsPath={`${BASE}/connectors`}
+        accountName={toProjectA}
       />
     </div>
   )
