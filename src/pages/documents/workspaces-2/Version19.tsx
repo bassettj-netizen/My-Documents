@@ -2515,7 +2515,8 @@ function DashedEmptyState({ title, text, action }: { title: string; text: string
 function CopilotWorkspaceSummary({ space, docs, extras, onOpen }: { space: Space; docs: MetadataDocument[]; extras: WorkspaceExtras; onOpen: () => void }) {
   return (
     // The whole card opens the workspace (DS ClickableContainer, solid rather than dashed); the chevron says so.
-    <div className="copilot-ws-summary" style={{ width: 240, flexShrink: 0, alignSelf: 'flex-start', margin: spacing(4) }}>
+    // Sticky, so it stays in the top right while the chat scrolls.
+    <div className="copilot-ws-summary" style={{ width: 240, flexShrink: 0, alignSelf: 'flex-start', margin: spacing(4), position: 'sticky', top: spacing(4), zIndex: 1 }}>
       <style>{`.copilot-ws-summary > * { border-radius: 12px; }`}</style>
       <ClickableContainer as="div" dashed={false} width="expanded" onClick={onOpen}>
         <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: spacing(2), padding: `${spacing(3)}px ${spacing(4)}px`, textAlign: 'left' }}>
