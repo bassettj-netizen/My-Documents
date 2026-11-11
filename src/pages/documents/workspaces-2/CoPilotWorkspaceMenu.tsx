@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   ButtonGhost,
   ButtonSecondary,
@@ -74,10 +74,14 @@ export function WorkspaceSelector({ options, value, onChange, onCreate, onManage
   onManage: () => void
 }) {
   const current = options.find(o => o.id === value) ?? options[0]
+  // The DS Dropdown closes itself on picking an item, but not on its footer and has no open prop, so a footer action
+  // remounts it (closed).
+  const [menuKey, setMenuKey] = useState(0)
+  const fromFooter = (action: () => void) => () => { setMenuKey(k => k + 1); action() }
 
   const footer = (
     <div style={{ width: MENU_WIDTH - 16, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
-      <ClickableContainer as="div" dashed width="expanded" onClick={onCreate}>
+      <ClickableContainer as="div" dashed width="expanded" onClick={fromFooter(onCreate)}>
         <div style={{ width: '100%', boxSizing: 'border-box', padding: `${spacing(2)}px ${spacing(3)}px`, textAlign: 'left' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
             <Icon type={iconType.PlusOutlined} size={16} color="blue-base" />
@@ -89,7 +93,7 @@ export function WorkspaceSelector({ options, value, onChange, onCreate, onManage
           </div>
         </div>
       </ClickableContainer>
-      <ButtonGhost rightIcon={iconType.ChevronRightOutlined} onClick={onManage}>Manage workspaces</ButtonGhost>
+      <ButtonGhost rightIcon={iconType.ChevronRightOutlined} onClick={fromFooter(onManage)}>Manage workspaces</ButtonGhost>
     </div>
   )
 
@@ -102,6 +106,7 @@ export function WorkspaceSelector({ options, value, onChange, onCreate, onManage
         .goat-dropdown-menu:has(.copilot-ws-row) .goat-dropdown-menu-item { height: auto !important; line-height: normal !important; padding-top: ${spacing(1)}px !important; padding-bottom: ${spacing(1)}px !important; }
         .goat-dropdown-menu:has(.copilot-ws-row) .goat-dropdown-menu-item-group-title { text-transform: none !important; }`}</style>
       <Dropdown
+        key={menuKey}
         trigger={dropdownTriggers.CLICK}
         placement={dropdownPlacement.BOTTOM_LEFT}
         header={<span style={{ fontSize: 13, color: colorPalette.neutral.darken2 }}>Your workspaces</span>}
