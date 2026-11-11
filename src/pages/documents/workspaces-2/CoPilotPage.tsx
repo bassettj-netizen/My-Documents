@@ -446,7 +446,8 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
   // workspacesPath is where Manage workspaces goes.
   workspaceMenu?: { workspacesPath: string }
   // Replaces the In this workspace card with the version's own summary (Workspaces 2.0 Version 19).
-  renderSummary?: (workspace: WorkspaceReference) => ReactNode
+  // activeChatId: the open chat in that workspace, if any — so the workspace can lead back to it.
+  renderSummary?: (workspace: WorkspaceReference, activeChatId: string | null) => ReactNode
   // Workspace avatars in the DS square style, as on the workspace list (Workspaces 2.0 Version 19).
   dsAvatars?: boolean
   // Shown at the top of the Create workspace dialog.
@@ -829,7 +830,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
           onClose={() => setSourcesView(null)}
         />
         </SourcesPanelSlot>
-      ) : attached && (renderSummary ? renderSummary(attached) : <WorkspaceSummary workspace={attached} />)}
+      ) : attached && (renderSummary ? renderSummary(attached, activeSession?.workspace?.id === attached.id ? activeSession.id : null) : <WorkspaceSummary workspace={attached} />)}
 
       {/* Same dialog as on the Workspaces page; the new workspace becomes the current one. */}
       <SpaceFormModal

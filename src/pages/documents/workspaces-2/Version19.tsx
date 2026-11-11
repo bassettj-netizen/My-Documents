@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import ConnectionsPageV10 from './ConnectionsPage'
 import { UploadOrSyncFlow } from './ConnectedAppSync'
 import {
@@ -795,9 +795,11 @@ export default function Workspaces2Version19() {
         dsAvatars
         createWorkspaceIntro={CREATE_WORKSPACE_INTRO}
         workspaceTypes
-        renderSummary={ref => {
+        renderSummary={(ref, activeChatId) => {
           const space = workspace.spaces.find(s => s.id === ref.id)
-          return space && <CopilotWorkspaceSummary space={space} docs={workspace.getSpaceDocs(space.id)} extras={extras.get(space.id)} onOpen={() => navigate(ref.path)} />
+          // The workspace page then offers "Back to CoPilot", to this chat (or the workspace's welcome).
+          const fromCopilot: FromCopilot = { chatId: activeChatId }
+          return space && <CopilotWorkspaceSummary space={space} docs={workspace.getSpaceDocs(space.id)} extras={extras.get(space.id)} onOpen={() => navigate(ref.path, { state: { fromCopilot } })} />
         }}
         onChatStarted={(workspaceId, chat) => setExtrasBySpace(prev => {
           const current = prev[workspaceId] ?? EMPTY_EXTRAS
@@ -976,6 +978,9 @@ function EquationCard({ focus = false, tinted = false, tag, icon, iconSize = 28,
   )
 }
 
+/** How a workspace page was reached from CoPilot's "In this workspace" card: the chat to return to, if one was open. */
+type FromCopilot = { chatId: string | null }
+
 type ExtrasStore = {
   get: (spaceId: string) => WorkspaceExtras
   update: (spaceId: string, patch: Partial<WorkspaceExtras>) => void
@@ -1025,6 +1030,9 @@ function SpaceDetailRoute({ workspace, library, store, extras, history, area, re
   const navigate = useNavigate()
   const { workspaceSlug } = useParams<{ workspaceSlug: string }>()
   const isLoading = useMountLoading()
+  // Opened from CoPilot's "In this workspace" card: kept while moving around the workspace, so its summary leads back.
+  const fromCopilot = (useLocation().state as { fromCopilot?: FromCopilot } | null)?.fromCopilot
+  const keepFrom = fromCopilot ? { state: { fromCopilot } } : undefined
 
   const space = workspace.spaces.find(s => slugify(s.name) === workspaceSlug) ?? null
   if (!space) return <Navigate to={`${BASE}/workspaces`} replace />
@@ -1048,7 +1056,7 @@ function SpaceDetailRoute({ workspace, library, store, extras, history, area, re
       readySeen={readySeen.has(space.id)}
       onReadySeen={() => markReadySeen(space.id)}
       area={area}
-      onOpenArea={a => navigate(`${summaryPath}/${a}`)}
+      onOpenArea={a => navigate(`${summaryPath}/${a}`, keepFrom)}
       onOpenConnectors={() => navigate(`${BASE}/connectors`)}
       onOpenHrDocuments={() => navigate(`${BASE}/hr-dokumente`)}
       onOpenZeugnisManager={() => navigate(`${BASE}/zeugnis-manager`)}
@@ -1068,8 +1076,12 @@ function SpaceDetailRoute({ workspace, library, store, extras, history, area, re
         history.add(space, spaceDocs, liveEvent('upload', newDocs))
         workspace.addDocsToSpace(space.id, newDocs)
       }}
-      // From an area, back goes to the workspace's summary; from the summary, to the list.
-      onBack={() => navigate(area === 'summary' ? `${BASE}/workspaces` : summaryPath)}
+      // From an area, back goes to the workspace's summary; from the summary, to the list — or, when the workspace was
+      // opened from CoPilot, back to CoPilot in this workspace (on the chat that was open).
+      onBack={() => area !== 'summary' ? navigate(summaryPath, keepFrom)
+        : fromCopilot ? navigate(`${BASE}/copilot`, { state: { workspaceRef: workspaceReference(space, workspace, extras), openChatId: fromCopilot.chatId ?? undefined } })
+        : navigate(`${BASE}/workspaces`)}
+      backLabel={fromCopilot ? 'Back to CoPilot' : undefined}
       onOpenDoc={doc => navigate(`${summaryPath}/documents/${encodeURIComponent(doc._id)}`)}
       onUpdateSpace={values => {
         workspace.updateSpace(space.id, values)
@@ -1410,7 +1422,7 @@ const TABLE_CSS = `
  * A workspace page: the summary (full header and one tile per area), or one area on its own
  * with a back button to the summary.
  */
-function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenHrDocuments, onOpenZeugnisManager, space, spaces, docs, library, store, history, onDocsChange, onAddDocs, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot, onOpenChat, onAskAboutDoc }: {
+function SpaceDocumentsTable({ backLabel, readySeen, onReadySeen, area, onOpenArea, onOpenHrDocuments, onOpenZeugnisManager, space, spaces, docs, library, store, history, onDocsChange, onAddDocs, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot, onOpenChat, onAskAboutDoc }: {
   // Whether this workspace's ready view has played before.
   readySeen: boolean
   onReadySeen: () => void
@@ -1433,6 +1445,8 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenH
   // Adds to whatever the workspace holds at the time — uploads land a moment after they start.
   onAddDocs: (docs: MetadataDocument[]) => void
   onBack: () => void
+  // The summary's back link, when it doesn't go to Workspaces (opened from CoPilot: "Back to CoPilot").
+  backLabel?: string
   onOpenDoc: (doc: MetadataDocument) => void
   onUpdateSpace: (values: SpaceFormValues) => void
   onDeleteSpace: () => void
@@ -1529,7 +1543,7 @@ function SpaceDocumentsTable({ readySeen, onReadySeen, area, onOpenArea, onOpenH
       <style>{TABLE_CSS}</style>
       {area === 'summary' ? (
         // No Ask CoPilot while the workspace is empty — Add content is the one action there.
-        <WorkspaceHero space={space} onBack={onBack} onAskCopilot={isEmptyWorkspace ? undefined : () => onAskCopilot()} onEdit={() => setEditSpaceOpen(true)} onDelete={() => setDeleteSpaceOpen(true)} />
+        <WorkspaceHero space={space} onBack={onBack} backLabel={backLabel} onAskCopilot={isEmptyWorkspace ? undefined : () => onAskCopilot()} onEdit={() => setEditSpaceOpen(true)} onDelete={() => setDeleteSpaceOpen(true)} />
       ) : (
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
           {/* Back to the workspace's summary, named so it's clear where it goes. */}
@@ -2152,9 +2166,10 @@ const AREA_ICONS: Record<WorkspaceArea, string> = {
 const pluralise = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 /** Summary header: back to Workspaces, the workspace's name, type chip (as on its list card) and description, and Ask CoPilot. */
-function WorkspaceHero({ space, onBack, onAskCopilot, onEdit, onDelete }: {
+function WorkspaceHero({ space, onBack, backLabel = 'Workspaces', onAskCopilot, onEdit, onDelete }: {
   space: Space
   onBack: () => void
+  backLabel?: string
   // Left out on an empty workspace, which hides the button.
   onAskCopilot?: () => void
   // The "⋯" menu at the end of the header: Edit (the workspace's settings) and Delete (with a warning first).
@@ -2164,7 +2179,7 @@ function WorkspaceHero({ space, onBack, onAskCopilot, onEdit, onDelete }: {
   return (
     <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
       <div style={{ marginLeft: -spacing(3) }}>
-        <ButtonGhost leftIcon={iconType.ChevronLeftOutlined} onClick={onBack}>Workspaces</ButtonGhost>
+        <ButtonGhost leftIcon={iconType.ChevronLeftOutlined} onClick={onBack}>{backLabel}</ButtonGhost>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing(4) }}>
         <Avatar shape={avatarShapeEnum.SQUARE} size={avatarSizeEnum.MEDIUM} src={space.avatarUrl} srcPlaceholder={getInitials(space.name)} />
