@@ -779,6 +779,7 @@ export default function Workspaces2Version19() {
       </Route>
       <Route path="home" element={<HackathonHomePage copilotPath={`${BASE}/copilot`} />} />
       <Route path="copilot" element={<HackathonCoPilotPageV10
+        workspaceMenu={{ workspacesPath: `${BASE}/workspaces` }}
         extraSessions={prefilledChats}
         savedSessions={copilotSessions}
         onSessionsChange={setCopilotSessions}
@@ -2644,7 +2645,7 @@ function HaufeContent({ chats, documents, onAskCopilot, onOpenChat, onOpenHrDocu
   onOpenZeugnisManager: () => void
 }) {
   const newestFirst = <T extends { createdAt: number }>(items: T[]) => [...items].sort((a, b) => b.createdAt - a.createdAt)
-  const chatItems: HaufeItem[] = newestFirst(chats).map(c => ({ id: c.id, kind: 'chat', title: c.title, source: 'CoPilot HR', date: formatCreated(c.createdAt) }))
+  const chatItems: HaufeItem[] = newestFirst(chats).map(c => ({ id: c.id, kind: 'chat', title: c.title, source: 'CoPilot', date: formatCreated(c.createdAt) }))
   const toItem = (doc: HaufeDocument, source: string): HaufeItem => ({ id: doc.id, kind: doc.kind, title: doc.title, source, date: formatCreated(doc.createdAt) })
   const references = newestFirst(documents.filter(doc => doc.app === 'zeugnismanager')).map(doc => toItem(doc, 'Haufe Zeugnis Manager'))
   const hrDocuments = newestFirst(documents.filter(doc => doc.app === 'hr-dokumente')).map(doc => toItem(doc, 'HR Dokumente'))

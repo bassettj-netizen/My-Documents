@@ -28,6 +28,7 @@ import type { WorkspaceReference } from '../hackathon/workspaceModel'
 import { useProcessingUpload } from '../hackathon/uploadToasts'
 import { AnswerBody, SourceChips, SourcesPanel, SourcesPanelSlot, type SourceFilter } from '../hackathon/AnswerSources'
 import { buildSources, placeMarkers, type AnswerSource } from '../hackathon/sourceData'
+import { NewChip, WorkspaceSelector, WorkspacesPromo } from './CoPilotWorkspaceMenu'
 
 /**
  * Hackathon Oct '26 — CoPilot for Version 10 (copied from Version 8, itself copied from Version 6, itself copied from Version 4): the shared CoPilot page with the Workspace dropdown
@@ -53,6 +54,8 @@ import { buildSources, placeMarkers, type AnswerSource } from '../hackathon/sour
 
 const GENERAL = 'general'
 const CREATE_WORKSPACE = 'create-workspace'
+// The workspaces promotion stays dismissed while the prototype is open (Workspaces 2.0 Versions 19 and 21).
+let promoDismissed = false
 
 export type ChatMsg = { id: string; role: 'user' | 'assistant'; content: string; attachmentNames?: string[] }
 export type ChatSession = { id: string; title: string; day: string; messages: ChatMsg[]; workspace?: WorkspaceReference }
@@ -152,10 +155,13 @@ function ChatHistoryRow({ title, active, onClick }: { title: string; active: boo
   )
 }
 
-function SectionLabel({ children }: { children: string }) {
+/** `profile` (Workspaces 2.0 Versions 19 and 21): styled like the labels on a workspace's Profile card. */
+function SectionLabel({ children, profile = false }: { children: string; profile?: boolean }) {
   return (
     <div style={{ padding: `0 ${spacing(2)}px ${spacing(1)}px` }}>
-      <Typography size="base-small" color="blue-darken2" weight={fontWeight.SEMIBOLD}>{children}</Typography>
+      {profile
+        ? <span style={{ fontSize: 13, color: colorPalette.neutral.darken2 }}>{children}</span>
+        : <Typography size="base-small" color="blue-darken2" weight={fontWeight.SEMIBOLD}>{children}</Typography>}
     </div>
   )
 }
@@ -395,8 +401,12 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, d
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace, onSaveDocuments, onChatStarted, savedSessions, onSessionsChange, extraSessions = [], background = colorPalette.neutral.lighten5, renderSummary, dsAvatars = false, createWorkspaceIntro, workspaceTypes = false }: {
+export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace, onSaveDocuments, onChatStarted, savedSessions, onSessionsChange, extraSessions = [], background = colorPalette.neutral.lighten5, renderSummary, dsAvatars = false, createWorkspaceIntro, workspaceTypes = false, workspaceMenu }: {
   workspaces: WorkspaceReference[]
+  // Workspaces 2.0 Versions 19 and 21: CoPilot without HR or Tax, the workspace selector (a clickable container with a
+  // DS Dropdown) and, under the question box, the workspaces promotion (FigJam CoPilot frames, 150:191).
+  // workspacesPath is where Manage workspaces goes.
+  workspaceMenu?: { workspacesPath: string }
   // Replaces the In this workspace card with the version's own summary (Workspaces 2.0 Version 19).
   renderSummary?: (workspace: WorkspaceReference) => ReactNode
   // Workspace avatars in the DS square style, as on the workspace list (Workspaces 2.0 Version 19).
@@ -433,6 +443,8 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
   // The sources panel: which answer's sources, filtered how, opened on which one.
   const [sourcesView, setSourcesView] = useState<{ messageId: string; filter: SourceFilter; focus: number | null; opened: number } | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [showPromo, setShowPromo] = useState(!promoDismissed)
+  const generic = !!workspaceMenu
   const [search, setSearch] = useState('')
   const [question, setQuestion] = useState('')
   // initialQuestion starts a new chat; openChatId (from a workspace's Haufe knowledge) opens an existing one.
@@ -539,9 +551,27 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
             <CoPilotMark size={32} />
-            <span style={{ fontSize: 18, fontWeight: 600, color: '#001344' }}>CoPilot HR</span>
+            <span style={{ fontSize: 18, fontWeight: 600, color: '#001344' }}>{generic ? 'CoPilot' : 'CoPilot HR'}</span>
           </div>
 
+          {workspaceMenu ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: spacing(1) }}>
+              <SectionLabel profile>Workspace</SectionLabel>
+              <NewChip />
+            </div>
+            <WorkspaceSelector
+              value={workspaceId}
+              options={[
+                { id: GENERAL, name: 'My workspace', description: 'Your default space for all chats', icon: <Icon type={iconType.ElementsOutlined} size={16} color="neutral-darken3" /> },
+                ...workspaces.map(w => ({ id: w.id, name: w.name, description: w.description.trim(), icon: <WorkspaceAvatar workspace={w} size={24} ds={dsAvatars} /> })),
+              ]}
+              onChange={selectWorkspace}
+              onCreate={() => setCreateOpen(true)}
+              onManage={() => navigate(workspaceMenu.workspacesPath)}
+            />
+          </div>
+          ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
             <SectionLabel>Workspace</SectionLabel>
             {/* Closed dropdown: text and icon keep their colours while it's open or focused, and no focus ring.
@@ -591,15 +621,16 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
             />
             </div>
           </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(3) }}>
             <ButtonPrimary width={buttonWidth.EXPANDED} leftIcon={iconType.CommentOutlined} onClick={() => { setQuestion(''); setActiveId(null) }}>
-              New Chat
+              {generic ? 'New chat' : 'New Chat'}
             </ButtonPrimary>
             <SearchBar placeholder="Search titles" value={search} onChange={setSearch} width={searchbarWidth.EXPANDED} />
           </div>
 
-          <PanelRow icon={iconType.NoteOutlined} label="Prompt Templates" />
+          <PanelRow icon={iconType.NoteOutlined} label={generic ? 'Prompt templates' : 'Prompt Templates'} />
 
           {filteredGroups.length === 0 ? (
             <div style={{ padding: `${spacing(4)}px ${spacing(2)}px` }}>
@@ -609,7 +640,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
             </div>
           ) : filteredGroups.map(group => (
             <div key={group.day} style={{ display: 'flex', flexDirection: 'column' }}>
-              <SectionLabel>{group.day}</SectionLabel>
+              <SectionLabel profile={generic}>{group.day}</SectionLabel>
               {group.entries.map(entry => (
                 <ChatHistoryRow key={entry.id} title={entry.title} active={entry.id === activeId} onClick={() => setActiveId(entry.id)} />
               ))}
@@ -691,11 +722,13 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                   {attached
                     ? <WorkspaceAvatar workspace={attached} size={40} ds={dsAvatars} />
                     : <CoPilotMark size={40} />}
-                  <span style={{ fontSize: 24, lineHeight: '1.3', fontWeight: 700, color: '#001344' }}>{attached ? attached.name : 'Welcome to CoPilot HR,'}</span>
+                  <span style={{ fontSize: 24, lineHeight: '1.3', fontWeight: 700, color: '#001344' }}>{attached ? attached.name : generic ? 'Welcome to CoPilot' : 'Welcome to CoPilot HR,'}</span>
                   <Typography size="base" color={attached && !attached.description.trim() ? 'neutral-darken2' : 'neutral-darken5'}>
                     {attached
                       ? attached.description.trim() || 'This workspace has no description yet.'
-                      : 'as an artificial intelligence, I base the answers to your questions on the current, legally sound knowledge of Haufe XY Office and back them up with sources.'}
+                      : generic
+                        ? 'As an AI assistant, I base my answers on Haufe’s current, legally sound knowledge and back them up with sources.'
+                        : 'as an artificial intelligence, I base the answers to your questions on the current, legally sound knowledge of Haufe XY Office and back them up with sources.'}
                   </Typography>
                   <div style={{ width: 64, height: 1, backgroundColor: colorPalette.neutral.lighten1 }} />
                   <Typography size="base-sm" color="neutral-darken2">
@@ -713,6 +746,15 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                   seedAttachments={attachDocs}
                   onSeedAttachmentsConsumed={() => setAttachDocs(NO_ATTACHMENTS)}
                 />
+                {/* In My workspace only: what a workspace adds, until it's dismissed. */}
+                {workspaceMenu && !attached && showPromo && (
+                  <div style={{ marginTop: -spacing(4) }}>
+                    <WorkspacesPromo
+                      onCreate={() => setCreateOpen(true)}
+                      onDismiss={() => { promoDismissed = true; setShowPromo(false) }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

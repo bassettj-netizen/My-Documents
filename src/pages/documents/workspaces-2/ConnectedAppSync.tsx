@@ -66,6 +66,18 @@ function ConnectedAppsSection({ apps, onChoose, onOpenConnectors }: { apps: Conn
   )
 }
 
+/** The note under the document lists (Version 19's FilesDisclaimer), here under the upload area. */
+function UploadDisclaimer() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: spacing(2), marginTop: -spacing(2) }}>
+      <Icon type={iconType.ShieldCheckFilled} color="primary-base" size={16} />
+      <Typography size="base-sm" color="neutral-darken2">
+        All files are securely uploaded and scanned for viruses. <span style={{ color: colorPalette.blue.base, textDecoration: 'underline', cursor: 'pointer' }}>Learn more</span>
+      </Typography>
+    </div>
+  )
+}
+
 // ─── The flow ───────────────────────────────────────────────────────────────
 
 // Each app asks you to sign in the first time you sync from it; after that it goes straight to its files (until reload).
@@ -103,6 +115,7 @@ export function UploadOrSyncFlow({ open, onClose, onUpload, onSync, existingIds,
         uploadImmediately
         onClose={close}
         onUpload={onUpload}
+        belowDropzone={<UploadDisclaimer />}
         connectorsSection={<ConnectedAppsSection apps={apps} onChoose={choose} onOpenConnectors={() => { close(); navigate(connectorsPath) }} />}
       />
       {open && step.kind === 'sign-in' && (

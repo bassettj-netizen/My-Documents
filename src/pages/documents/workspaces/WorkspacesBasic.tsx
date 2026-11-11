@@ -848,7 +848,7 @@ function BasicDocumentPreview({ space, doc, originalDoc, docIndex, source, summa
  * local files, plus one row per connector actually present in this space's
  * table, so the user can see where else they could pull documents from.
  */
-export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en', uploadImmediately = false, connectorsSection }: {
+export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en', uploadImmediately = false, connectorsSection, belowDropzone }: {
   open: boolean
   connectors: Connector[]
   onClose: () => void
@@ -859,6 +859,8 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
   uploadImmediately?: boolean
   // Replaces the connector rows with the page's own (Workspaces 2.0 Versions 19 and 21: the connected apps, each opening its sync flow).
   connectorsSection?: ReactNode
+  // Shown straight under the upload area (Workspaces 2.0 Versions 19 and 21: the "securely uploaded" note).
+  belowDropzone?: ReactNode
 }) {
   const de = lang === 'de'
   const [queuedFiles, setQueuedFiles] = useState<File[]>([])
@@ -916,6 +918,7 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
           <Typography size="base-sm" color="neutral-darken2">PDF-, DOCX-, XLSX- und TXT-Formate, max. Größe 10 MB</Typography>
         </div>
         <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
+        {belowDropzone}
 
         {queuedFiles.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>

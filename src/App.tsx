@@ -568,8 +568,10 @@ function AppShell() {
     ] },
   ] as unknown as SidebarItem[]
   // Version 19: Version 15's group, renamed Knowledge Hub, with a folder for it and two files for My Documents.
+  // Versions 19 and 21: CoPilot without Tax or HR in its name (Version 20 keeps Version 12's label).
   const productTopItemsV19 = [
-    ...productTopItemsV12.slice(0, 4),
+    hackathonBase === WORKSPACES_2_V20_BASE ? productTopItemsV12[0] : { ...(productTopItemsV12[0] as object), label: 'CoPilot' },
+    ...productTopItemsV12.slice(1, 4),
     { key: 'content', label: 'Knowledge Hub', icon: <Icon type={iconType.FolderOutlined} />, children: [
       { key: 'documents', label: 'My Documents', icon: <FileGlyph />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
       { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} /> },
