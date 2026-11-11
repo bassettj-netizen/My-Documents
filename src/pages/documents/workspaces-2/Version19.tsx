@@ -716,7 +716,7 @@ export default function Workspaces2Version19() {
   const dayLabel = (days: number) => days === 0 ? 'Today' : days === 1 ? 'Yesterday' : 'Earlier'
   // Context details, guardrails, bookmarks and templates per workspace — kept here so they survive leaving the page.
   // Prefilled My knowledge and Haufe knowledge for Metadata Table's workspaces (seedWorkspaceContent.ts).
-  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => withMoreActivity(seedProfileDetails(renameAlpha(agedExtras()))))
+  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => withLongAcmeChat(withMoreActivity(seedProfileDetails(renameAlpha(agedExtras())))))
   // CoPilot's chats live here, so leaving CoPilot doesn't lose them and a chat can be reopened from a workspace.
   const [copilotSessions, setCopilotSessions] = useState<CoPilotChat[] | null>(null)
   // Each workspace's document history (History Version 6's log), seeded the first time it's written to.
@@ -750,7 +750,15 @@ export default function Workspaces2Version19() {
       noteChange(id, patch.guardrails ? 'Guardrails updated' : patch.details ? 'Profile updated' : 'Workspace updated')
     },
   }
-  const prefilledChats: CoPilotChat[] = agedChats().flatMap(chat => {
+  const acmeSpace = workspace.spaces.find(sp => sp.id === LONG_ACME_CHAT.spaceId)
+  const longAcmeChat: CoPilotChat[] = acmeSpace ? [{
+    id: LONG_ACME_CHAT.id, title: LONG_ACME_CHAT.title, day: 'Today', workspace: workspaceReference(acmeSpace, workspace, extras),
+    messages: LONG_ACME_CHAT.turns.flatMap(([question, answer], i) => [
+      { id: `${LONG_ACME_CHAT.id}-${i}-q`, role: 'user' as const, content: question },
+      { id: `${LONG_ACME_CHAT.id}-${i}-a`, role: 'assistant' as const, content: answer },
+    ]),
+  }] : []
+  const prefilledChats: CoPilotChat[] = [...longAcmeChat, ...agedChats().flatMap(chat => {
     const space = workspace.spaces.find(sp => sp.id === chat.spaceId)
     if (!space) return []
     return [{
@@ -760,7 +768,7 @@ export default function Workspaces2Version19() {
         { id: `${chat.id}-a`, role: 'assistant' as const, content: chat.answer },
       ],
     }]
-  })
+  })]
 
   return (
     <Routes>
@@ -2320,6 +2328,37 @@ const MORE_ACTIVITY: Record<string, HaufeDocument[]> = {
     { id: 'acme-h8', app: 'zeugnismanager', kind: 'reference', title: 'Interim reference — L. Fischer (audit senior)', createdAt: Date.now() - 21 * DAY_MS },
     { id: 'acme-h9', app: 'zeugnismanager', kind: 'reference', title: 'Final reference — J. Braun (working student)', createdAt: Date.now() - 48 * DAY_MS },
   ],
+}
+
+/**
+ * A long CoPilot chat in Acme Corp (Version 19): a back-and-forth about the Vienna branch, so an open chat can be
+ * seen with a thread that scrolls. Listed first under Today in CoPilot and in the workspace's chats.
+ */
+const LONG_ACME_CHAT: { id: string; spaceId: string; title: string; turns: [string, string][] } = {
+  id: 'chat-acme-vienna-branch',
+  spaceId: 'space-acme',
+  title: 'Taxes for Acme\'s Vienna branch',
+  turns: [
+    ['Acme is opening a sales office in Vienna next quarter. Does that create a permanent establishment in Austria?',
+      'Very likely, yes. A **fixed place of business** through which Acme carries on its business — an office with its own staff selling to Austrian customers — is a permanent establishment under **Art. 5 of the Germany–Austria tax treaty**. The exceptions for purely preparatory or auxiliary activities (storage, display, purchasing) won\'t apply if the office negotiates and concludes sales.\n\nThe consequence: the profits **attributable to the Vienna office** are taxed in Austria, and Germany exempts them (with progression) under the treaty.'],
+    ['What does Acme need to register in Austria, and by when?',
+      'Three registrations, ideally before the office opens:\n\n1. **Commercial register (Firmenbuch)** — the branch (Zweigniederlassung) is entered with the Vienna Commercial Court.\n2. **Tax office** — register the branch for corporate income tax and payroll taxes; it gets an Austrian tax number. Acme\'s existing VAT registration may need to move to the branch.\n3. **Social insurance (ÖGK)** — before the first employee starts work.\n\nThe tax office should be notified **within one month** of the branch starting business (§ 120 BAO).'],
+    ['How do we split profit between Munich and Vienna?',
+      'Under the **authorised OECD approach** the branch is treated as if it were a separate, independent business. In practice for Acme:\n\n- The Vienna office earns a **routine return on its sales function** — often a cost-plus or a return on sales benchmarked against comparable distributors.\n- Internal deliveries of goods from Munich to Vienna are priced at arm\'s length.\n- Shared costs (IT, management, accounting in Munich) are charged on with a markup where they benefit the branch.\n\nDocument this in a short **profit attribution memo**; Germany requires it under the Betriebsstättengewinnaufteilungsverordnung (BsGaV).'],
+    ['Acme\'s guardrails say to cite sources. Which rules apply to the internal goods transfers for VAT?',
+      'Moving Acme\'s own goods from Munich to the Vienna branch is an **intra-community transfer** (innergemeinschaftliches Verbringen):\n\n- In Germany it\'s treated as a **tax-free intra-community supply** (§ 3 Abs. 1a, § 6a Abs. 2 UStG).\n- In Austria it\'s an **intra-community acquisition** by the branch (Art. 1 Abs. 3 UStG 1994), with input VAT deductible in the same return.\n- Both sides report it — Germany in the recapitulative statement, using the branch\'s Austrian VAT ID.\n\nThe purchase price or cost is the basis, not a sales price.'],
+    ['Does the branch have to keep its own books?',
+      'Yes, at least for Austrian tax purposes. The branch needs **separate accounts** showing its income and expenses so its profit can be determined — they can be kept in Munich in Acme\'s ERP, as long as they can be produced in Austria on request (§ 131 BAO).\n\nMost companies set it up as a **separate company code or profit centre**, with the internal transfers booked through a clearing account.'],
+    ['Can you sum up the to-do list for the client meeting?',
+      'For the meeting with Acme\'s CFO:\n\n1. **Confirm the scope** — staff, contracts signed in Vienna, start date.\n2. **Register** the branch: Firmenbuch, tax office (within a month), ÖGK before the first hire.\n3. **Set up accounting** — a separate company code, clearing account for internal transfers.\n4. **Transfer pricing** — agree the branch\'s return and write the profit attribution memo.\n5. **VAT** — use the branch\'s Austrian VAT ID for transfers; report them on both sides.\n6. **German return** — exempt the branch profit under the treaty, with progression.\n\nShall I turn this into a client letter using the workspace\'s templates?'],
+  ],
+}
+
+/** Adds the long chat to Acme Corp's chats, newest first. */
+function withLongAcmeChat(extrasBySpace: Record<string, WorkspaceExtras>): Record<string, WorkspaceExtras> {
+  const acme = extrasBySpace[LONG_ACME_CHAT.spaceId]
+  if (!acme) return extrasBySpace
+  return { ...extrasBySpace, [LONG_ACME_CHAT.spaceId]: { ...acme, chats: [{ id: LONG_ACME_CHAT.id, title: LONG_ACME_CHAT.title, createdAt: Date.now() }, ...acme.chats] } }
 }
 
 function withMoreActivity(extrasBySpace: Record<string, WorkspaceExtras>): Record<string, WorkspaceExtras> {

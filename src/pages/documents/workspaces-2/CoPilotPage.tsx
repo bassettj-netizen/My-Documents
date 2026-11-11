@@ -342,8 +342,11 @@ function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode 
  * obvious — its avatar and name (a link back to it), then the chat title — and Save as PDF / Actions on
  * the right. Chats outside a workspace show "My workspace" in the workspace's place.
  */
-function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, dsAvatars }: {
+function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, dsAvatars, generic = false }: {
   dsAvatars: boolean
+  // Workspaces 2.0 Versions 19 and 21: centred on the app's H logo (40px down), like the CoPilot menu's title; the
+  // workspace is a label, not a link, and My workspace has the workspace selector's icon.
+  generic?: boolean
   session: ChatSession
   workspace: WorkspaceReference | null
   onOpenWorkspace: (ws: WorkspaceReference) => void
@@ -356,10 +359,15 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, d
   return (
     <div style={{
       // No background or outline — it sits on the page, between the chat panel and the workspace summary.
-      flexShrink: 0, height: 56, display: 'flex', alignItems: 'center', gap: spacing(3), padding: `0 ${spacing(6)}px`,
+      flexShrink: 0, height: 56, marginTop: generic ? 12 : 0, display: 'flex', alignItems: 'center', gap: spacing(3), padding: `0 ${spacing(6)}px`,
     }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: spacing(2) }}>
-        {workspace ? (
+        {workspace && generic ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2), flexShrink: 0 }}>
+            <WorkspaceAvatar workspace={workspace} size={24} ds={dsAvatars} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: colorPalette.neutral.darken3 }}>{workspace.name}</span>
+          </span>
+        ) : workspace ? (
           <button
             type="button"
             onClick={() => onOpenWorkspace(workspace)}
@@ -370,7 +378,7 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, d
           </button>
         ) : (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2), flexShrink: 0 }}>
-            <Icon type={iconType.UserOutlined} size={16} color="neutral-darken3" />
+            <Icon type={generic ? iconType.ElementsOutlined : iconType.UserOutlined} size={16} color="neutral-darken3" />
             <span style={{ fontSize: 14, fontWeight: 600, color: colorPalette.neutral.darken3 }}>My workspace</span>
           </span>
         )}
@@ -395,6 +403,36 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, d
       >
         <ButtonGhost rightIcon={iconType.ThreeDotsVerFilled}>Actions</ButtonGhost>
       </Dropdown>
+    </div>
+  )
+}
+
+/**
+ * The app sidebar's collapse chevron (the DS Layout's trigger draws Ant Design's left/right outline at 14px), so the
+ * CoPilot menu's matches it exactly — the DS Icon chevron is a smaller glyph.
+ */
+const SIDEBAR_CHEVRON_PATHS = {
+  left: 'M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z',
+  right: 'M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.9 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z',
+}
+function SidebarChevron({ direction }: { direction: 'left' | 'right' }) {
+  return (
+    <svg viewBox="64 64 896 896" width={14} height={14} fill={colorPalette.neutral.darken2} aria-hidden focusable="false">
+      <path d={SIDEBAR_CHEVRON_PATHS[direction]} />
+    </svg>
+  )
+}
+
+/** "Your data is private and secure" under the question box. `compact`: in an open chat, closer to the box above it. */
+function PrivacyNote({ compact = false }: { compact?: boolean }) {
+  return (
+    <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: compact ? `0 ${spacing(4)}px ${spacing(4)}px` : spacing(4) }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
+        <Icon type={iconType.LockFilled} size={16} color="blue-base" />
+        <Typography size="base-sm" color="neutral-darken3">
+          Your data is private and secure. <span style={{ color: colorPalette.blue.base, cursor: 'pointer' }}>Learn more</span>
+        </Typography>
+      </div>
     </div>
   )
 }
@@ -539,7 +577,9 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
 
   return (
     // Main area on the theme's neutral-lighten5; the chat panel (a menu) stays white.
-    <div style={{ display: 'flex', height: '100%', backgroundColor: background }}>
+    // Versions 19 and 21: the window's height, so a long chat scrolls in its own area (the app shell only has a
+    // minimum height, so 100% let a long thread grow the whole page and scroll the menu and chat header away).
+    <div style={{ display: 'flex', height: generic ? '100vh' : '100%', backgroundColor: background }}>
       {/* Chat panel, collapsible from its own foot like the app's other panels: a narrow strip of icons when collapsed. */}
       <div style={{
         width: panelOpen ? 268 : 64, flexShrink: 0, borderRight: `1px solid ${colorPalette.neutral.lighten1}`, backgroundColor: colorPalette.white,
@@ -547,7 +587,8 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
       }}>
       {panelOpen ? (
         <div style={{
-          flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `${spacing(4)}px ${spacing(4)}px`, gap: spacing(5), overflowY: 'auto',
+          // Versions 19 and 21: 24px at the top, so the CoPilot mark and title (32px high) centre on the app's H logo.
+          flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `${generic ? 24 : spacing(4)}px ${spacing(4)}px ${spacing(4)}px`, gap: spacing(5), overflowY: 'auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
             <CoPilotMark size={32} />
@@ -648,7 +689,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
           ))}
         </div>
       ) : (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), padding: `${spacing(4)}px 0` }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing(4), padding: `${generic ? 24 : spacing(4)}px 0 ${spacing(4)}px` }}>
           <CoPilotMark size={32} />
           <ButtonPrimary shape={buttonShapes.SQUARE} leftIcon={iconType.CommentOutlined} onClick={() => { setQuestion(''); setActiveId(null) }} ariaLabel="New Chat" />
           <ButtonGhost shape={buttonShapes.SQUARE} leftIcon={iconType.NoteOutlined} ariaLabel="Prompt Templates" />
@@ -660,13 +701,19 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
           onClick={() => setPanelOpen(v => !v)}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPanelOpen(v => !v) } }}
           title={panelOpen ? undefined : 'Expand'}
-          style={{
+          aria-label={panelOpen ? 'Collapse' : 'Expand'}
+          // Versions 19 and 21: like the app sidebar's collapse — a 48px strip at the foot with only a centred chevron.
+          style={generic ? {
+            flexShrink: 0, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+          } : {
             flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: panelOpen ? 'flex-start' : 'center', gap: spacing(3),
             padding: `${spacing(3)}px ${spacing(4)}px`, borderTop: `1px solid ${colorPalette.neutral.lighten3}`, cursor: 'pointer',
           }}
         >
-          <Icon type={panelOpen ? iconType.ChevronLeftOutlined : iconType.ChevronRightOutlined} size={16} color="neutral-darken4" />
-          {panelOpen && <span style={{ fontSize: 13, color: colorPalette.neutral.darken5 }}>Collapse</span>}
+          {generic
+            ? <SidebarChevron direction={panelOpen ? 'left' : 'right'} />
+            : <Icon type={panelOpen ? iconType.ChevronLeftOutlined : iconType.ChevronRightOutlined} size={16} color="neutral-darken4" />}
+          {panelOpen && !generic && <span style={{ fontSize: 13, color: colorPalette.neutral.darken5 }}>Collapse</span>}
         </div>
       </div>
 
@@ -678,6 +725,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
               workspace={activeSession.workspace ? workspaces.find(w => w.id === activeSession.workspace!.id) ?? activeSession.workspace : null}
               onOpenWorkspace={ws => navigate(ws.path)}
               dsAvatars={dsAvatars}
+              generic={generic}
               onRename={title => setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, title } : s))}
               onDelete={() => { setSessions(prev => prev.filter(s => s.id !== activeSession.id)); setActiveId(null) }}
             />
@@ -711,6 +759,8 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                 />
               </div>
             </div>
+            {/* Workspaces 2.0 Versions 19 and 21: the start page's privacy note under every chat too. */}
+            {generic && <PrivacyNote compact />}
           </>
         ) : (
           <>
@@ -758,14 +808,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
               </div>
             </div>
 
-            <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: spacing(4) }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
-                <Icon type={iconType.LockFilled} size={16} color="blue-base" />
-                <Typography size="base-sm" color="neutral-darken3">
-                  Your data is private and secure. <span style={{ color: colorPalette.blue.base, cursor: 'pointer' }}>Learn more</span>
-                </Typography>
-              </div>
-            </div>
+            <PrivacyNote />
           </>
         )}
       </div>
