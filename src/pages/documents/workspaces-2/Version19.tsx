@@ -2553,12 +2553,36 @@ function DashedEmptyState({ title, text, action }: { title: string; text: string
  * guardrails as on its list card (hover for detail) and an icon button into it.
  */
 function CopilotWorkspaceSummary({ space, docs, extras, onOpen }: { space: Space; docs: MetadataDocument[]; extras: WorkspaceExtras; onOpen: () => void }) {
+  // Nothing in it yet (as the workspace page's empty state decides): the card invites you to add context instead.
+  const isEmpty = docs.length === 0 && !space.context?.trim() && extras.details.length === 0 && extras.guardrails.length === 0
   return (
     // The whole card opens the workspace (DS ClickableContainer, solid rather than dashed); the chevron says so.
     // Sticky, so it stays in the top right while the chat scrolls.
-    <div className="copilot-ws-summary" style={{ width: 240, flexShrink: 0, alignSelf: 'flex-start', margin: spacing(4), position: 'sticky', top: spacing(4), zIndex: 1 }}>
+    <div className="copilot-ws-summary" style={{ width: isEmpty ? 280 : 240, flexShrink: 0, alignSelf: 'flex-start', margin: spacing(4), position: 'sticky', top: spacing(4), zIndex: 1 }}>
       <style>{`.copilot-ws-summary > * { border-radius: 12px; }`}</style>
       <ClickableContainer as="div" dashed={false} width="expanded" onClick={onOpen}>
+        {isEmpty ? (
+          // A new workspace: what to add and why, and Add context (the card opens the workspace to add it).
+          <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: spacing(3), padding: `${spacing(3)}px ${spacing(4)}px ${spacing(4)}px`, textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+              <div style={{ flex: 1 }}><Typography size="base-sm" weight="semibold" color="neutral-darken2">In this workspace</Typography></div>
+              <Icon type={iconType.ChevronRightOutlined} size={16} color="neutral-darken3" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(3) }}>
+              <span style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 8, backgroundColor: colorPalette.blue.lighten5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* The Workspaces empty state's "Your workspace" icon, in the CoPilot blue. */}
+                <span aria-hidden style={{ width: 18, height: 18, backgroundColor: colorPalette.blue.base, WebkitMask: `url(${EMPTY_STATE_ICONS}/your-workspace.svg) center / contain no-repeat`, mask: `url(${EMPTY_STATE_ICONS}/your-workspace.svg) center / contain no-repeat` }} />
+              </span>
+              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+                <Typography size="base" weight="semibold" color="neutral-darken5">Add your context</Typography>
+                <Typography size="base-sm" color="neutral-darken3">For example a profile, documents or guardrails. Your apps use it for answers that fit this workspace.</Typography>
+                <span style={{ marginTop: spacing(2), display: 'inline-flex', alignItems: 'center', gap: spacing(1), fontSize: 14, fontWeight: 600, color: colorPalette.blue.base }}>
+                  <Icon type={iconType.PlusOutlined} size={16} color="blue-base" />Add context
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: spacing(2), padding: `${spacing(3)}px ${spacing(4)}px`, textAlign: 'left' }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: spacing(2) }}>
             <Typography size="base-sm" weight="semibold" color="neutral-darken2">In this workspace</Typography>
@@ -2566,6 +2590,7 @@ function CopilotWorkspaceSummary({ space, docs, extras, onOpen }: { space: Space
           </div>
           <Icon type={iconType.ChevronRightOutlined} size={16} color="neutral-darken3" />
         </div>
+        )}
       </ClickableContainer>
     </div>
   )
