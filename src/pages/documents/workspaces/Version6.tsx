@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import MyDocumentsV1 from '../my-documents/Version1'
 import ConnectionsPage from '../../connections/ConnectionsPage'
@@ -507,7 +507,7 @@ type PendingAttachment = { id: string; name: string; format: FileFormat; status:
   | { kind: 'doc'; doc: MetadataDocument; source: DocSource }
 )
 
-export function MessageComposer({ value, onChange, onSend, placeholder, autoSize, seedAttachments, onSeedAttachmentsConsumed, hideActions, lang = 'en' }: {
+export function MessageComposer({ value, onChange, onSend, placeholder, autoSize, seedAttachments, onSeedAttachmentsConsumed, hideActions, lang = 'en', renderAddDocument }: {
   value: string
   onChange: (value: string) => void
   onSend: (attachments: OutgoingAttachment[]) => void
@@ -520,6 +520,9 @@ export function MessageComposer({ value, onChange, onSend, placeholder, autoSize
   hideActions?: boolean
   // German button labels, for Hackathon Oct '26 Version 5.
   lang?: UiLang
+  // Replaces the Add document button (Workspaces 2.0 Versions 19 and 21: a menu with upload or My Documents);
+  // openFilePicker opens this composer's own file picker.
+  renderAddDocument?: (openFilePicker: () => void) => ReactNode
 }) {
   const de = lang === 'de'
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
@@ -641,7 +644,9 @@ export function MessageComposer({ value, onChange, onSend, placeholder, autoSize
       />
       {!hideActions && (
         <div style={{ position: 'absolute', left: spacing(2), bottom: spacing(2), display: 'flex', gap: spacing(2) }}>
-          <ButtonTertiary leftIcon={iconType.PlusOutlined} onClick={() => fileInputRef.current?.click()}>{de ? 'Dokument hinzufügen' : 'Add document'}</ButtonTertiary>
+          {renderAddDocument
+            ? renderAddDocument(() => fileInputRef.current?.click())
+            : <ButtonTertiary leftIcon={iconType.PlusOutlined} onClick={() => fileInputRef.current?.click()}>{de ? 'Dokument hinzufügen' : 'Add document'}</ButtonTertiary>}
           <Dropdown
             items={PROMPT_TEMPLATES.map((t, i) => ({ key: String(i), label: t, onClick: () => onChange(t) }))}
             trigger={dropdownTriggers.CLICK}

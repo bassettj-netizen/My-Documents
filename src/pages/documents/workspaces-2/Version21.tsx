@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, typ
 import { useLocation, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import ConnectionsPageV10 from './ConnectionsPage'
 import { UploadOrSyncFlow } from './ConnectedAppSync'
+import { DocumentsIcon } from './CoPilotWorkspaceMenu'
 import {
   Avatar,
   ClickableContainer,
@@ -771,7 +772,7 @@ export default function Workspaces2Version21() {
       </Route>
       <Route path="home" element={<HackathonHomePage copilotPath={`${BASE}/copilot`} />} />
       <Route path="copilot" element={<HackathonCoPilotPageV10
-        workspaceMenu={{ workspacesPath: `${BASE}/workspaces` }}
+        workspaceMenu={{ workspacesPath: `${BASE}/workspaces`, myDocuments: library.files.map(doc => ({ doc, source: library.sourceOf(doc._id) })), workspaceDocuments: id => workspace.getSpaceDocs(id).map(doc => ({ doc, source: library.sourceOf(doc._id) })) }}
         extraSessions={prefilledChats}
         savedSessions={copilotSessions}
         onSessionsChange={setCopilotSessions}
@@ -2574,7 +2575,7 @@ function CardSummary({ space, docs, extras, contentOnly = false }: { space: Spac
 
   type Stat = { key: string; icon: ReactNode; count: number; title: string; description: string }
   const content: Stat[] = [
-    { key: 'documents', icon: areaIcon('documents'), count: docs.length, title: pluralise(docs.length, 'document'), description: sources.join(' · ') },
+    { key: 'documents', icon: <DocumentsIcon />, count: docs.length, title: pluralise(docs.length, 'document'), description: sources.join(' · ') },
     { key: 'guardrails', icon: areaIcon('guardrails'), count: extras.guardrails.length, title: pluralise(extras.guardrails.length, 'guardrail'), description: `${activeGuardrails} active` },
   ]
   const apps: Stat[] = [

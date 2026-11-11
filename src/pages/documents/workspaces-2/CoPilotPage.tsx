@@ -28,7 +28,7 @@ import type { WorkspaceReference } from '../hackathon/workspaceModel'
 import { useProcessingUpload } from '../hackathon/uploadToasts'
 import { AnswerBody, SourceChips, SourcesPanel, SourcesPanelSlot, type SourceFilter } from '../hackathon/AnswerSources'
 import { buildSources, placeMarkers, type AnswerSource } from '../hackathon/sourceData'
-import { NewChip, WorkspaceSelector, WorkspacesPromo } from './CoPilotWorkspaceMenu'
+import { AddDocumentMenu, MyDocumentsPicker, NewChip, WorkspaceSelector, WorkspacesPromo, type PickableDocument } from './CoPilotWorkspaceMenu'
 
 /**
  * Hackathon Oct '26 — CoPilot for Version 10 (copied from Version 8, itself copied from Version 6, itself copied from Version 4): the shared CoPilot page with the Workspace dropdown
@@ -443,8 +443,9 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
   workspaces: WorkspaceReference[]
   // Workspaces 2.0 Versions 19 and 21: CoPilot without HR or Tax, the workspace selector (a clickable container with a
   // DS Dropdown) and, under the question box, the workspaces promotion (FigJam CoPilot frames, 150:191).
-  // workspacesPath is where Manage workspaces goes.
-  workspaceMenu?: { workspacesPath: string }
+  // workspacesPath is where Manage workspaces goes; myDocuments are what Add document's Choose from My Documents lists.
+  // workspaceDocuments(id): a workspace's documents, which Add document lists in place of My Documents there.
+  workspaceMenu?: { workspacesPath: string; myDocuments: PickableDocument[]; workspaceDocuments: (workspaceId: string) => PickableDocument[] }
   // Replaces the In this workspace card with the version's own summary (Workspaces 2.0 Version 19).
   // activeChatId: the open chat in that workspace, if any — so the workspace can lead back to it.
   renderSummary?: (workspace: WorkspaceReference, activeChatId: string | null) => ReactNode
@@ -484,6 +485,21 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
   const [createOpen, setCreateOpen] = useState(false)
   const [showPromo, setShowPromo] = useState(!promoDismissed)
   const generic = !!workspaceMenu
+  // Add document → Choose from My Documents (Versions 19 and 21).
+  const [myDocsOpen, setMyDocsOpen] = useState(false)
+  // The workspace the question goes to: the open chat's, or the current one on the welcome screen.
+  const pickerWorkspace = () => activeSession ? activeSession.workspace ?? null : attached
+  // What Choose from offers: that workspace's documents, or My Documents.
+  const pickerDocuments = () => { const ws = pickerWorkspace(); return !workspaceMenu ? [] : ws ? workspaceMenu.workspaceDocuments(ws.id) : workspaceMenu.myDocuments }
+  const addDocument = (placement: string) => workspaceMenu ? (openFilePicker: () => void) => (
+    <AddDocumentMenu
+      placement={placement}
+      onUpload={openFilePicker}
+      onChooseFromMyDocuments={() => setMyDocsOpen(true)}
+      workspaceName={pickerWorkspace()?.name}
+      documentCount={pickerDocuments().length}
+    />
+  ) : undefined
   const [search, setSearch] = useState('')
   const [question, setQuestion] = useState('')
   // initialQuestion starts a new chat; openChatId (from a workspace's Haufe knowledge) opens an existing one.
@@ -754,6 +770,9 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                   onChange={setQuestion}
                   onSend={handleFollowUp}
                   placeholder="Ask a follow-up question, or type @ to target a workspace"
+                  renderAddDocument={addDocument(dropdownPlacement.TOP_LEFT)}
+                  seedAttachments={attachDocs}
+                  onSeedAttachmentsConsumed={() => setAttachDocs(NO_ATTACHMENTS)}
                   workspaces={workspaces}
                   // The chat moves to the picked workspace, and the panel follows it there.
                   onPick={ws => { setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, workspace: ws } : s)); setWorkspaceId(ws.id); onChatStarted(ws.id, { id: activeSession.id, title: activeSession.title }) }}
@@ -792,6 +811,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                   onChange={setQuestion}
                   onSend={handleWelcomeSend}
                   placeholder={attached ? `Ask about ${attached.name}` : 'Ask a question, or type @ to target a workspace'}
+                  renderAddDocument={addDocument(dropdownPlacement.BOTTOM_LEFT)}
                   workspaces={workspaces}
                   onPick={ws => setWorkspaceId(ws.id)}
                   seedAttachments={attachDocs}
@@ -831,6 +851,16 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
         />
         </SourcesPanelSlot>
       ) : attached && (renderSummary ? renderSummary(attached, activeSession?.workspace?.id === attached.id ? activeSession.id : null) : <WorkspaceSummary workspace={attached} />)}
+
+      {workspaceMenu && (
+        <MyDocumentsPicker
+          open={myDocsOpen}
+          documents={pickerDocuments()}
+          workspaceName={pickerWorkspace()?.name}
+          onClose={() => setMyDocsOpen(false)}
+          onAttach={docs => setAttachDocs(docs)}
+        />
+      )}
 
       {/* Same dialog as on the Workspaces page; the new workspace becomes the current one. */}
       <SpaceFormModal

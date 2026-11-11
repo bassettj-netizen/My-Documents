@@ -572,7 +572,8 @@ function AppShell() {
   // Versions 19 and 21: CoPilot without Tax or HR in its name (Version 20 keeps Version 12's label).
   const productTopItemsV19 = [
     hackathonBase === WORKSPACES_2_V20_BASE ? productTopItemsV12[0] : { ...(productTopItemsV12[0] as object), label: 'CoPilot' },
-    ...productTopItemsV12.slice(1, 4),
+    // Versions 19 and 21 drop HR Dokumente and Haufe Zeugnis Manager from the menu; Version 20 keeps them.
+    ...productTopItemsV12.slice(1, hackathonBase === WORKSPACES_2_V20_BASE ? 4 : 2),
     { key: 'content', label: 'Knowledge Hub', icon: <Icon type={iconType.FolderOutlined} />, children: [
       { key: 'documents', label: 'My Documents', icon: <FileGlyph />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
       // Versions 19 and 21: a "New" chip after Workspaces, as on CoPilot's workspace selector.
