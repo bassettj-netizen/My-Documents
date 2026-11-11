@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import {
   ButtonGhost,
-  ButtonSecondary,
+  ButtonPrimary,
   buttonSizes,
   buttonShapes,
   Chip,
@@ -177,7 +177,7 @@ function Operator({ children }: { children: ReactNode }) {
 
 /**
  * Under CoPilot's question box: what a workspace adds, in the Workspaces empty state's words and look, kept quiet so
- * the question box stays the focus — a light panel, one line of heading with a secondary Create workspace, and the
+ * the question box stays the focus — a light panel, one line of heading with a primary Create workspace, and the
  * equation as three compact steps. Can be dismissed.
  */
 export function WorkspacesPromo({ onCreate, onDismiss }: { onCreate: () => void; onDismiss: () => void }) {
@@ -188,7 +188,7 @@ export function WorkspacesPromo({ onCreate, onDismiss }: { onCreate: () => void;
         <span style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: '20px', fontWeight: 600, color: colorPalette.neutral.darken5 }}>
           Workspaces: answers that <span style={{ color: colorPalette.blue.base }}>fit the case</span>
         </span>
-        <ButtonSecondary size={buttonSizes.SMALL} leftIcon={iconType.PlusOutlined} onClick={onCreate}>Create workspace</ButtonSecondary>
+        <ButtonPrimary size={buttonSizes.SMALL} leftIcon={iconType.PlusOutlined} onClick={onCreate}>Create workspace</ButtonPrimary>
         <ButtonGhost size={buttonSizes.SMALL} shape={buttonShapes.SQUARE} leftIcon={iconType.CrossOutlined} onClick={onDismiss} ariaLabel="Dismiss" />
       </div>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: spacing(2) }}>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NewChip } from './pages/documents/workspaces-2/CoPilotWorkspaceMenu'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
   Avatar,
@@ -574,7 +575,10 @@ function AppShell() {
     ...productTopItemsV12.slice(1, 4),
     { key: 'content', label: 'Knowledge Hub', icon: <Icon type={iconType.FolderOutlined} />, children: [
       { key: 'documents', label: 'My Documents', icon: <FileGlyph />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
-      { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} /> },
+      // Versions 19 and 21: a "New" chip after Workspaces, as on CoPilot's workspace selector.
+      { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} />, ...(hackathonBase === WORKSPACES_2_V20_BASE ? {} : {
+        label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{workspacesItem.label}<NewChip /></span>,
+      }) },
       { ...connectorsItem, icon: <ConnectorOutlinedGlyph /> },
     ] },
   ] as unknown as SidebarItem[]
