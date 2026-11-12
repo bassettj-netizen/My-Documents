@@ -44,7 +44,6 @@ import {
   SearchBar,
   searchbarWidth,
   Table,
-  Tabs,
   TextArea,
   Tooltip,
   tooltipPlacements,
@@ -84,10 +83,7 @@ import HackathonCoPilotPageV10, { type ChatSession as CoPilotChat } from './CoPi
 import HackathonHomePage from '../hackathon/HomePage'
 import { useProcessingUpload } from '../hackathon/uploadToasts'
 import PersonalOfficePage from '../hackathon/PersonalOfficePage'
-import HrDokumentePage from './HrDokumentePage'
-import ZeugnisManagerPage from './ZeugnisManagerPage'
 import WorkspacesList from './WorkspacesList'
-import { AppGlyph, HR_DOKUMENTE_GLYPH, ZEUGNIS_MANAGER_GLYPH } from './appGlyphs'
 import { GuardrailsTab, TabEmptyState, TemplatesTab, type GuardrailExample } from '../hackathon/WorkspaceTabs'
 
 // The Guardrails page's description, without naming CoPilot: workspaces give context to other Haufe apps too.
@@ -101,7 +97,7 @@ const GUARDRAIL_EXAMPLES: GuardrailExample[] = [
   { category: 'Tone', icon: iconType.CommentOutlined, text: 'Use a formal tone (Sie)', why: 'Keeps every draft in your firm’s voice.' },
 ]
 const V21_GUARDRAILS_INTRO = 'Rules your apps follow whenever they use this workspace. Switch one off to pause it without deleting it.'
-import { EMPTY_EXTRAS, type HaufeDocument, type WorkspaceChat, type WorkspaceDetail, type WorkspaceExtras, type WorkspaceReference } from '../hackathon/workspaceModel'
+import { EMPTY_EXTRAS, type WorkspaceChat, type WorkspaceDetail, type WorkspaceExtras, type WorkspaceReference } from '../hackathon/workspaceModel'
 import { seedBackground } from '../hackathon/seedWorkspaceContent'
 import { agedChats, agedDocs, agedExtras } from './seedAges'
 import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
@@ -148,9 +144,8 @@ import { seedShortSummary, seedSummaryDetail } from '../metadata/summaries'
  * - My knowledge: what you bring — a line on what can be connected, an "Add my content" menu (upload
  *   a document, add a connector via the Connectors page, add instructions via Guardrails), and the
  *   areas as plain rows that open each one — only once something's been added to them.
- * - Haufe knowledge: what's been made with Haufe for this workspace, as a CoPilot container (chats) and
- *   an HR Dokumente container (warning letters, job references, contracts…), each with a count, the
- *   latest few, and a jump into the application. Sample entries for now.
+ * - Haufe knowledge: what's been made with Haufe for this workspace, as a CoPilot container (chats) with a
+ *   count, the latest few, and a jump into CoPilot.
  *
  * Hackathon Oct '26 — Version 3: each workspace opens on a summary page — five tiles for Documents,
  * Context, Guardrails, Bookmarks and Templates — and each tile opens that area on a page of its own,
@@ -717,7 +712,7 @@ export default function Workspaces2Version19() {
   const dayLabel = (days: number) => days === 0 ? 'Today' : days === 1 ? 'Yesterday' : 'Earlier'
   // Context details, guardrails, bookmarks and templates per workspace — kept here so they survive leaving the page.
   // Prefilled My knowledge and Haufe knowledge for Metadata Table's workspaces (seedWorkspaceContent.ts).
-  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => withLongAcmeChat(withMoreActivity(seedProfileDetails(renameAlpha(agedExtras())))))
+  const [extrasBySpace, setExtrasBySpace] = useState<Record<string, WorkspaceExtras>>(() => withLongAcmeChat(withoutOtherApps(seedProfileDetails(renameAlpha(agedExtras())))))
   // CoPilot's chats live here, so leaving CoPilot doesn't lose them and a chat can be reopened from a workspace.
   const [copilotSessions, setCopilotSessions] = useState<CoPilotChat[] | null>(null)
   // Each workspace's document history (History Version 6's log), seeded the first time it's written to.
@@ -811,8 +806,6 @@ export default function Workspaces2Version19() {
         onSaveDocuments={(id, files) => workspace.addDocsToSpace(id, files.map(localFileToDoc))}
       />} />
       <Route path="personal-office" element={<PersonalOfficePage copilotPath={`${BASE}/copilot`} background={CONTENT_BG} />} />
-      <Route path="hr-dokumente" element={<HrDokumentePage background={CONTENT_BG} />} />
-      <Route path="zeugnis-manager" element={<ZeugnisManagerPage background={CONTENT_BG} />} />
       <Route path="connectors" element={<ConnectionsPageV10 background={CONTENT_BG} plain showCount compactMenu sharedAccounts accountName={toProjectA} />} />
       <Route path="*" element={<Navigate to="my-documents" replace />} />
     </Routes>
@@ -828,7 +821,7 @@ function SpacesListRoute({ workspace, extras, library, spaceChanges }: { workspa
       spaces={workspace.spaces}
       getSpaceDocs={workspace.getSpaceDocs}
       // The newest chat or Haufe document made in the workspace.
-      getLastUsed={id => { const e = extras.get(id); return Math.max(0, ...e.chats.map(c => c.createdAt), ...e.haufeDocuments.map(d => d.createdAt)) }}
+      getLastUsed={id => { const e = extras.get(id); return Math.max(0, ...e.chats.map(c => c.createdAt)) }}
       renderUsedIn={() => null}
       renderFooter={(space, docs) => <CardSummary space={space} docs={docs} extras={extras.get(space.id)} />}
       renderMeta={(space, docs) => <LastUpdated docs={docs} extras={extras.get(space.id)} change={spaceChanges[space.id]} />}
@@ -1050,8 +1043,6 @@ function SpaceDetailRoute({ workspace, library, store, extras, history, area, re
       area={area}
       onOpenArea={a => navigate(`${summaryPath}/${a}`, keepFrom)}
       onOpenConnectors={() => navigate(`${BASE}/connectors`)}
-      onOpenHrDocuments={() => navigate(`${BASE}/hr-dokumente`)}
-      onOpenZeugnisManager={() => navigate(`${BASE}/zeugnis-manager`)}
       space={space}
       spaces={workspace.spaces}
       docs={spaceDocs}
@@ -1414,17 +1405,13 @@ const TABLE_CSS = `
  * A workspace page: the summary (full header and one tile per area), or one area on its own
  * with a back button to the summary.
  */
-function SpaceDocumentsTable({ backLabel, readySeen, onReadySeen, area, onOpenArea, onOpenHrDocuments, onOpenZeugnisManager, space, spaces, docs, library, store, history, onDocsChange, onAddDocs, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot, onOpenChat, onAskAboutDoc }: {
+function SpaceDocumentsTable({ backLabel, readySeen, onReadySeen, area, onOpenArea, space, spaces, docs, library, store, history, onDocsChange, onAddDocs, onBack, onOpenDoc, onUpdateSpace, onDeleteSpace, extras, onExtrasChange, onSaveBackground, onAskCopilot, onOpenChat, onAskAboutDoc }: {
   // Whether this workspace's ready view has played before.
   readySeen: boolean
   onReadySeen: () => void
   area: WorkspacePageArea
   onOpenArea: (area: WorkspaceArea | 'activity') => void
   onOpenConnectors: () => void
-  // HR Dokumente has no page of its own here, so this opens Personal Office, where documents are generated.
-  onOpenHrDocuments: () => void
-  // Haufe Zeugnis Manager, where the workspace's job references open.
-  onOpenZeugnisManager: () => void
   space: Space
   // Every workspace — for the documents' workspace chips, "Also in" filters and the "+" dialog.
   spaces: Space[]
@@ -1463,10 +1450,10 @@ function SpaceDocumentsTable({ backLabel, readySeen, onReadySeen, area, onOpenAr
   )
   // Whether the Profile and Used in cards have anything to show (their empty states otherwise) — as ProfileBody and HaufeContent decide.
   const hasProfile = !!space.context?.trim() || extras.details.some(d => d.label.trim() && d.value.trim())
-  const hasActivity = extras.chats.length > 0 || extras.haufeDocuments.length > 0
+  const hasActivity = extras.chats.length > 0
   // A workspace with nothing in it yet opens on the animated "ready" view instead of the two cards.
   const isEmptyWorkspace = docs.length === 0 && !space.context?.trim() && extras.details.length === 0 && extras.guardrails.length === 0
-    && extras.templates.length === 0 && extras.chats.length === 0 && extras.haufeDocuments.length === 0
+    && extras.templates.length === 0 && extras.chats.length === 0
   useEffect(() => {
     if (area === 'summary' && isEmptyWorkspace && !readySeen) onReadySeen()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1600,7 +1587,7 @@ function SpaceDocumentsTable({ backLabel, readySeen, onReadySeen, area, onOpenAr
               </DossierCard>
               {/* A preview — up to three items per app; View all lists everything, across apps. */}
               <DossierCard secondary title="Used in" action={hasActivity && <ButtonGhost size={buttonSizes.SMALL} onClick={() => onOpenArea('activity')}>View all</ButtonGhost>}>
-                <HaufeContent spaceName={space.name} onAskCopilotEmpty={() => onAskCopilot()} chats={extras.chats} documents={extras.haufeDocuments} onAskCopilot={onAskCopilot} onOpenChat={onOpenChat} onOpenHrDocuments={onOpenHrDocuments} onOpenZeugnisManager={onOpenZeugnisManager} />
+                <HaufeContent spaceName={space.name} onAskCopilotEmpty={() => onAskCopilot()} chats={extras.chats} onAskCopilot={onAskCopilot} onOpenChat={onOpenChat} />
               </DossierCard>
             </div>
           </div>
@@ -1609,7 +1596,7 @@ function SpaceDocumentsTable({ backLabel, readySeen, onReadySeen, area, onOpenAr
       ) : area === 'activity' ? (
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div style={ACTIVITY_COLUMN}>
-            <AllActivity search={activitySearch} chats={extras.chats} documents={extras.haufeDocuments} onOpenChat={onOpenChat} onOpenHrDocuments={onOpenHrDocuments} onOpenZeugnisManager={onOpenZeugnisManager} />
+            <AllActivity search={activitySearch} chats={extras.chats} onOpenChat={onOpenChat} />
           </div>
         </div>
       ) : area === 'guardrails' ? (
@@ -2321,20 +2308,6 @@ const PROFILE_FACTS: Record<string, ProfileFact[]> = {
   ],
 }
 
-// More made-up Haufe documents for Acme, so its Used in card has more than three per app to preview
-// and the Used in page has a longer history to show.
-const MORE_ACTIVITY: Record<string, HaufeDocument[]> = {
-  'space-acme': [
-    { id: 'acme-h3', app: 'hr-dokumente', kind: 'letter', title: 'Confirmation of employment — M. Becker (Acme payroll)', createdAt: Date.now() - 1 * DAY_MS },
-    { id: 'acme-h4', app: 'hr-dokumente', kind: 'contract', title: 'Amendment to working hours — part-time bookkeeper', createdAt: Date.now() - 5 * DAY_MS },
-    { id: 'acme-h5', app: 'hr-dokumente', kind: 'warning', title: 'Warning letter — missed payroll deadline', createdAt: Date.now() - 12 * DAY_MS },
-    { id: 'acme-h6', app: 'hr-dokumente', kind: 'letter', title: 'Information letter — new travel expense policy', createdAt: Date.now() - 34 * DAY_MS },
-    { id: 'acme-h7', app: 'zeugnismanager', kind: 'reference', title: 'Final reference — T. Krüger (tax assistant)', createdAt: Date.now() - 6 * DAY_MS },
-    { id: 'acme-h8', app: 'zeugnismanager', kind: 'reference', title: 'Interim reference — L. Fischer (audit senior)', createdAt: Date.now() - 21 * DAY_MS },
-    { id: 'acme-h9', app: 'zeugnismanager', kind: 'reference', title: 'Final reference — J. Braun (working student)', createdAt: Date.now() - 48 * DAY_MS },
-  ],
-}
-
 /**
  * A long CoPilot chat in Acme Corp (Version 19): a back-and-forth about the Vienna branch, so an open chat can be
  * seen with a thread that scrolls. Listed first under Today in CoPilot and in the workspace's chats.
@@ -2366,9 +2339,9 @@ function withLongAcmeChat(extrasBySpace: Record<string, WorkspaceExtras>): Recor
   return { ...extrasBySpace, [LONG_ACME_CHAT.spaceId]: { ...acme, chats: [{ id: LONG_ACME_CHAT.id, title: LONG_ACME_CHAT.title, createdAt: Date.now() }, ...acme.chats] } }
 }
 
-function withMoreActivity(extrasBySpace: Record<string, WorkspaceExtras>): Record<string, WorkspaceExtras> {
-  return Object.fromEntries(Object.entries(extrasBySpace).map(([spaceId, extras]) =>
-    [spaceId, { ...extras, haufeDocuments: [...extras.haufeDocuments, ...(MORE_ACTIVITY[spaceId] ?? [])] }]))
+// Only CoPilot is in this version's menu, so seeded documents and templates from other Haufe apps are left out.
+function withoutOtherApps(extrasBySpace: Record<string, WorkspaceExtras>): Record<string, WorkspaceExtras> {
+  return Object.fromEntries(Object.entries(extrasBySpace).map(([spaceId, extras]) => [spaceId, { ...extras, haufeDocuments: [], templates: extras.templates.filter(t => !/zeugnis/i.test(t.description)) }]))
 }
 
 /** The seeded extras, with each workspace's profile facts (where it has some) as its details. */
@@ -2609,8 +2582,6 @@ function CardSummary({ space, docs, extras, contentOnly = false }: { space: Spac
     .filter(source => bySource.has(source))
     .map(source => `${bySource.get(source)} ${source === 'local' ? 'uploaded' : `from ${connectorLabel(source)}`}`)
   const activeGuardrails = extras.guardrails.filter(g => g.enabled).length
-  const references = extras.haufeDocuments.filter(doc => doc.app === 'zeugnismanager').length
-  const hrDocuments = extras.haufeDocuments.filter(doc => doc.app === 'hr-dokumente').length
   const areaIcon = (area: WorkspaceArea) => <Icon type={AREA_ICONS[area] as never} size={16} color="neutral-darken3" />
 
   type Stat = { key: string; icon: ReactNode; count: number; title: string; description: string }
@@ -2620,8 +2591,6 @@ function CardSummary({ space, docs, extras, contentOnly = false }: { space: Spac
   ]
   const apps: Stat[] = [
     { key: 'copilot', icon: <CopilotIcon />, count: extras.chats.length, title: 'CoPilot', description: `${pluralise(extras.chats.length, 'chat')} in this workspace` },
-    { key: 'zeugnis', icon: <AppGlyph d={ZEUGNIS_MANAGER_GLYPH} />, count: references, title: 'Haufe Zeugnis Manager', description: `${pluralise(references, 'reference')} in this workspace` },
-    { key: 'hr', icon: <AppGlyph d={HR_DOKUMENTE_GLYPH} />, count: hrDocuments, title: 'HR Dokumente', description: `${pluralise(hrDocuments, 'document')} in this workspace` },
   ]
   // contentOnly (beside CoPilot): just documents and guardrails, without the apps it's been used in.
   const groups = (contentOnly ? [content] : [content, apps]).map(group => group.filter(stat => stat.count > 0)).filter(group => group.length > 0)
@@ -2649,7 +2618,7 @@ function CardSummary({ space, docs, extras, contentOnly = false }: { space: Spac
 
 /**
  * When the workspace last changed, beside the type chip on its card: "Updated 2 days ago". It's the
- * newest of its documents, CoPilot chats and Haufe documents; the tooltip gives the date and what it was.
+ * newest of its documents and CoPilot chats; the tooltip gives the date and what it was.
  */
 function LastUpdated({ docs, extras, change }: { docs: MetadataDocument[]; extras: WorkspaceExtras; change?: SpaceChange }) {
   const changes = [
@@ -2657,7 +2626,6 @@ function LastUpdated({ docs, extras, change }: { docs: MetadataDocument[]; extra
     ...(change ? [change] : []),
     ...docs.map(doc => ({ at: new Date(doc.uploadedDate).getTime(), what: `Document added: ${doc.name}` })),
     ...extras.chats.map(chat => ({ at: chat.createdAt, what: `CoPilot chat: ${chat.title}` })),
-    ...extras.haufeDocuments.map(doc => ({ at: doc.createdAt, what: `${doc.app === 'zeugnismanager' ? 'Zeugnis Manager' : 'HR Dokumente'}: ${doc.title}` })),
   ]
   if (changes.length === 0) return null
   const latest = changes.reduce((a, b) => (b.at > a.at ? b : a))
@@ -2684,41 +2652,29 @@ function updatedAgo(ts: number) {
 
 // ─── Haufe content ────────────────────────────────────────────────────────────
 
-type HaufeKind = 'chat' | 'warning' | 'reference' | 'contract' | 'letter'
+type HaufeKind = 'chat'
 
 const HAUFE_KINDS: Record<HaufeKind, { label: string; icon: string }> = {
   chat: { label: 'CoPilot chat', icon: iconType.CommentOutlined },
-  warning: { label: 'Warning letter', icon: iconType.AlertOutlined },
-  reference: { label: 'Job reference letter', icon: iconType.ArticleOutlined },
-  contract: { label: 'Contract', icon: iconType.SignatureOutlined },
-  letter: { label: 'Letter', icon: iconType.EmailOutlined },
 }
 
 type HaufeItem = { id: string; kind: HaufeKind; title: string; source: string; date: string }
 
 
 /**
- * What's been made with Haufe for this workspace, by application: CoPilot (chats), Haufe Zeugnis Manager
- * (job references) and HR Dokumente (letters, contracts…). Each app only shows once it has something;
- * with nothing at all the card shows the empty state.
+ * What's been made with Haufe for this workspace: its CoPilot chats. With none yet the card shows the empty state.
  */
-function HaufeContent({ chats, documents, onAskCopilot, onOpenChat, onOpenHrDocuments, onOpenZeugnisManager, onAskCopilotEmpty, spaceName }: {
+function HaufeContent({ chats, onAskCopilot, onOpenChat, onAskCopilotEmpty, spaceName }: {
   onAskCopilotEmpty: () => void
   // For the empty state's example question.
   spaceName: string
   chats: WorkspaceChat[]
-  documents: HaufeDocument[]
   onAskCopilot: (initialQuestion?: string) => void
   onOpenChat: (chatId: string) => void
-  onOpenHrDocuments: () => void
-  onOpenZeugnisManager: () => void
 }) {
   const newestFirst = <T extends { createdAt: number }>(items: T[]) => [...items].sort((a, b) => b.createdAt - a.createdAt)
   const chatItems: HaufeItem[] = newestFirst(chats).map(c => ({ id: c.id, kind: 'chat', title: c.title, source: 'CoPilot', date: formatCreated(c.createdAt) }))
-  const toItem = (doc: HaufeDocument, source: string): HaufeItem => ({ id: doc.id, kind: doc.kind, title: doc.title, source, date: formatCreated(doc.createdAt) })
-  const references = newestFirst(documents.filter(doc => doc.app === 'zeugnismanager')).map(doc => toItem(doc, 'Haufe Zeugnis Manager'))
-  const hrDocuments = newestFirst(documents.filter(doc => doc.app === 'hr-dokumente')).map(doc => toItem(doc, 'HR Dokumente'))
-  if (chatItems.length === 0 && references.length === 0 && hrDocuments.length === 0) {
+  if (chatItems.length === 0) {
     return (
       <PreviewEmptyState
         preview={<UsedInPreview />}
@@ -2742,28 +2698,6 @@ function HaufeContent({ chats, documents, onAskCopilot, onOpenChat, onOpenHrDocu
         onOpen={() => onAskCopilot()}
         onOpenItem={item => onOpenChat(item.id)}
       />}
-      {references.length > 0 && <AppContainer
-        icon={<AppTile app="zeugnismanager" />}
-        divided={chatItems.length > 0}
-        name="Haufe Zeugnis Manager"
-        count={references.length}
-        noun="reference"
-        items={references}
-        openLabel="Open Zeugnis Manager"
-        onOpen={onOpenZeugnisManager}
-        onOpenItem={onOpenZeugnisManager}
-      />}
-      {hrDocuments.length > 0 && <AppContainer
-        icon={<AppTile app="hr-dokumente" />}
-        divided={chatItems.length > 0 || references.length > 0}
-        name="HR Dokumente"
-        count={hrDocuments.length}
-        noun="document"
-        items={hrDocuments}
-        openLabel="Open HR Dokumente"
-        onOpen={onOpenHrDocuments}
-        onOpenItem={onOpenHrDocuments}
-      />}
     </div>
   )
 }
@@ -2773,15 +2707,13 @@ const daysSince = (ts: number) => {
   return Math.round((startOfDay(Date.now()) - startOfDay(ts)) / 86400000)
 }
 
-type ActivityApp = 'copilot' | 'zeugnismanager' | 'hr-dokumente'
+type ActivityApp = 'copilot'
 
 // The Used in page's column: centred, straight on the page.
 const ACTIVITY_COLUMN: CSSProperties = { width: '100%', maxWidth: 760, margin: '0 auto' }
 
 const ACTIVITY_APPS: Record<ActivityApp, { name: string; icon: ReactNode }> = {
   copilot: { name: 'CoPilot', icon: <CopilotIcon /> },
-  zeugnismanager: { name: 'Haufe Zeugnis Manager', icon: <AppGlyph d={ZEUGNIS_MANAGER_GLYPH} /> },
-  'hr-dokumente': { name: 'HR Dokumente', icon: <AppGlyph d={HR_DOKUMENTE_GLYPH} /> },
 }
 
 /** When an item happened, as the heading of its group. */
@@ -2800,25 +2732,18 @@ function activityPeriod(ts: number) {
  * page title) to items whose title, app or type matches (the tab counts follow the search); items are grouped by when they
  * happened, and open in their app as on the card.
  */
-function AllActivity({ search, chats, documents, onOpenChat, onOpenHrDocuments, onOpenZeugnisManager }: {
+function AllActivity({ search, chats, onOpenChat }: {
   // From the search box beside the page title.
   search: string
   chats: WorkspaceChat[]
-  documents: HaufeDocument[]
   onOpenChat: (chatId: string) => void
-  onOpenHrDocuments: () => void
-  onOpenZeugnisManager: () => void
 }) {
-  const [filter, setFilter] = useState<'all' | ActivityApp>('all')
-  const kindLabel = (kind: HaufeKind) => kind === 'chat' ? 'Chat' : HAUFE_KINDS[kind].label
   const allItems = [
     ...chats.map(c => ({ app: 'copilot' as const, at: c.createdAt, item: { id: c.id, kind: 'chat' as const, title: c.title, source: 'CoPilot', date: formatCreated(c.createdAt) } })),
-    ...documents.map(d => ({ app: d.app, at: d.createdAt, item: { id: d.id, kind: d.kind, title: d.title, source: ACTIVITY_APPS[d.app].name, date: formatCreated(d.createdAt) } })),
   ].sort((a, b) => b.at - a.at)
   const query = search.trim().toLowerCase()
-  const items = allItems.filter(i => !query || [i.item.title, ACTIVITY_APPS[i.app].name, kindLabel(i.item.kind)].some(t => t.toLowerCase().includes(query)))
-  const count = (app: ActivityApp) => items.filter(i => i.app === app).length
-  const shown = filter === 'all' ? items : items.filter(i => i.app === filter)
+  const items = allItems.filter(i => !query || [i.item.title, ACTIVITY_APPS[i.app].name, 'Chat'].some(t => t.toLowerCase().includes(query)))
+  const shown = items
   const groups: { period: string; entries: typeof shown }[] = []
   shown.forEach(entry => {
     const period = activityPeriod(entry.at)
@@ -2826,19 +2751,10 @@ function AllActivity({ search, chats, documents, onOpenChat, onOpenHrDocuments, 
     if (last?.period === period) last.entries.push(entry)
     else groups.push({ period, entries: [entry] })
   })
-  const open = (entry: (typeof allItems)[number]) =>
-    entry.app === 'copilot' ? onOpenChat(entry.item.id) : entry.app === 'zeugnismanager' ? onOpenZeugnisManager() : onOpenHrDocuments()
+  const open = (entry: (typeof allItems)[number]) => onOpenChat(entry.item.id)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(5) }}>
-      <Tabs
-        options={[
-          { key: 'all', label: `All (${items.length})`, content: null },
-          ...(Object.keys(ACTIVITY_APPS) as ActivityApp[]).map(app => ({ key: app, label: `${ACTIVITY_APPS[app].name} (${count(app)})`, content: null })),
-        ]}
-        activeKey={filter}
-        onChange={key => setFilter(key as 'all' | ActivityApp)}
-      />
       {shown.length === 0 ? (
         query
           ? <NoResults title="No matching activity" text={`Nothing here matches “${search.trim()}”. Try another word, or clear the search.`} />
@@ -2856,7 +2772,7 @@ function AllActivity({ search, chats, documents, onOpenChat, onOpenHrDocuments, 
                   first={i === 0}
                   closed={i === group.entries.length - 1}
                   icon={<span style={{ display: 'inline-flex', width: 20, justifyContent: 'center', color: colorPalette.neutral.darken3 }}>{ACTIVITY_APPS[entry.app].icon}</span>}
-                  meta={`${ACTIVITY_APPS[entry.app].name} · ${kindLabel(entry.item.kind)} · ${entry.item.date}`}
+                  meta={`${ACTIVITY_APPS[entry.app].name} · Chat · ${entry.item.date}`}
                   onOpen={() => open(entry)}
                 />
               ))}
@@ -2882,7 +2798,7 @@ function AppTile({ app }: { app: ActivityApp }) {
       width: 24, height: 24, flexShrink: 0, borderRadius: 4, backgroundColor: colorPalette.neutral.lighten3, color: colorPalette.neutral.darken3,
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {app === 'copilot' ? <CopilotIcon /> : <AppGlyph d={app === 'zeugnismanager' ? ZEUGNIS_MANAGER_GLYPH : HR_DOKUMENTE_GLYPH} />}
+      {ACTIVITY_APPS[app].icon}
     </span>
   )
 }
