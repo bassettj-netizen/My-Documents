@@ -60,13 +60,15 @@ import { KnowledgePage, KnowledgePageHeader, KnowledgeToolbar } from './knowledg
 // `tint` is optional: Version 4 colours only the type chip, Version 6 also tints the card.
 export type CardTone = { chipStyle: (typeof chipStyles)[keyof typeof chipStyles]; tint?: string }
 
-type Filter = 'all' | 'Client' | 'Project' | 'Internal' | 'private'
+type Filter = 'all' | 'Client' | 'Project' | 'Internal' | 'private' | 'organisation'
 type Sort = 'recent' | 'name' | 'documents'
 
 const SORT_LABELS: Record<Sort, string> = { recent: 'Recently used', name: 'Name', documents: 'Most documents' }
 
-function WorkspaceCard({ space, docs, usedIn, footer, meta, tone, onOpen, onEdit, onDelete, onAskCopilot }: {
+function WorkspaceCard({ space, docs, usedIn, footer, meta, tone, onOpen, onEdit, onDelete, onAskCopilot, showTypeChip = true }: {
   space: Space
+  // Versions 19 and 21 have no workspace types, so no type chip.
+  showTypeChip?: boolean
   docs: MetadataDocument[]
   usedIn?: ReactNode
   // Replaces the whole footer (used in, document count and sources).
@@ -107,9 +109,9 @@ function WorkspaceCard({ space, docs, usedIn, footer, meta, tone, onOpen, onEdit
             <Typography size="heading-sm" weight={fontWeight.SEMIBOLD} color="neutral-darken5" maxLines={1}>{space.name}</Typography>
             <VisibilityIcon space={space} organisationAccess />
           </div>
-          {(space.type || meta) && (
+          {((showTypeChip && space.type) || meta) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2), minWidth: 0 }}>
-              {space.type && <Chip label={space.type} size={chipSizes.SMALL} chipStyle={tone?.chipStyle ?? chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} uppercase={false} />}
+              {showTypeChip && space.type && <Chip label={space.type} size={chipSizes.SMALL} chipStyle={tone?.chipStyle ?? chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} uppercase={false} />}
               {meta}
             </div>
           )}
@@ -172,7 +174,7 @@ function AskCopilotIconButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, renderUsedIn, renderFooter, renderMeta, getCardTone, renderCard, renderList, showSort = true, onAskCopilot, minCardWidth = 320, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, description, renderEmptyState, createInToolbar = false, aligned = false, createIntro, showType = false, showCount = false, myDocumentsToolbar = false, hideHeaderWhenEmpty = false }: {
+export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, renderUsedIn, renderFooter, renderMeta, getCardTone, renderCard, renderList, showSort = true, onAskCopilot, minCardWidth = 320, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, description, renderEmptyState, createInToolbar = false, aligned = false, createIntro, showType = false, accessFilters = false, showCount = false, myDocumentsToolbar = false, hideHeaderWhenEmpty = false }: {
   // With no workspaces, leave out the page heading — the empty state has its own (Version 21).
   hideHeaderWhenEmpty?: boolean
   // Version 21: the toolbar laid out like My Documents' — search and Sort (tertiary, sort icon) on the left,
@@ -182,6 +184,8 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
   showCount?: boolean
   // The workspace type in the create and edit dialogs, as radio buttons (Version 21).
   showType?: boolean
+  // Filter by access only — All, Private, Organisation — with no workspace types (Versions 19 and 21).
+  accessFilters?: boolean
   // Shown at the top of the Create workspace dialog.
   createIntro?: ReactNode
   spaces: Space[]
@@ -229,15 +233,20 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
   const editTarget = spaces.find(s => s.id === editId) ?? null
   const deleteTarget = spaces.find(s => s.id === deleteId) ?? null
 
-  const matches = (space: Space, f: Filter) => f === 'all' || (f === 'private' ? space.visibility === 'private' : space.type === f)
+  const matches = (space: Space, f: Filter) => f === 'all'
+    || (f === 'private' ? space.visibility === 'private' : f === 'organisation' ? space.visibility !== 'private' : space.type === f)
   const count = (f: Filter) => spaces.filter(s => matches(s, f)).length
-  const tabs = ([
+  const tabs = ((accessFilters ? [
+    { key: 'all', label: 'All' },
+    { key: 'private', label: 'Private' },
+    { key: 'organisation', label: 'Organisation' },
+  ] : [
     { key: 'all', label: 'All' },
     { key: 'Client', label: 'Clients' },
     { key: 'Project', label: 'Projects' },
     { key: 'Internal', label: 'Internal' },
     { key: 'private', label: 'Private' },
-  ] as { key: Filter; label: string }[]).map(t => ({ ...t, count: count(t.key) }))
+  ]) as { key: Filter; label: string }[]).map(t => ({ ...t, count: count(t.key) }))
 
   const query = search.trim().toLowerCase()
   const shown = spaces
@@ -333,6 +342,7 @@ export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, rend
                   onEdit={() => setEditId(space.id)}
                   onDelete={() => setDeleteId(space.id)}
                   onAskCopilot={onAskCopilot && (() => onAskCopilot(space.id))}
+                  showTypeChip={!accessFilters}
                 />
               ))}
             </div>

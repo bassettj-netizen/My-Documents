@@ -779,7 +779,6 @@ export default function Workspaces2Version21() {
         background={CONTENT_BG}
         dsAvatars
         createWorkspaceIntro={CREATE_WORKSPACE_INTRO}
-        workspaceTypes
         renderSummary={(ref, activeChatId) => {
           const space = workspace.spaces.find(s => s.id === ref.id)
           // The workspace page then offers "Back to CoPilot", to this chat (or the workspace's welcome).
@@ -804,13 +803,6 @@ export default function Workspaces2Version21() {
   )
 }
 
-// The type chip's colour, from the DS chip styles, so Clients, Projects and Internal workspaces tell apart at a glance.
-const TYPE_CHIP_STYLES: Record<NonNullable<Space['type']>, (typeof chipStyles)[keyof typeof chipStyles]> = {
-  Client: chipStyles.ACCENT_BLUE,
-  Project: chipStyles.ACCENT_PURPLE,
-  Internal: chipStyles.ACCENT_CYAN,
-}
-
 type SpaceChange = { at: number; what: string }
 
 function SpacesListRoute({ workspace, extras, library, spaceChanges }: { workspace: WorkspaceState; extras: ExtrasStore; library: Library; spaceChanges: Record<string, SpaceChange> }) {
@@ -824,8 +816,6 @@ function SpacesListRoute({ workspace, extras, library, spaceChanges }: { workspa
       renderUsedIn={() => null}
       renderFooter={(space, docs) => <CardSummary space={space} docs={docs} extras={extras.get(space.id)} />}
       renderMeta={(space, docs) => <LastUpdated docs={docs} extras={extras.get(space.id)} change={spaceChanges[space.id]} />}
-      // The type chip in a DS accent per type (as in Versions 5 and 6), without Version 6's card tint.
-      getCardTone={space => space.type ? { chipStyle: TYPE_CHIP_STYLES[space.type] } : undefined}
       onOpenSpace={id => {
         const space = workspace.spaces.find(s => s.id === id)
         navigate(`${BASE}/workspaces/${slugify(space?.name ?? id)}`)
@@ -840,7 +830,7 @@ function SpacesListRoute({ workspace, extras, library, spaceChanges }: { workspa
       renderEmptyState={openCreate => <WorkspacesEmptyState onCreate={openCreate} />}
       createInToolbar
       createIntro={CREATE_WORKSPACE_INTRO}
-      showType
+      accessFilters
       showCount
       myDocumentsToolbar
       hideHeaderWhenEmpty
@@ -1712,8 +1702,7 @@ function SpaceDocumentsTable({ backLabel, readySeen, onReadySeen, area, onOpenAr
         mode="edit"
         noun="Workspace"
         showPhotoUpload={false}
-        showType
-        typeRadios
+        showType={false}
         organisationAccess
         accessRadios
         initialValues={space}
@@ -2168,7 +2157,6 @@ function WorkspaceHero({ space, onBack, backLabel = 'Workspaces', onAskCopilot, 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3), minWidth: 0 }}>
             <Typography size="heading-xl" weight="bold" color="neutral-darken5">{space.name}</Typography>
-            {space.type && <Chip label={space.type} chipStyle={TYPE_CHIP_STYLES[space.type]} variant={chipVariants.SUBTLE} uppercase={false} />}
           </div>
           {space.description && <Typography size="base" color="neutral-darken3">{space.description}</Typography>}
         </div>
@@ -3668,12 +3656,10 @@ function MyDocumentsPage({ library, spaces, store, onOpenWorkspace, onOpenDoc, o
         mode="create"
         noun="Workspace"
         showPhotoUpload={false}
-        showType
-        typeRadios
+        showType={false}
         organisationAccess
         accessRadios
         intro={CREATE_WORKSPACE_INTRO}
-        defaultType="Client"
         onClose={() => setCreatingWith(null)}
         onSubmit={values => { if (creatingWith) onCreateWorkspace(values, creatingWith); setCreatingWith(null); setSelectedKeys(new Set()) }}
       />
@@ -3791,7 +3777,7 @@ function WorkspaceChips({ spaces, onOpen }: { spaces: Space[]; onOpen: (space: S
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing(1), alignItems: 'center', minHeight: 20 }}>
       {spaces.slice(0, MAX).map(s => (
         <span key={s.id} style={{ cursor: 'pointer', display: 'inline-flex' }} onClick={() => onOpen(s)} title={`Open ${s.name}`}>
-          <Chip label={s.name} size={chipSizes.SMALL} chipStyle={s.type ? TYPE_CHIP_STYLES[s.type] : chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} uppercase={false} />
+          <Chip label={s.name} size={chipSizes.SMALL} chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} uppercase={false} />
         </span>
       ))}
       {spaces.length > MAX && (
@@ -3856,7 +3842,6 @@ function FileWorkspacesModal({ files, spaces, library, onClose, onNewWorkspace, 
               />
               <Avatar shape={avatarShapeEnum.SQUARE} size={avatarSizeEnum.SMALL} src={s.avatarUrl} srcPlaceholder={getInitials(s.name)} />
               <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: colorPalette.neutral.darken4 }}>{s.name}</span>
-              {s.type && <Chip label={s.type} size={chipSizes.SMALL} chipStyle={TYPE_CHIP_STYLES[s.type]} variant={chipVariants.SUBTLE} uppercase={false} />}
             </label>
           ))}
         </div>
