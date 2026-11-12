@@ -20,6 +20,8 @@ import {
   dropdownTriggers,
   Icon,
   iconType,
+  Tooltip,
+  tooltipPlacements,
 } from '@goat-ui/goat-ui-core'
 import { colorPalette, spacing, formatDate, type DocSource, type MetadataDocument } from '../workspaces/shared'
 
@@ -33,7 +35,35 @@ import { colorPalette, spacing, formatDate, type DocSource, type MetadataDocumen
 
 const MENU_WIDTH = 236
 
-export type WorkspaceOption = { id: string; name: string; description: string; icon: ReactNode }
+// `visibility`: the workspace's access, shown as an icon after its name (My workspace has none).
+export type WorkspaceOption = { id: string; name: string; description: string; icon: ReactNode; visibility?: 'private' | 'public' }
+
+/**
+ * A workspace's access after its name, as on the workspace pages (shared.tsx VisibilityIcon with organisationAccess):
+ * a lock for Private, the company icon for Organisation, with the access in a tooltip.
+ */
+export function WorkspaceAccessIcon({ visibility, size = 16 }: { visibility?: 'private' | 'public'; size?: 12 | 16 }) {
+  if (!visibility) return null
+  const isPrivate = visibility === 'private'
+  return (
+    <Tooltip title={isPrivate ? 'Private' : 'Organisation'} placement={tooltipPlacements.TOP}>
+      <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+        <Icon type={isPrivate ? iconType.LockOutlined : iconType.CompanyOutlined} size={size} color="neutral-darken2" />
+      </span>
+    </Tooltip>
+  )
+}
+
+/** A workspace's name, then its access icon; the name truncates, the icon stays. */
+function NameWithAccess({ name, visibility, color }: { name: string; visibility?: 'private' | 'public'; color: string }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: spacing(1), minWidth: 0 }}>
+      <span style={{ minWidth: 0, fontSize: 14, lineHeight: '20px', fontWeight: 600, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+      {/* 12px: smaller than the 14px name, so it reads as a detail of it. */}
+      <WorkspaceAccessIcon visibility={visibility} size={12} />
+    </span>
+  )
+}
 
 /** "New" next to a label: the DS Chip, small and blue. */
 export function NewChip() {
@@ -58,7 +88,7 @@ function OptionRow({ option, selected }: { option: WorkspaceOption; selected: bo
         {option.icon}
       </span>
       <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: 14, lineHeight: '20px', fontWeight: 600, color: selected ? colorPalette.blue.base : colorPalette.neutral.darken5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+        <NameWithAccess name={option.name} visibility={option.visibility} color={selected ? colorPalette.blue.base : colorPalette.neutral.darken5} />
         {option.description && (
           <span style={{ fontSize: 12, lineHeight: '16px', color: colorPalette.neutral.darken3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.description}</span>
         )}
@@ -129,7 +159,7 @@ export function WorkspaceSelector({ options, value, onChange, onCreate, onManage
           <div style={{ width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: spacing(2), padding: `${spacing(2)}px ${spacing(3)}px`, textAlign: 'left' }}>
             <span style={{ width: 24, height: 24, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{current?.icon}</span>
             <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 14, lineHeight: '20px', fontWeight: 600, color: colorPalette.neutral.darken5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{current?.name}</span>
+              <NameWithAccess name={current?.name ?? ''} visibility={current?.visibility} color={colorPalette.neutral.darken5} />
               <span style={{ fontSize: 12, lineHeight: '16px', color: colorPalette.neutral.darken3 }}>Switch or create</span>
             </span>
             <UpDownChevrons />

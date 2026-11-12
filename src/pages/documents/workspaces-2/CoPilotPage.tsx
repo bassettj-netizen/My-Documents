@@ -16,6 +16,7 @@ import {
   Dropdown,
   dropdownPlacement,
   dropdownTriggers,
+  dropdownItemTypes,
   Input,
   Avatar,
   avatarShapeEnum,
@@ -28,7 +29,7 @@ import type { WorkspaceReference } from '../hackathon/workspaceModel'
 import { useProcessingUpload } from '../hackathon/uploadToasts'
 import { AnswerBody, SourceChips, SourcesPanel, SourcesPanelSlot, type SourceFilter } from '../hackathon/AnswerSources'
 import { buildSources, placeMarkers, type AnswerSource } from '../hackathon/sourceData'
-import { AddDocumentMenu, MyDocumentsPicker, NewChip, WorkspaceSelector, WorkspacesPromo, type PickableDocument } from './CoPilotWorkspaceMenu'
+import { AddDocumentMenu, MyDocumentsPicker, NewChip, WorkspaceAccessIcon, WorkspaceSelector, WorkspacesPromo, type PickableDocument } from './CoPilotWorkspaceMenu'
 
 /**
  * Hackathon Oct '26 — CoPilot for Version 10 (copied from Version 8, itself copied from Version 6, itself copied from Version 4): the shared CoPilot page with the Workspace dropdown
@@ -135,22 +136,95 @@ function PanelRow({ icon, label, onClick }: { icon: string; label: string; onCli
   )
 }
 
-function ChatHistoryRow({ title, active, onClick }: { title: string; active: boolean; onClick: () => void }) {
+/** Where a chat can be moved to (Workspaces 2.0 Versions 19 and 21): My workspace or another workspace. */
+type MoveTarget = { id: string; name: string; icon: ReactNode }
+
+/** A menu item's label: a 16px icon, then the text (as in the chat header's Actions). */
+function MenuLabel({ icon, children, danger = false }: { icon: ReactNode; children: ReactNode; danger?: boolean }) {
+  return (
+    <span className="copilot-chat-menu-label" style={{ display: 'flex', alignItems: 'center', gap: spacing(2), whiteSpace: 'nowrap', color: danger ? colorPalette.danger.darken2 : undefined }}>
+      <span style={{ display: 'inline-flex', width: 16, justifyContent: 'center', flexShrink: 0 }}>{icon}</span>
+      {children}
+    </span>
+  )
+}
+
+/**
+ * A chat in the panel's history. `actions` (Workspaces 2.0 Versions 19 and 21, after the CoPilot Finance design):
+ * a three-dot button on hover (or while its menu is open) with Move to workspace, Save PDF, Rename and Delete.
+ */
+function ChatHistoryRow({ title, active, onClick, actions }: {
+  title: string
+  active: boolean
+  onClick: () => void
+  actions?: { moveTargets: MoveTarget[]; onMove: (id: string) => void; onRename: (title: string) => void; onDelete: () => void }
+}) {
   const [hovered, setHovered] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [draft, setDraft] = useState(title)
+  const commit = () => { if (draft.trim() && actions) actions.onRename(draft.trim()); setRenaming(false) }
+  if (renaming) {
+    return (
+      <div ref={el => el?.querySelector('input')?.focus()} style={{ padding: `${spacing(1)}px 0` }} onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(title); setRenaming(false) } }}>
+        <Input name="chat-title" value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit} />
+      </div>
+    )
+  }
   return (
     <div
+      className={actions ? 'copilot-chat-row' : undefined}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        padding: `${spacing(2)}px`, borderRadius: 6, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: spacing(1),
+        // The button gets the same 6.5px on its right as above and below it (24px in a 37px row).
+        padding: actions ? `0 6.5px 0 ${spacing(2)}px` : `${spacing(2)}px`, minHeight: actions ? 37 : undefined, borderRadius: 6, cursor: 'pointer',
         backgroundColor: active ? colorPalette.blue.lighten5 : hovered ? colorPalette.neutral.lighten4 : undefined,
       }}
     >
       <span style={{
-        display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        flex: 1, minWidth: 0, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         fontSize: 14, fontWeight: active ? 600 : 400, color: active ? colorPalette.blue.darken2 : colorPalette.neutral.darken5,
       }}>{title}</span>
+      {actions && (
+        // Stops the row's click, so opening the menu doesn't open the chat. Kept in the layout (hidden) so the title
+        // doesn't reflow when the button appears.
+        // The button shows on hover, and stays while its menu is open (the DS Dropdown marks its trigger "…dropdown-open").
+        <span className="copilot-chat-row-actions" onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+          <style>{`
+            .copilot-chat-row .copilot-chat-row-actions { visibility: hidden; }
+            .copilot-chat-row:hover .copilot-chat-row-actions,
+            .copilot-chat-row .copilot-chat-row-actions:has([class*="dropdown-open"]) { visibility: visible; }
+            /* The DS gives a submenu's title only 16px on the right, so its label ran under the chevron: 16px + the
+               16px chevron + 8px between them. */
+            .goat-dropdown-menu-submenu-title:has(.copilot-chat-menu-label) { padding-right: 40px !important; }
+            .copilot-chat-row:has([class*="dropdown-open"]) { background-color: ${active ? colorPalette.blue.lighten5 : colorPalette.neutral.lighten4}; }
+          `}</style>
+          <Dropdown
+            items={[
+              {
+                key: 'move',
+                label: <MenuLabel icon={<Icon type={iconType.FolderOutlined} size={16} />}>Move to workspace</MenuLabel>,
+                children: actions.moveTargets.map(t => ({
+                  key: `move-${t.id}`,
+                  label: <MenuLabel icon={t.icon}>{t.name}</MenuLabel>,
+                  onClick: () => actions.onMove(t.id),
+                })),
+              },
+              { key: 'divider', type: dropdownItemTypes.DIVIDER },
+              // Prototype: exporting isn't wired up yet.
+              { key: 'pdf', label: <MenuLabel icon={<Icon type={iconType.DownloadOutlined} size={16} />}>Save PDF</MenuLabel>, },
+              { key: 'rename', label: <MenuLabel icon={<Icon type={iconType.EditOutlined} size={16} />}>Rename</MenuLabel>, onClick: () => { setDraft(title); setRenaming(true) } },
+              { key: 'delete', label: <MenuLabel danger icon={<Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />}>Delete</MenuLabel>, onClick: actions.onDelete },
+            ]}
+            trigger={dropdownTriggers.CLICK}
+            placement={dropdownPlacement.BOTTOM_LEFT}
+          >
+            <ButtonGhost shape={buttonShapes.SQUARE} size={buttonSizes.SMALL} leftIcon={iconType.ThreeDotsVerFilled} ariaLabel={`Actions for ${title}`} />
+          </Dropdown>
+        </span>
+      )}
     </div>
   )
 }
@@ -366,6 +440,7 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, d
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: spacing(2), flexShrink: 0 }}>
             <WorkspaceAvatar workspace={workspace} size={24} ds={dsAvatars} />
             <span style={{ fontSize: 14, fontWeight: 600, color: colorPalette.neutral.darken3 }}>{workspace.name}</span>
+            <WorkspaceAccessIcon visibility={workspace.visibility} />
           </span>
         ) : workspace ? (
           <button
@@ -546,6 +621,20 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
 
   const activeSession = activeId ? sessions.find(s => s.id === activeId) ?? null : null
 
+  // Versions 19 and 21: a chat's Move to workspace — My workspace and every workspace (the chat's own is left out).
+  const moveTargets: MoveTarget[] = [
+    { id: GENERAL, name: 'My workspace', icon: <Icon type={iconType.ElementsOutlined} size={16} color="neutral-darken3" /> },
+    ...workspaces.map(w => ({ id: w.id, name: w.name, icon: <WorkspaceAvatar workspace={w} size={16} ds={dsAvatars} /> })),
+  ]
+  // Moves a chat to another workspace: it leaves this list (which shows the selected workspace's chats) and is listed
+  // in the target workspace's chats.
+  const moveChat = (chat: ChatSession, targetId: string) => {
+    const target = targetId === GENERAL ? undefined : workspaces.find(w => w.id === targetId)
+    setSessions(prev => prev.map(s => s.id === chat.id ? { ...s, workspace: target } : s))
+    if (target) onChatStarted(target.id, { id: chat.id, title: chat.title })
+    if (chat.id === activeId) setActiveId(null)
+  }
+
   const reply = (text: string, attachments: OutgoingAttachment[], ws?: WorkspaceReference): ChatMsg[] => {
     const attachmentNames = attachments.map(a => a.kind === 'file' ? a.file.name : a.doc.name)
     return [
@@ -622,7 +711,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
               value={workspaceId}
               options={[
                 { id: GENERAL, name: 'My workspace', description: 'Your default space for all chats', icon: <Icon type={iconType.ElementsOutlined} size={16} color="neutral-darken3" /> },
-                ...workspaces.map(w => ({ id: w.id, name: w.name, description: w.description.trim(), icon: <WorkspaceAvatar workspace={w} size={24} ds={dsAvatars} /> })),
+                ...workspaces.map(w => ({ id: w.id, name: w.name, description: w.description.trim(), visibility: w.visibility, icon: <WorkspaceAvatar workspace={w} size={24} ds={dsAvatars} /> })),
               ]}
               onChange={selectWorkspace}
               onCreate={() => setCreateOpen(true)}
@@ -700,7 +789,18 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
             <div key={group.day} style={{ display: 'flex', flexDirection: 'column' }}>
               <SectionLabel profile={generic}>{group.day}</SectionLabel>
               {group.entries.map(entry => (
-                <ChatHistoryRow key={entry.id} title={entry.title} active={entry.id === activeId} onClick={() => setActiveId(entry.id)} />
+                <ChatHistoryRow
+                  key={entry.id}
+                  title={entry.title}
+                  active={entry.id === activeId}
+                  onClick={() => setActiveId(entry.id)}
+                  actions={generic ? {
+                    moveTargets: moveTargets.filter(t => t.id !== (entry.workspace?.id ?? GENERAL)),
+                    onMove: id => moveChat(entry, id),
+                    onRename: title => setSessions(prev => prev.map(s => s.id === entry.id ? { ...s, title } : s)),
+                    onDelete: () => { setSessions(prev => prev.filter(s => s.id !== entry.id)); if (entry.id === activeId) setActiveId(null) },
+                  } : undefined}
+                />
               ))}
             </div>
           ))}
@@ -792,7 +892,11 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                   {attached
                     ? <WorkspaceAvatar workspace={attached} size={40} ds={dsAvatars} />
                     : <CoPilotMark size={40} />}
-                  <span style={{ fontSize: 24, lineHeight: '1.3', fontWeight: 700, color: '#001344' }}>{attached ? attached.name : generic ? 'Welcome to CoPilot' : 'Welcome to CoPilot HR,'}</span>
+                  {/* Versions 19 and 21: the workspace's access after its name. */}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+                    <span style={{ fontSize: 24, lineHeight: '1.3', fontWeight: 700, color: '#001344' }}>{attached ? attached.name : generic ? 'Welcome to CoPilot' : 'Welcome to CoPilot HR,'}</span>
+                    {attached && generic && <WorkspaceAccessIcon visibility={attached.visibility} />}
+                  </span>
                   <Typography size="base" color={attached && !attached.description.trim() ? 'neutral-darken2' : 'neutral-darken5'}>
                     {attached
                       ? attached.description.trim() || 'This workspace has no description yet.'

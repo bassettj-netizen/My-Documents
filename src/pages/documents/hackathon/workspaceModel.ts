@@ -31,6 +31,8 @@ export type WorkspaceReference = {
   description: string
   // Where the workspace's own page lives, for linking back to it.
   path: string
+  // Workspaces 2.0 Versions 19 and 21: who can access it — only you (private) or everyone in your organisation.
+  visibility?: 'private' | 'public'
   // File names of some of its documents — what CoPilot can cite as workspace sources (V10/V11).
   documentNames?: string[]
   documents: number
