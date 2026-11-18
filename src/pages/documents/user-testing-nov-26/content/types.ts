@@ -136,6 +136,13 @@ export type AreaContent = {
     articles: AreaArticle[]
     /** Three excerpts quoted from the user's own documents when they're cited. */
     fileExcerpts: string[]
+    /**
+     * HR only: the answer to every question asked in a workspace that `match` relates to — by its name or the name of
+     * one of its documents — and that has documents. Anywhere else, the canned answer. `intro` opens it, naming the
+     * workspace. In `text`, ⟦F⟧ cites the workspace's latest matching document (or else its latest one), quoted with
+     * `fileExcerpt`, and ⟦1⟧… the Haufe `articles` here.
+     */
+    fixedReply?: { match: RegExp; intro: (workspace: string) => string; text: string; articles: { title: string; excerpt: string }[]; fileExcerpt: string }
   }
 
   /** The product's start page (the sidebar's app item). */

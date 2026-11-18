@@ -208,7 +208,20 @@ function workspaceSummary(ws: WorkspaceReference, t: Text): string {
   ].filter(Boolean).join(' · ')
 }
 
+/**
+ * HR's fixed answer applies in a workspace related to it (by its name or a document's) that has documents: the
+ * document it cites — the latest related one, or else the latest (documents are listed newest first). Otherwise null.
+ */
+function fixedReplyDocument(ws: WorkspaceReference | null | undefined, fixed: AreaContent['copilot']['fixedReply']): string | null {
+  const docs = ws?.documentNames ?? []
+  if (!ws || !fixed || docs.length === 0) return null
+  if (!fixed.match.test(ws.name) && !docs.some(d => fixed.match.test(d))) return null
+  return docs.find(d => fixed.match.test(d)) ?? docs[0]
+}
+
 function makeCannedReply(question: string, ws: WorkspaceReference | undefined, t: Text, copilot: AreaContent['copilot']): string {
+  // HR, in a Musterfirma workspace: the same, fully cited answer to every question.
+  if (ws && copilot.fixedReply && fixedReplyDocument(ws, copilot.fixedReply)) return `${copilot.fixedReply.intro(ws.name)}\n\n${copilot.fixedReply.text}`
   if (ws) {
     const rules = ws.guardrails.length ? t.followingGuardrails(ws.guardrails.map(g => `*${g}*`).join('; ')) : ''
     return `${t.answeringFrom(ws.name, workspaceSummary(ws, t))}${rules}\n\n${makeCannedReply(question, undefined, t, copilot)}`
@@ -375,8 +388,13 @@ function ChatBubbleUser({ message }: { message: ChatMsg }) {
   )
 }
 
-function ChatBubbleAssistant({ message, sources, onOpenSources, streaming = false }: {
+/** Citation markers (⟦1⟧, ⟦F⟧) taken out, including one only half written while the answer streams in. */
+const withoutMarkers = (text: string) => text.replace(/⟦[^⟧\s]*⟧?/g, '')
+
+function ChatBubbleAssistant({ message, sources, cited, onOpenSources, streaming = false }: {
   message: ChatMsg
+  // The answer with its citation markers already in place (HR's fixed answer); otherwise they're spread over its sentences.
+  cited?: string
   // While the answer is still being written: just the text so far, without sources or actions.
   streaming?: boolean
   // Sources behind the answer (workspace chats only): cited inline and listed as chips underneath.
@@ -385,14 +403,14 @@ function ChatBubbleAssistant({ message, sources, onOpenSources, streaming = fals
 }) {
   const [copied, setCopied] = useState(false)
   if (streaming) {
-    return <Typography size="base" color="neutral-darken5">{renderLiteMarkdown(message.content)}</Typography>
+    return <Typography size="base" color="neutral-darken5">{renderLiteMarkdown(withoutMarkers(message.content))}</Typography>
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
       <Typography size="base" color="neutral-darken5">
         {sources && sources.length > 0
-          ? <AnswerBody content={placeMarkers(message.content, sources.length)} sources={sources} onMarker={n => onOpenSources?.('all', n)} />
-          : renderLiteMarkdown(message.content)}
+          ? <AnswerBody content={cited ?? placeMarkers(message.content, sources.length)} sources={sources} onMarker={n => onOpenSources?.('all', n)} />
+          : renderLiteMarkdown(withoutMarkers(message.content))}
       </Typography>
       {sources && sources.length > 0 && <SourceChips sources={sources} onOpen={filter => onOpenSources?.(filter, null)} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
@@ -401,7 +419,7 @@ function ChatBubbleAssistant({ message, sources, onOpenSources, streaming = fals
         <ButtonGhost
           shape={buttonShapes.SQUARE}
           leftIcon={copied ? iconType.CheckOutlined : iconType.CopyOutlined}
-          onClick={() => { navigator.clipboard?.writeText(message.content); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
+          onClick={() => { navigator.clipboard?.writeText(withoutMarkers(message.content)); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
         />
       </div>
     </div>
@@ -819,7 +837,9 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
     if (chat.id === activeId) setActiveId(null)
   }
 
-  const reply = (text: string, attachments: OutgoingAttachment[], ws?: WorkspaceReference): ChatMsg[] => {
+  const reply = (text: string, attachments: OutgoingAttachment[], chatWorkspace?: WorkspaceReference): ChatMsg[] => {
+    // The workspace as it is now (a chat keeps the reference from when it started), so new documents count.
+    const ws = chatWorkspace && (workspaces.find(w => w.id === chatWorkspace.id) ?? chatWorkspace)
     const attachmentNames = attachments.map(a => a.kind === 'file' ? a.file.name : a.doc.name)
     return [
       { id: nextId('msg'), role: 'user', content: text, attachmentNames: attachmentNames.length ? attachmentNames : undefined },
@@ -858,8 +878,23 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
   /** An answer's sources — only in a workspace chat, citing Haufe knowledge and that workspace's files. */
   const answerSources = (message: ChatMsg, question: string): AnswerSource[] | undefined => {
     const ws = activeSession?.workspace ? workspaces.find(w => w.id === activeSession.workspace!.id) ?? activeSession.workspace : null
+    const fixed = fixedAnswer(message, ws)
+    if (fixed) return fixed.sources
     return ws ? buildSources(message.id, question, ws.documentNames ?? [], copilot.articles, copilot.fileExcerpts) : undefined
   }
+  /**
+   * HR's fixed answer: its Haufe articles, then the workspace document it cites (fixedReplyDocument), with ⟦F⟧ in the
+   * text pointing at that document — or dropped if the workspace no longer has one.
+   */
+  function fixedAnswer(message: ChatMsg, ws: WorkspaceReference | null): { sources: AnswerSource[]; cited: string } | null {
+    const fixed = copilot.fixedReply
+    if (!fixed || message.role !== 'assistant' || !message.content.endsWith(fixed.text)) return null
+    const sources: AnswerSource[] = fixed.articles.map((a, i) => ({ n: i + 1, kind: 'haufe', title: a.title, excerpt: a.excerpt }))
+    const doc = fixedReplyDocument(ws, fixed)
+    if (doc) sources.push({ n: sources.length + 1, kind: 'file', title: doc, excerpt: fixed.fileExcerpt })
+    return { sources, cited: message.content.replace(/⟦F⟧/g, doc ? `⟦${sources.length}⟧` : '') }
+  }
+  const sessionWorkspace = activeSession?.workspace ? workspaces.find(w => w.id === activeSession.workspace!.id) ?? activeSession.workspace : null
   const sourcesMessage = sourcesView && activeSession ? activeSession.messages.find(m => m.id === sourcesView.messageId) : undefined
   const panelSources = sourcesMessage && activeSession
     ? answerSources(sourcesMessage, activeSession.messages[activeSession.messages.indexOf(sourcesMessage) - 1]?.content ?? '')
@@ -972,6 +1007,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
                       key={m.id}
                       message={m}
                       sources={answerSources(m, activeSession.messages[i - 1]?.content ?? '')}
+                      cited={fixedAnswer(m, sessionWorkspace)?.cited}
                       onOpenSources={(filter, focus) => setSourcesView({ messageId: m.id, filter, focus, opened: Date.now() })}
                       streaming={m.id === streamingId}
                     />)}
