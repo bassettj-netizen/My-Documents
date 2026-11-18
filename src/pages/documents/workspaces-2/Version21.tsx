@@ -2034,14 +2034,60 @@ function useMetadataColumns({ docs, visibleDocs, store, selectedKeys, setSelecte
 
 const SUMMARY_DOCS = 6
 
+/** The documents privacy modal's points (the "Your data is private and secure" design for My Documents and workspaces). */
+const DOCUMENTS_PRIVACY_POINTS = [
+  { icon: iconType.ShieldOutlined, title: 'Secure data storage in Germany', text: 'All data is stored securely on European servers. Our data centre is certified to ISO 27001, 27017, 27018, SOC 2 and C5, making it one of the most secure data centres in the world.' },
+  { icon: iconType.LockOutlined, title: 'Data encryption', text: 'All data is stored in encrypted form in the data centre (AES 256) and transmitted to the data centre in encrypted form (TLS 1.3).' },
+  { icon: iconType.LayersHorOutlined, title: 'Backups', text: 'Regular backups and a disaster recovery strategy protect against data loss.' },
+  { icon: iconType.MinusCircleOutlined, title: 'No training with your data', text: 'The uploaded documents are not used to train language models.' },
+]
+
+/** "Learn more" from the documents disclaimer: how uploaded documents are kept private and secure. */
+function DocumentsPrivacyModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      visible={visible}
+      variant={modalVariants.DEFAULT}
+      withIcon={false}
+      title="Your data is private and secure"
+      onClose={onClose}
+      footer={{ buttons: [{ variant: buttonVariants.PRIMARY, props: { children: 'Close', onClick: onClose } }] }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+        <Typography size="base-sm" color="neutral-darken5">
+          The highest data protection standards are essential for the professional use of our solution. The following information provides an overview of our security architecture.
+        </Typography>
+        {DOCUMENTS_PRIVACY_POINTS.map(point => (
+          <div key={point.title} style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(4) }}>
+            <span style={{ flexShrink: 0, paddingTop: 2 }}><Icon type={point.icon} size={20} color="neutral-darken5" /></span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Typography size="base-sm" color="neutral-darken5" weight="semibold">{point.title}</Typography>
+              <Typography size="base-sm" color="neutral-darken5">{point.text}</Typography>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  )
+}
+
 /** Workspaces Basic's note under its document list (projects/workspaces/workspaces-basic), under every document list here too. */
 function FilesDisclaimer() {
+  const [open, setOpen] = useState(false)
   return (
     <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: spacing(2) }}>
       <Icon type={iconType.ShieldCheckFilled} color="primary-base" size={16} />
       <Typography size="base-sm" color="neutral-darken2">
-        All files are securely uploaded and scanned for viruses. <span style={{ color: colorPalette.blue.base, textDecoration: 'underline', cursor: 'pointer' }}>Learn more</span>
+        All files are securely uploaded and scanned for viruses.{' '}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen(true)}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true) } }}
+          style={{ color: colorPalette.blue.base, textDecoration: 'underline', cursor: 'pointer' }}
+        >Learn more</span>
       </Typography>
+      <DocumentsPrivacyModal visible={open} onClose={() => setOpen(false)} />
     </div>
   )
 }

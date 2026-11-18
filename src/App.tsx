@@ -74,6 +74,16 @@ import Workspaces2Version16 from './pages/documents/workspaces-2/Version16'
 import Workspaces2Version19 from './pages/documents/workspaces-2/Version19'
 import Workspaces2Version20 from './pages/documents/workspaces-2/Version20'
 import Workspaces2Version21 from './pages/documents/workspaces-2/Version21'
+import UserTestingPrototype from './pages/documents/user-testing-nov-26/UserTestingPrototype'
+import { AREAS, LANGS, AREA_CONTENT, prototypeBase, prototypeFromPath } from './pages/documents/user-testing-nov-26/context'
+import { SIDEBAR_TEXT, SidebarNewChip } from './pages/documents/user-testing-nov-26/sidebar'
+import UploadLimitsVersion1 from './pages/documents/upload-limits/Version1'
+import UploadLimitsVersion2 from './pages/documents/upload-limits/Version2'
+import UploadLimitsVersion3 from './pages/documents/upload-limits/Version3'
+import UploadLimitsVersion4 from './pages/documents/upload-limits/Version4'
+import UploadLimitsVersion5 from './pages/documents/upload-limits/Version5'
+import UploadLimitsVersion6 from './pages/documents/upload-limits/Version6'
+import UploadLimitsVersion7 from './pages/documents/upload-limits/Version7'
 import { byRecent, sidebarWorkspaces, useSidebarWorkspaces } from './pages/documents/workspaces-2/sidebarWorkspaces'
 import { AppGlyph, HR_DOKUMENTE_GLYPH, ZEUGNIS_MANAGER_GLYPH } from './pages/documents/workspaces-2/appGlyphs'
 import FileSyncVersion1 from './pages/documents/file-sync/Version1'
@@ -228,6 +238,24 @@ function OfficeLineGlyph() {
   )
 }
 
+// Workspaces User Testing Nov '26: a product's app icon as a menu icon, in the same style as OfficeLineGlyph — the
+// outlined tile and dot of the Haufe app icons, with the product's letters (e.g. "FI", "TVÖD") where Office Line has its "P".
+function ProductMarkGlyph({ mark }: { mark: string }) {
+  // Longer marks are set smaller and held to the tile's inner width (11px from x=6.5), whatever the font, so they
+  // don't touch its outline.
+  const long = mark.length > 2
+  const fontSize = long ? 4.4 : 6.5
+  return (
+    <div className="goat-menu-item-icon">
+      <svg width={24} height={24} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <rect x="3.75" y="3.75" width="16.5" height="16.5" rx="3" stroke="currentColor" strokeWidth="1.5" />
+        <circle cx="15.5" cy="8.5" r="2" fill="currentColor" />
+        <text x={long ? 6.5 : 7} y="17" fill="currentColor" fontSize={fontSize} fontWeight={700} fontFamily="Inter, 'Segoe UI', system-ui, sans-serif" {...(long ? { textLength: 11, lengthAdjust: 'spacingAndGlyphs' } : {})}>{mark}</text>
+      </svg>
+    </div>
+  )
+}
+
 // The design system's Connector icon (COSmos foundations, variant=outlined), which the installed GOAT-UI
 // package doesn't ship yet. In the menu's own icon colour (grey, blue when active) like the DS icons around it.
 function ConnectorOutlinedGlyph() {
@@ -368,6 +396,20 @@ const WORKSPACES_2_V18_BASE = '/projects/workspaces-2/version-18'
 const WORKSPACES_2_V19_BASE = '/projects/workspaces-2/version-19'
 const WORKSPACES_2_V20_BASE = '/projects/workspaces-2/version-20'
 const WORKSPACES_2_V21_BASE = '/projects/workspaces-2/version-21'
+// Upload Limits Version 1: Workspaces 2.0 Version 19 with uploads capped at 50 files at a time (GOATLAB-995).
+const UPLOAD_LIMITS_V1_BASE = '/projects/upload-limits/version-1'
+// Upload Limits Version 2: Version 1 with a bigger selection shown as numbered batches.
+const UPLOAD_LIMITS_V2_BASE = '/projects/upload-limits/version-2'
+// Upload Limits Version 3: Version 1 with Upload and Cancel in the over-the-limit banner.
+const UPLOAD_LIMITS_V3_BASE = '/projects/upload-limits/version-3'
+// Upload Limits Version 4: Version 3 without the upload area over the limit; the buttons in their own area under the banner.
+const UPLOAD_LIMITS_V4_BASE = '/projects/upload-limits/version-4'
+// Upload Limits Version 5: Version 4 roomier — the banner's title only, the explanation and progress under it.
+const UPLOAD_LIMITS_V5_BASE = '/projects/upload-limits/version-5'
+// Upload Limits Version 6: more than 50 files switches to the "File upload limit" Figma modal.
+const UPLOAD_LIMITS_V6_BASE = '/projects/upload-limits/version-6'
+// Upload Limits Version 7: Version 3 with the upload area hidden while more than 50 files are selected.
+const UPLOAD_LIMITS_V7_BASE = '/projects/upload-limits/version-7'
 // File Sync versions are Metadata V12/15/16 with the out-of-sync flow, so they share the same shell.
 const FILE_SYNC_V1_BASE = '/projects/file-sync/version-1'
 const FILE_SYNC_V2_BASE = '/projects/file-sync/version-2'
@@ -393,7 +435,9 @@ function AppShell() {
   const [productMenuCollapsed, setProductMenuCollapsed] = useState(false)
 
   const inWorkspacesV6 = location.pathname.startsWith(WORKSPACES_NUVIO_BASE)
-  const metadataAppBase = [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, WORKSPACES_2_V12_BASE, WORKSPACES_2_V13_BASE, WORKSPACES_2_V14_BASE, WORKSPACES_2_V15_BASE, WORKSPACES_2_V16_BASE, WORKSPACES_2_V17_BASE, WORKSPACES_2_V18_BASE, WORKSPACES_2_V19_BASE, WORKSPACES_2_V20_BASE, WORKSPACES_2_V21_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
+  // Workspaces User Testing Nov '26: ten prototypes (five areas, English and German), Workspaces 2.0 Version 21's sidebar.
+  const userTesting = prototypeFromPath(location.pathname)
+  const metadataAppBase = userTesting?.base ?? [METADATA_V8_BASE, METADATA_V9_BASE, METADATA_V10_BASE, METADATA_V11_BASE, METADATA_V12_BASE, METADATA_V13_BASE, METADATA_V14_BASE, METADATA_V15_BASE, METADATA_V16_BASE, METADATA_V17_BASE, METADATA_V18_BASE, HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, WORKSPACES_2_V12_BASE, WORKSPACES_2_V13_BASE, WORKSPACES_2_V14_BASE, WORKSPACES_2_V15_BASE, WORKSPACES_2_V16_BASE, WORKSPACES_2_V17_BASE, WORKSPACES_2_V18_BASE, WORKSPACES_2_V19_BASE, WORKSPACES_2_V20_BASE, WORKSPACES_2_V21_BASE, UPLOAD_LIMITS_V1_BASE, UPLOAD_LIMITS_V2_BASE, UPLOAD_LIMITS_V3_BASE, UPLOAD_LIMITS_V4_BASE, UPLOAD_LIMITS_V5_BASE, UPLOAD_LIMITS_V6_BASE, UPLOAD_LIMITS_V7_BASE, FILE_SYNC_V1_BASE, FILE_SYNC_V2_BASE, FILE_SYNC_V3_BASE, HISTORY_V1_BASE, HISTORY_V2_BASE, HISTORY_V3_BASE, HISTORY_V4_BASE, HISTORY_V5_BASE, HISTORY_V6_BASE].find(b => location.pathname === b || location.pathname.startsWith(`${b}/`))
   const inMetadataV8 = !!metadataAppBase
   // Metadata V8 is Workspaces Basic under another prefix, so it gets the same sidebar treatment.
   const inWorkspacesBasic = location.pathname.startsWith(WORKSPACES_BASIC_BASE) || inMetadataV8
@@ -402,7 +446,7 @@ function AppShell() {
   const workspacesAppBase = metadataAppBase ? metadataAppBase : inWorkspacesBasic ? WORKSPACES_BASIC_BASE : WORKSPACES_NUVIO_BASE
 
   // Whichever Hackathon Oct '26 version (if any) we're in — they share the same sidebar.
-  const hackathonBase = [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, WORKSPACES_2_V12_BASE, WORKSPACES_2_V13_BASE, WORKSPACES_2_V14_BASE, WORKSPACES_2_V15_BASE, WORKSPACES_2_V16_BASE, WORKSPACES_2_V17_BASE, WORKSPACES_2_V18_BASE, WORKSPACES_2_V19_BASE, WORKSPACES_2_V20_BASE, WORKSPACES_2_V21_BASE].find(b => b === metadataAppBase) ?? null
+  const hackathonBase = userTesting?.base ?? [HACKATHON_V1_BASE, HACKATHON_V2_BASE, HACKATHON_V3_BASE, HACKATHON_V4_BASE, HACKATHON_V5_BASE, HACKATHON_V6_BASE, HACKATHON_V7_BASE, HACKATHON_V8_BASE, HACKATHON_V9_BASE, HACKATHON_V10_BASE, HACKATHON_V11_BASE, WORKSPACES_2_V1_BASE, WORKSPACES_2_V2_BASE, WORKSPACES_2_V3_BASE, WORKSPACES_2_V4_BASE, WORKSPACES_2_V5_BASE, WORKSPACES_2_V6_BASE, WORKSPACES_2_V7_BASE, WORKSPACES_2_V8_BASE, WORKSPACES_2_V9_BASE, WORKSPACES_2_V10_BASE, WORKSPACES_2_V11_BASE, WORKSPACES_2_V12_BASE, WORKSPACES_2_V13_BASE, WORKSPACES_2_V14_BASE, WORKSPACES_2_V15_BASE, WORKSPACES_2_V16_BASE, WORKSPACES_2_V17_BASE, WORKSPACES_2_V18_BASE, WORKSPACES_2_V19_BASE, WORKSPACES_2_V20_BASE, WORKSPACES_2_V21_BASE, UPLOAD_LIMITS_V1_BASE, UPLOAD_LIMITS_V2_BASE, UPLOAD_LIMITS_V3_BASE, UPLOAD_LIMITS_V4_BASE, UPLOAD_LIMITS_V5_BASE, UPLOAD_LIMITS_V6_BASE, UPLOAD_LIMITS_V7_BASE].find(b => b === metadataAppBase) ?? null
   const inHackathon = !!hackathonBase
   // Versions 5, 7, 9 and 11 are the German copies of 4, 6, 8 and 10, so their sidebar is in German too.
   const de = [HACKATHON_V5_BASE, HACKATHON_V7_BASE, HACKATHON_V9_BASE, HACKATHON_V11_BASE].includes(hackathonBase!)
@@ -498,7 +542,7 @@ function AppShell() {
   // Workspaces 2.0 Versions 2 and 3 use the product's full menu, with My Knowledge and Cowork as open groups. Items
   // without a page in this prototype (Calculators, Cowork, Workflows, Gesetzesradar,
   // Einstellungen, Abmelden) do nothing; the avatar stays at the foot as in Version 1.
-  const productMenu = hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE || hackathonBase === WORKSPACES_2_V4_BASE || hackathonBase === WORKSPACES_2_V5_BASE || hackathonBase === WORKSPACES_2_V6_BASE || hackathonBase === WORKSPACES_2_V7_BASE || hackathonBase === WORKSPACES_2_V8_BASE || hackathonBase === WORKSPACES_2_V9_BASE || hackathonBase === WORKSPACES_2_V10_BASE || hackathonBase === WORKSPACES_2_V11_BASE || hackathonBase === WORKSPACES_2_V12_BASE || hackathonBase === WORKSPACES_2_V13_BASE || hackathonBase === WORKSPACES_2_V14_BASE || hackathonBase === WORKSPACES_2_V15_BASE || hackathonBase === WORKSPACES_2_V16_BASE || hackathonBase === WORKSPACES_2_V17_BASE || hackathonBase === WORKSPACES_2_V18_BASE || hackathonBase === WORKSPACES_2_V19_BASE || hackathonBase === WORKSPACES_2_V20_BASE || hackathonBase === WORKSPACES_2_V21_BASE
+  const productMenu = !!userTesting || hackathonBase === WORKSPACES_2_V2_BASE || hackathonBase === WORKSPACES_2_V3_BASE || hackathonBase === WORKSPACES_2_V4_BASE || hackathonBase === WORKSPACES_2_V5_BASE || hackathonBase === WORKSPACES_2_V6_BASE || hackathonBase === WORKSPACES_2_V7_BASE || hackathonBase === WORKSPACES_2_V8_BASE || hackathonBase === WORKSPACES_2_V9_BASE || hackathonBase === WORKSPACES_2_V10_BASE || hackathonBase === WORKSPACES_2_V11_BASE || hackathonBase === WORKSPACES_2_V12_BASE || hackathonBase === WORKSPACES_2_V13_BASE || hackathonBase === WORKSPACES_2_V14_BASE || hackathonBase === WORKSPACES_2_V15_BASE || hackathonBase === WORKSPACES_2_V16_BASE || hackathonBase === WORKSPACES_2_V17_BASE || hackathonBase === WORKSPACES_2_V18_BASE || hackathonBase === WORKSPACES_2_V19_BASE || hackathonBase === WORKSPACES_2_V20_BASE || hackathonBase === WORKSPACES_2_V21_BASE || hackathonBase === UPLOAD_LIMITS_V1_BASE || hackathonBase === UPLOAD_LIMITS_V2_BASE || hackathonBase === UPLOAD_LIMITS_V3_BASE || hackathonBase === UPLOAD_LIMITS_V4_BASE || hackathonBase === UPLOAD_LIMITS_V5_BASE || hackathonBase === UPLOAD_LIMITS_V6_BASE || hackathonBase === UPLOAD_LIMITS_V7_BASE
   const productTopItems = [
     { ...copilotItem, label: 'Copilot Tax', icon: <CoPilotIcon outline /> },
     { key: 'calculators', label: 'Calculators', icon: <Icon type={iconType.CalculatorOutlined} /> },
@@ -603,6 +647,25 @@ function AppShell() {
     { key: 'logout', label: 'Abmelden', icon: <Icon type={iconType.LogoutOutlined} /> },
     userItem,
   ] as unknown as SidebarItem[]
+  // Workspaces User Testing Nov '26: Version 21's menu in the prototype's language, with the area's product as the app.
+  const ut = userTesting ? SIDEBAR_TEXT[userTesting.lang] : null
+  const productTopItemsUserTesting = userTesting && ut ? [
+    { ...copilotItem, label: ut.copilot, icon: <CoPilotIcon outline /> },
+    (() => {
+      const product = AREA_CONTENT[userTesting.area][userTesting.lang].product
+      return { ...personalOfficeItem, label: product.shortName, icon: product.mark ? <ProductMarkGlyph mark={product.mark} /> : <OfficeLineGlyph /> }
+    })(),
+    { key: 'content', label: ut.knowledgeHub, icon: <Icon type={iconType.FolderOutlined} />, children: [
+      { key: 'documents', label: ut.myDocuments, icon: <FileGlyph />, onClick: () => navigate(`${hackathonBase}/my-documents`) },
+      { ...workspacesItem, icon: <Icon type={iconType.ElementsOutlined} />, label: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{ut.workspaces}<SidebarNewChip lang={userTesting.lang} /></span> },
+      { ...connectorsItem, label: ut.connectors, icon: <ConnectorOutlinedGlyph /> },
+    ] },
+  ] as unknown as SidebarItem[] : null
+  const productBottomItemsUserTesting = ut ? [
+    { key: 'settings', label: ut.settings, icon: <Icon type={iconType.GearOutlined} /> },
+    { key: 'logout', label: ut.logout, icon: <Icon type={iconType.LogoutOutlined} /> },
+    userItem,
+  ] as unknown as SidebarItem[] : null
 
   return (
     <Layout
@@ -614,8 +677,8 @@ function AppShell() {
         },
       }}
       sidebar={{
-        topItems: productMenu ? (hackathonBase === WORKSPACES_2_V17_BASE || hackathonBase === WORKSPACES_2_V18_BASE ? productTopItemsV17 : hackathonBase === WORKSPACES_2_V16_BASE ? productTopItemsV16 : hackathonBase === WORKSPACES_2_V19_BASE || hackathonBase === WORKSPACES_2_V20_BASE || hackathonBase === WORKSPACES_2_V21_BASE ? productTopItemsV19 : hackathonBase === WORKSPACES_2_V15_BASE ? productTopItemsV15 : hackathonBase === WORKSPACES_2_V14_BASE ? productTopItemsV14 : hackathonBase === WORKSPACES_2_V13_BASE ? productTopItemsV13 : hackathonBase === WORKSPACES_2_V12_BASE ? productTopItemsV12 : productTopItems) : sidebarTopItems,
-        bottomItems: productMenu ? productBottomItems : sidebarBottomItems,
+        topItems: productTopItemsUserTesting ?? (productMenu ? (hackathonBase === WORKSPACES_2_V17_BASE || hackathonBase === WORKSPACES_2_V18_BASE ? productTopItemsV17 : hackathonBase === WORKSPACES_2_V16_BASE ? productTopItemsV16 : hackathonBase === WORKSPACES_2_V19_BASE || hackathonBase === WORKSPACES_2_V20_BASE || hackathonBase === WORKSPACES_2_V21_BASE || hackathonBase === UPLOAD_LIMITS_V1_BASE || hackathonBase === UPLOAD_LIMITS_V2_BASE || hackathonBase === UPLOAD_LIMITS_V3_BASE || hackathonBase === UPLOAD_LIMITS_V4_BASE || hackathonBase === UPLOAD_LIMITS_V5_BASE || hackathonBase === UPLOAD_LIMITS_V6_BASE || hackathonBase === UPLOAD_LIMITS_V7_BASE ? productTopItemsV19 : hackathonBase === WORKSPACES_2_V15_BASE ? productTopItemsV15 : hackathonBase === WORKSPACES_2_V14_BASE ? productTopItemsV14 : hackathonBase === WORKSPACES_2_V13_BASE ? productTopItemsV13 : hackathonBase === WORKSPACES_2_V12_BASE ? productTopItemsV12 : productTopItems) : sidebarTopItems),
+        bottomItems: productBottomItemsUserTesting ?? (productMenu ? productBottomItems : sidebarBottomItems),
         collapsible: true,
         ...(productMenu ? { collapsed: productMenuCollapsed, onCollapsedChange: setProductMenuCollapsed, defaultOpenKeys: ['content', 'cowork'] } : {}),
         activeKeys: [openWorkspace ? `ws-${openWorkspace.id}` : inV16Knowledge ? 'knowledge' : activeKey],
@@ -753,6 +816,23 @@ function App() {
           <Route path="/projects/workspaces-2/version-19/*" element={<Workspaces2Version19 />} />
           <Route path="/projects/workspaces-2/version-20/*" element={<Workspaces2Version20 />} />
           <Route path="/projects/workspaces-2/version-21/*" element={<Workspaces2Version21 />} />
+          {AREAS.flatMap(area => LANGS.map(lang => (
+            <Route key={`${area}-${lang}`} path={`${prototypeBase(area, lang)}/*`} element={<UserTestingPrototype area={area} lang={lang} />} />
+          )))}
+          {/* Upload Limits Version 1: Workspaces 2.0 Version 19 with uploads capped at 50 files at a time (GOATLAB-995). */}
+          <Route path="/projects/upload-limits/version-1/*" element={<UploadLimitsVersion1 />} />
+          {/* Upload Limits Version 2: Version 1 with a bigger selection shown as numbered batches. */}
+          <Route path="/projects/upload-limits/version-2/*" element={<UploadLimitsVersion2 />} />
+          {/* Upload Limits Version 3: Version 1 with Upload and Cancel in the over-the-limit banner. */}
+          <Route path="/projects/upload-limits/version-3/*" element={<UploadLimitsVersion3 />} />
+          {/* Upload Limits Version 4: Version 3 without the upload area over the limit; the buttons in their own area under the banner. */}
+          <Route path="/projects/upload-limits/version-4/*" element={<UploadLimitsVersion4 />} />
+          {/* Upload Limits Version 5: Version 4 roomier — the banner's title only, the explanation and progress under it. */}
+          <Route path="/projects/upload-limits/version-5/*" element={<UploadLimitsVersion5 />} />
+          {/* Upload Limits Version 6: more than 50 files switches to the "File upload limit" Figma modal. */}
+          <Route path="/projects/upload-limits/version-6/*" element={<UploadLimitsVersion6 />} />
+          {/* Upload Limits Version 7: Version 3 with the upload area hidden while more than 50 files are selected. */}
+          <Route path="/projects/upload-limits/version-7/*" element={<UploadLimitsVersion7 />} />
           {/* File Sync: Metadata V12, V15 and V16 with the out-of-sync documents banner, statuses and sync toasts. */}
           <Route path="/projects/file-sync/version-1/*" element={<FileSyncVersion1 />} />
           <Route path="/projects/file-sync/version-2/*" element={<FileSyncVersion2 />} />

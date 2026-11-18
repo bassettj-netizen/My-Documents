@@ -89,7 +89,7 @@ type Step = { kind: 'choose' } | { kind: 'sign-in'; app: ConnectedApp } | { kind
  * Upload or sync: the upload modal with the connected apps, then (for an app) its sign-in and file picker.
  * Uploaded files go to onUpload; synced files to onSync with the app they came from.
  */
-export function UploadOrSyncFlow({ open, onClose, onUpload, onSync, existingIds, connectorsPath, accountName }: {
+export function UploadOrSyncFlow({ open, onClose, onUpload, onSync, existingIds, connectorsPath, accountName, maxFiles, batchSteps, limitActionsInBanner, limitActionArea, limitTitleOnly, limitFigmaModal, limitHideUploader, limitInfoBanner }: {
   open: boolean
   onClose: () => void
   onUpload: (docs: MetadataDocument[]) => void
@@ -98,6 +98,22 @@ export function UploadOrSyncFlow({ open, onClose, onUpload, onSync, existingIds,
   existingIds: Set<string>
   connectorsPath: string
   accountName?: (name: string) => string
+  /** Upload Limits Version 1 (GOATLAB-995): the most files one upload takes. */
+  maxFiles?: number
+  /** Upload Limits Version 2: show an over-the-limit selection as numbered batches. */
+  batchSteps?: boolean
+  /** Upload Limits Version 3: Upload and Cancel in the over-the-limit banner. */
+  limitActionsInBanner?: boolean
+  /** Upload Limits Version 4: no upload area while over the limit; the batch's actions under the banner. */
+  limitActionArea?: boolean
+  /** Upload Limits Version 5: the banner's title only; explanation, progress and buttons under it. */
+  limitTitleOnly?: boolean
+  /** Upload Limits Version 6: an over-the-limit selection switches to the "File upload limit" Figma modal. */
+  limitFigmaModal?: boolean
+  /** Upload Limits Version 7: hide the upload area while over the limit. */
+  limitHideUploader?: boolean
+  /** Upload Limits Version 7: the over-the-limit banner as information rather than a warning. */
+  limitInfoBanner?: boolean
 }) {
   const navigate = useNavigate()
   const apps = useConnectedApps(accountName)
@@ -113,6 +129,14 @@ export function UploadOrSyncFlow({ open, onClose, onUpload, onSync, existingIds,
         open={open && step.kind === 'choose'}
         connectors={[] as Connector[]}
         uploadImmediately
+        maxFiles={maxFiles}
+        batchSteps={batchSteps}
+        limitActionsInBanner={limitActionsInBanner}
+        limitActionArea={limitActionArea}
+        limitTitleOnly={limitTitleOnly}
+        limitFigmaModal={limitFigmaModal}
+        limitHideUploader={limitHideUploader}
+        limitInfoBanner={limitInfoBanner}
         onClose={close}
         onUpload={onUpload}
         belowDropzone={<UploadDisclaimer />}

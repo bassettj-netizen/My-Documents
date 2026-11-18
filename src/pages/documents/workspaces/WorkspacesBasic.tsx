@@ -3,6 +3,10 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-do
 import MyDocumentsV1 from '../my-documents/Version1'
 import ConnectionsPage from '../../connections/ConnectionsPage'
 import {
+  StepsIndicator,
+  Banner,
+  bannerStyles,
+  bannerVariants,
   ButtonDanger,
   ButtonGhost,
   buttonShapes,
@@ -848,7 +852,7 @@ function BasicDocumentPreview({ space, doc, originalDoc, docIndex, source, summa
  * local files, plus one row per connector actually present in this space's
  * table, so the user can see where else they could pull documents from.
  */
-export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en', uploadImmediately = false, connectorsSection, belowDropzone }: {
+export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = 'en', uploadImmediately = false, connectorsSection, belowDropzone, maxFiles, batchSteps = false, limitActionsInBanner = false, limitActionArea = false, limitTitleOnly = false, limitFigmaModal = false, limitHideUploader = false, limitInfoBanner = false }: {
   open: boolean
   connectors: Connector[]
   onClose: () => void
@@ -861,9 +865,33 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
   connectorsSection?: ReactNode
   // Shown straight under the upload area (Workspaces 2.0 Versions 19 and 21: the "securely uploaded" note).
   belowDropzone?: ReactNode
+  // Upload Limits Version 1 (GOATLAB-995): at most this many files per upload. A bigger selection waits in the
+  // modal and goes up in batches of this size, the user choosing when to send each one.
+  maxFiles?: number
+  // Upload Limits Version 2: an over-the-limit selection is shown as numbered batches (instead of Version 1's warning),
+  // each with its status, and the dropzone and connected apps step aside until the batches are done.
+  batchSteps?: boolean
+  // Upload Limits Version 3: Version 1's Upload and Cancel sit in the warning banner rather than the modal footer.
+  // Cancel there clears the selection, so the user can pick again; the modal's close button still closes it.
+  limitActionsInBanner?: boolean
+  // Upload Limits Version 4: with an over-the-limit selection the upload area steps aside, and the batch's actions
+  // sit in their own area under the banner — batch progress, which files go next, and the buttons.
+  limitActionArea?: boolean
+  // Upload Limits Version 5: Version 4 roomier — the banner keeps only its title, the explanation sits under it,
+  // the progress bar names the next files, and there's no "Choose different files".
+  limitTitleOnly?: boolean
+  // Upload Limits Version 6: an over-the-limit selection switches the modal to the "File upload limit" Figma
+  // (nodes 1:4403 and 1:6163) — an info banner, the explanation, which documents go next, the uploads so far, and the buttons.
+  limitFigmaModal?: boolean
+  // Upload Limits Version 7: Version 3 with the upload area (and its security note) hidden while over the limit.
+  limitHideUploader?: boolean
+  // Upload Limits Version 7: the over-the-limit banner as information rather than a warning.
+  limitInfoBanner?: boolean
 }) {
   const de = lang === 'de'
   const [queuedFiles, setQueuedFiles] = useState<File[]>([])
+  // Over the limit: the files still to upload, and how many were chosen in all.
+  const [overLimit, setOverLimit] = useState<{ remaining: File[]; total: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -871,6 +899,12 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
     if (!list) return
     if (uploadImmediately) {
       if (list.length === 0) return
+      if (maxFiles && list.length > maxFiles) {
+        setOverLimit({ remaining: Array.from(list), total: list.length })
+        setIsDragging(false)
+        return
+      }
+      setOverLimit(null)
       onUpload(Array.from(list).map(localFileToDoc))
       setIsDragging(false)
       onClose()
@@ -882,8 +916,34 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
     })
   }
 
-  const handleClose = () => { setQueuedFiles([]); setIsDragging(false); onClose() }
+  const handleClose = () => { setQueuedFiles([]); setOverLimit(null); setIsDragging(false); onClose() }
+  // Sends the next batch; the modal closes once nothing is left.
+  const uploadNextBatch = () => {
+    if (!overLimit || !maxFiles) return
+    onUpload(overLimit.remaining.slice(0, maxFiles).map(localFileToDoc))
+    const rest = overLimit.remaining.slice(maxFiles)
+    if (rest.length === 0) handleClose()
+    else setOverLimit({ ...overLimit, remaining: rest })
+  }
+  const nextBatchSize = overLimit && maxFiles ? Math.min(maxFiles, overLimit.remaining.length) : 0
+  const batchStarted = !!overLimit && overLimit.remaining.length < overLimit.total
+  const limitExplanation = overLimit && maxFiles ? (batchStarted
+    ? `You can upload up to ${maxFiles} files at a time. ${overLimit.remaining.length > maxFiles ? `Upload the next ${maxFiles}` : `Upload the remaining ${overLimit.remaining.length}`}, or ${limitTitleOnly ? 'stop here' : 'cancel to stop here'}.`
+    : `You can upload up to ${maxFiles} files at a time. Upload the first ${maxFiles} now, then the rest in the next batch.`) : ''
   const handleUpload = () => { onUpload(queuedFiles.map(localFileToDoc)); handleClose() }
+  // Upload Limits Version 2: the selection as numbered batches of maxFiles.
+  const batches = overLimit && maxFiles ? (() => {
+    const sentCount = overLimit.total - overLimit.remaining.length
+    const count = Math.ceil(overLimit.total / maxFiles)
+    return Array.from({ length: count }, (_, i) => {
+      const start = i * maxFiles
+      const size = Math.min(maxFiles, overLimit.total - start)
+      const status: 'uploaded' | 'next' | 'waiting' = start < sentCount ? 'uploaded' : start === sentCount ? 'next' : 'waiting'
+      return { index: i, start, size, status }
+    })
+  })() : []
+  const nextBatch = batches.find(b => b.status === 'next')
+  const showBatchSteps = !!overLimit && !!maxFiles && batchSteps
 
   return (
     <Modal
@@ -892,14 +952,152 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
       withIcon={false}
       onClose={handleClose}
       maxWidth={600}
-      footer={queuedFiles.length > 0 ? { buttons: [
+      footer={overLimit && limitFigmaModal ? undefined : showBatchSteps && nextBatch ? { buttons: [
+        { variant: buttonVariants.GHOST, props: { children: batchStarted ? 'Stop here' : 'Cancel', onClick: handleClose } },
+        { variant: buttonVariants.PRIMARY, props: { children: `Upload batch ${nextBatch.index + 1} of ${batches.length}`, onClick: uploadNextBatch } },
+      ]} : overLimit && (limitActionsInBanner || limitActionArea) ? undefined : overLimit ? { buttons: [
+        { variant: buttonVariants.GHOST, props: { children: 'Cancel', onClick: handleClose } },
+        { variant: buttonVariants.PRIMARY, props: { children: `Upload ${nextBatchSize} file${nextBatchSize !== 1 ? 's' : ''}`, onClick: uploadNextBatch } },
+      ]} : queuedFiles.length > 0 ? { buttons: [
         { variant: buttonVariants.GHOST, props: { children: de ? 'Abbrechen' : 'Cancel', onClick: handleClose } },
         { variant: buttonVariants.PRIMARY, props: { children: de ? `${queuedFiles.length} ${queuedFiles.length !== 1 ? 'Dateien' : 'Datei'} hochladen` : `Upload ${queuedFiles.length} file${queuedFiles.length !== 1 ? 's' : ''}`, onClick: handleUpload } },
       ]} : undefined}
     >
+      {limitFigmaModal && maxFiles && overLimit ? (() => {
+        const uploadCount = Math.ceil(overLimit.total / maxFiles)
+        const sentCount = overLimit.total - overLimit.remaining.length
+        return (
+          // The modal body keeps only 4px below its content without a footer; the Figma has 24px under the buttons.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(5), paddingBottom: spacing(5) }}>
+            <Banner
+              variant={bannerVariants.INFO}
+              bannerStyle={bannerStyles.SUBTLE}
+              icon={iconType.InfoCircleFilled}
+              dismissible={false}
+              header={<Typography size="base" weight={fontWeight.BOLD} color="neutral-darken5">{`You selected ${overLimit.total} documents`}</Typography>}
+            />
+            <Typography size="base" color="neutral-darken5">{`You can upload ${maxFiles} documents at a time. Upload the first ${maxFiles} now, then the rest in the next upload.`}</Typography>
+            <Typography size="base" weight={fontWeight.SEMIBOLD} color="neutral-darken5">{`Documents ${sentCount + 1}-${sentCount + nextBatchSize} of ${overLimit.total}`}</Typography>
+            <StepsIndicator completed={Math.ceil(sentCount / maxFiles)} total={uploadCount} format={(c, t) => `${c} of ${t} Uploads`} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing(2) }}>
+              <ButtonTertiary onClick={handleClose}>Cancel</ButtonTertiary>
+              <ButtonPrimary onClick={uploadNextBatch}>{`Upload (${nextBatchSize})`}</ButtonPrimary>
+            </div>
+          </div>
+        )
+      })() : showBatchSteps && maxFiles && overLimit ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1) }}>
+            <Typography size="heading-sm" weight={fontWeight.SEMIBOLD} color="neutral-darken5">
+              {`${overLimit.total} files, uploaded in ${batches.length} batches`}
+            </Typography>
+            <Typography size="base" color="neutral-darken3">
+              {batchStarted
+                ? `${nextBatch!.index === 1 ? 'Batch 1 is' : `Batches 1–${nextBatch!.index} are`} uploaded. Upload batch ${nextBatch!.index + 1} next — this window stays open until every batch is uploaded.`
+                : `You can upload up to ${maxFiles} files at a time, so we’ve split your selection into ${batches.length} batches. Upload them one after the other — this window stays open until every batch is uploaded.`}
+            </Typography>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${colorPalette.neutral.lighten2}`, borderRadius: 8 }}>
+            {batches.map(b => {
+              return (
+                <div key={b.index} style={{
+                  display: 'flex', alignItems: 'center', gap: spacing(3), padding: `${spacing(3)}px ${spacing(4)}px`,
+                  borderTop: b.index > 0 ? `1px solid ${colorPalette.neutral.lighten2}` : undefined,
+                  backgroundColor: b.status === 'next' ? colorPalette.blue.lighten5 : undefined,
+                  borderRadius: b.index === 0 ? '8px 8px 0 0' : b.index === batches.length - 1 ? '0 0 8px 8px' : undefined,
+                }}>
+                  <span style={{ display: 'inline-flex', width: 28, height: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {b.status === 'uploaded'
+                      ? <Icon type={iconType.CheckCircleFilled} size={24} color="success-base" />
+                      : <span style={{
+                          width: 24, height: 24, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 13, fontWeight: 600,
+                          backgroundColor: b.status === 'next' ? colorPalette.blue.base : 'transparent',
+                          color: b.status === 'next' ? '#fff' : colorPalette.neutral.darken2,
+                          border: b.status === 'next' ? 'none' : `1.5px solid ${colorPalette.neutral.lighten1}`,
+                        }}>{b.index + 1}</span>}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Typography size="base" weight={fontWeight.SEMIBOLD} color="neutral-darken5">{`Batch ${b.index + 1} · ${b.size} files`}</Typography>
+                    <Typography size="base-sm" color="neutral-darken2">{`Files ${b.start + 1}–${b.start + b.size} of ${overLimit.total}`}</Typography>
+                  </div>
+                  {b.status === 'uploaded' && <Chip label="Uploaded" chipStyle={chipStyles.SEMANTIC_SUCCESS} variant={chipVariants.SUBTLE} />}
+                  {b.status === 'next' && <Chip label="Up next" chipStyle={chipStyles.ACCENT_BLUE} variant={chipVariants.SUBTLE} />}
+                  {b.status === 'waiting' && <Chip label="Waiting" chipStyle={chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} />}
+                </div>
+              )
+            })}
+          </div>
+          {!batchStarted && (
+            <div>
+              <ButtonTertiary leftIcon={iconType.UploadOutlined} onClick={() => { setOverLimit(null); fileInputRef.current?.click() }}>Choose different files</ButtonTertiary>
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
+        </div>
+      ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
         <Typography size="base" color="neutral-darken5">{de ? 'Wählen Sie, woher Sie Ihr Dokument hochladen möchten.' : 'Choose where to upload your document from.'}</Typography>
 
+        {overLimit && maxFiles && (
+          <Banner
+            variant={limitInfoBanner ? bannerVariants.INFO : bannerVariants.WARNING}
+            bannerStyle={bannerStyles.SUBTLE}
+            icon={limitInfoBanner ? iconType.InfoCircleFilled : iconType.AlertFilled}
+            dismissible={false}
+            footerButtons={limitActionsInBanner ? [
+              // Version 7 (information banner): Cancel as a tertiary button rather than ghost.
+              { variant: limitInfoBanner ? buttonVariants.TERTIARY : buttonVariants.GHOST, props: { children: 'Cancel', onClick: () => setOverLimit(null) } },
+              { variant: buttonVariants.PRIMARY, props: { children: `Upload ${nextBatchSize} file${nextBatchSize !== 1 ? 's' : ''}`, onClick: uploadNextBatch } },
+            ] : undefined}
+            header={<Typography size="base" weight={fontWeight.SEMIBOLD} color="neutral-darken5">
+              {batchStarted ? `${overLimit.remaining.length} of ${overLimit.total} files left to upload` : `You selected ${overLimit.total} files`}
+            </Typography>}
+            content={limitTitleOnly ? undefined : <Typography size="base" color="neutral-darken3">{limitExplanation}</Typography>}
+          />
+        )}
+
+        {overLimit && maxFiles && limitActionArea && limitTitleOnly && (() => {
+          const batchCount = Math.ceil(overLimit.total / maxFiles)
+          const sentCount = overLimit.total - overLimit.remaining.length
+          const doneBatches = Math.ceil(sentCount / maxFiles)
+          const files = `Files ${sentCount + 1}–${sentCount + nextBatchSize} of ${overLimit.total}`
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(5), paddingTop: spacing(1) }}>
+              <Typography size="base" color="neutral-darken3">{limitExplanation}</Typography>
+              <StepsIndicator completed={doneBatches} total={batchCount} format={() => `${files} · batch ${doneBatches + 1} of ${batchCount}`} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: spacing(2) }}>
+                <ButtonGhost onClick={handleClose}>{batchStarted ? 'Stop here' : 'Cancel'}</ButtonGhost>
+                <ButtonPrimary leftIcon={iconType.UploadOutlined} onClick={uploadNextBatch}>{`Upload ${nextBatchSize} file${nextBatchSize !== 1 ? 's' : ''}`}</ButtonPrimary>
+              </div>
+            </div>
+          )
+        })()}
+
+        {overLimit && maxFiles && limitActionArea && !limitTitleOnly && (() => {
+          const batchCount = Math.ceil(overLimit.total / maxFiles)
+          const sentCount = overLimit.total - overLimit.remaining.length
+          const doneBatches = Math.ceil(sentCount / maxFiles)
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4), padding: spacing(4), border: `1px solid ${colorPalette.neutral.lighten2}`, borderRadius: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing(4) }}>
+                  <Typography size="base" weight={fontWeight.SEMIBOLD} color="neutral-darken5">{`Next: batch ${doneBatches + 1} of ${batchCount}`}</Typography>
+                  <Typography size="base-sm" color="neutral-darken2">{`Files ${sentCount + 1}–${sentCount + nextBatchSize} of ${overLimit.total}`}</Typography>
+                </div>
+                <StepsIndicator completed={doneBatches} total={batchCount} format={(c, t) => `${c} of ${t} batches uploaded`} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+                {!batchStarted && <ButtonTertiary leftIcon={iconType.UploadOutlined} onClick={() => { setOverLimit(null); fileInputRef.current?.click() }}>Choose different files</ButtonTertiary>}
+                <span style={{ flex: 1 }} />
+                <ButtonGhost onClick={handleClose}>{batchStarted ? 'Stop here' : 'Cancel'}</ButtonGhost>
+                <ButtonPrimary leftIcon={iconType.UploadOutlined} onClick={uploadNextBatch}>{`Upload ${nextBatchSize} file${nextBatchSize !== 1 ? 's' : ''}`}</ButtonPrimary>
+              </div>
+            </div>
+          )
+        })()}
+
+        {!(overLimit && (limitActionArea || limitHideUploader)) && (
         <div
           onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
           onDragLeave={() => setIsDragging(false)}
@@ -914,11 +1112,14 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
           }}
         >
           <Icon type={iconType.UploadOutlined} size={24} color="neutral-darken3" />
-          <Typography color="neutral-darken5">Klicken Sie, um ein Dokument auszuwählen, oder ziehen Sie es hierher.</Typography>
-          <Typography size="base-sm" color="neutral-darken2">PDF-, DOCX-, XLSX- und TXT-Formate, max. Größe 10 MB</Typography>
+          <Typography color="neutral-darken5">{maxFiles ? 'Click to choose files, or drag them here.' : 'Klicken Sie, um ein Dokument auszuwählen, oder ziehen Sie es hierher.'}</Typography>
+          <Typography size="base-sm" color="neutral-darken2">{maxFiles
+            ? `PDF, DOCX, XLSX and TXT · up to ${maxFiles} files at a time, max. 10 MB each`
+            : 'PDF-, DOCX-, XLSX- und TXT-Formate, max. Größe 10 MB'}</Typography>
         </div>
+        )}
         <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
-        {belowDropzone}
+        {!(overLimit && (limitActionArea || limitHideUploader)) && belowDropzone}
 
         {queuedFiles.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(2) }}>
@@ -957,6 +1158,7 @@ export function BasicUploadModal({ open, connectors, onClose, onUpload, lang = '
             : 'Browse and sync documents from your apps. We never modify files without your permission. We never store your credentials.'}</Typography>
         </div>
       </div>
+      )}
     </Modal>
   )
 }

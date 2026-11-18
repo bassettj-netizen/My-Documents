@@ -21,6 +21,9 @@ import {
   Avatar,
   avatarShapeEnum,
   avatarSizeEnum,
+  Modal,
+  modalVariants,
+  buttonVariants,
 } from '@goat-ui/goat-ui-core'
 import { colorPalette, spacing, fontWeight, renderLiteMarkdown, SpaceAvatar, SpaceFormModal, getInitials, type DocSource, type MetadataDocument, type OutgoingAttachment, type Space, type SpaceFormValues } from '../workspaces/shared'
 import { MessageComposer } from '../workspaces/Version6'
@@ -149,6 +152,35 @@ function MenuLabel({ icon, children, danger = false }: { icon: ReactNode; childr
   )
 }
 
+type ChatMenuActions = { moveTargets: MoveTarget[]; onMove: (id: string) => void; onRename: () => void; onDelete: () => void }
+
+/**
+ * A chat's menu (Workspaces 2.0 Versions 19 and 21): Move to workspace, Save PDF, Rename and Delete — the same in the
+ * chat panel's three-dot menu and the open chat's Actions. `onRename` starts renaming where the menu was opened. The
+ * open chat leaves out Save PDF (`pdf: false`): its header has its own Save as PDF button.
+ */
+function chatMenuItems(actions: ChatMenuActions, { pdf = true }: { pdf?: boolean } = {}) {
+  return [
+    {
+      key: 'move',
+      label: <MenuLabel icon={<Icon type={iconType.FolderOutlined} size={16} />}>Move to workspace</MenuLabel>,
+      children: actions.moveTargets.map(t => ({
+        key: `move-${t.id}`,
+        label: <MenuLabel icon={t.icon}>{t.name}</MenuLabel>,
+        onClick: () => actions.onMove(t.id),
+      })),
+    },
+    { key: 'divider', type: dropdownItemTypes.DIVIDER },
+    // Prototype: exporting isn't wired up yet.
+    ...(pdf ? [{ key: 'pdf', label: <MenuLabel icon={<Icon type={iconType.DownloadOutlined} size={16} />}>Save PDF</MenuLabel> }] : []),
+    { key: 'rename', label: <MenuLabel icon={<Icon type={iconType.EditOutlined} size={16} />}>Rename</MenuLabel>, onClick: actions.onRename },
+    { key: 'delete', label: <MenuLabel danger icon={<Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />}>Delete</MenuLabel>, onClick: actions.onDelete },
+  ]
+}
+
+/** The DS gives a submenu's title only 16px on the right, so its label ran under the chevron: 16px + the 16px chevron + 8px between them. */
+const CHAT_MENU_STYLE = `.goat-dropdown-menu-submenu-title:has(.copilot-chat-menu-label) { padding-right: 40px !important; }`
+
 /**
  * A chat in the panel's history. `actions` (Workspaces 2.0 Versions 19 and 21, after the CoPilot Finance design):
  * a three-dot button on hover (or while its menu is open) with Move to workspace, Save PDF, Rename and Delete.
@@ -157,7 +189,7 @@ function ChatHistoryRow({ title, active, onClick, actions }: {
   title: string
   active: boolean
   onClick: () => void
-  actions?: { moveTargets: MoveTarget[]; onMove: (id: string) => void; onRename: (title: string) => void; onDelete: () => void }
+  actions?: Omit<ChatMenuActions, 'onRename'> & { onRename: (title: string) => void }
 }) {
   const [hovered, setHovered] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -196,28 +228,11 @@ function ChatHistoryRow({ title, active, onClick, actions }: {
             .copilot-chat-row .copilot-chat-row-actions { visibility: hidden; }
             .copilot-chat-row:hover .copilot-chat-row-actions,
             .copilot-chat-row .copilot-chat-row-actions:has([class*="dropdown-open"]) { visibility: visible; }
-            /* The DS gives a submenu's title only 16px on the right, so its label ran under the chevron: 16px + the
-               16px chevron + 8px between them. */
-            .goat-dropdown-menu-submenu-title:has(.copilot-chat-menu-label) { padding-right: 40px !important; }
+            ${CHAT_MENU_STYLE}
             .copilot-chat-row:has([class*="dropdown-open"]) { background-color: ${active ? colorPalette.blue.lighten5 : colorPalette.neutral.lighten4}; }
           `}</style>
           <Dropdown
-            items={[
-              {
-                key: 'move',
-                label: <MenuLabel icon={<Icon type={iconType.FolderOutlined} size={16} />}>Move to workspace</MenuLabel>,
-                children: actions.moveTargets.map(t => ({
-                  key: `move-${t.id}`,
-                  label: <MenuLabel icon={t.icon}>{t.name}</MenuLabel>,
-                  onClick: () => actions.onMove(t.id),
-                })),
-              },
-              { key: 'divider', type: dropdownItemTypes.DIVIDER },
-              // Prototype: exporting isn't wired up yet.
-              { key: 'pdf', label: <MenuLabel icon={<Icon type={iconType.DownloadOutlined} size={16} />}>Save PDF</MenuLabel>, },
-              { key: 'rename', label: <MenuLabel icon={<Icon type={iconType.EditOutlined} size={16} />}>Rename</MenuLabel>, onClick: () => { setDraft(title); setRenaming(true) } },
-              { key: 'delete', label: <MenuLabel danger icon={<Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />}>Delete</MenuLabel>, onClick: actions.onDelete },
-            ]}
+            items={chatMenuItems({ ...actions, onRename: () => { setDraft(title); setRenaming(true) } })}
             trigger={dropdownTriggers.CLICK}
             placement={dropdownPlacement.BOTTOM_LEFT}
           >
@@ -416,7 +431,7 @@ function OptionLabel({ icon, children }: { icon: ReactNode; children: ReactNode 
  * obvious — its avatar and name (a link back to it), then the chat title — and Save as PDF / Actions on
  * the right. Chats outside a workspace show "My workspace" in the workspace's place.
  */
-function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, dsAvatars, generic = false }: {
+function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, dsAvatars, generic = false, move }: {
   dsAvatars: boolean
   // Workspaces 2.0 Versions 19 and 21: centred on the app's H logo (40px down), like the CoPilot menu's title; the
   // workspace is a label, not a link, and My workspace has the workspace selector's icon.
@@ -426,6 +441,8 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, d
   onOpenWorkspace: (ws: WorkspaceReference) => void
   onRename: (title: string) => void
   onDelete: () => void
+  /** Versions 19 and 21: Actions has the chat panel's menu — Move to workspace, Save PDF, Rename and Delete. */
+  move?: { targets: MoveTarget[]; onMove: (id: string) => void }
 }) {
   const [renaming, setRenaming] = useState(false)
   const [draft, setDraft] = useState(session.title)
@@ -468,8 +485,9 @@ function ChatHeader({ session, workspace, onOpenWorkspace, onRename, onDelete, d
       </div>
       {/* Prototype: exporting isn't wired up yet. */}
       <ButtonGhost rightIcon={iconType.DownloadOutlined}>Save as PDF</ButtonGhost>
+      {move && <style>{CHAT_MENU_STYLE}</style>}
       <Dropdown
-        items={[
+        items={move ? chatMenuItems({ moveTargets: move.targets, onMove: move.onMove, onRename: () => { setDraft(session.title); setRenaming(true) }, onDelete }, { pdf: false }) : [
           { key: 'rename', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.EditOutlined} size={16} />Rename</span>, onClick: () => { setDraft(session.title); setRenaming(true) } },
           { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />Delete chat</span>, onClick: onDelete },
         ]}
@@ -498,16 +516,64 @@ function SidebarChevron({ direction }: { direction: 'left' | 'right' }) {
   )
 }
 
+/** The privacy modal's points, after the German "Ihre Daten sind privat und sicher" design. */
+const PRIVACY_POINTS = [
+  { icon: iconType.ShieldCheckOutlined, title: 'Secure data storage in Germany', text: 'All data is stored securely on European servers. Our data centre is certified to ISO 27001, 27017 and 27018, SOC 2 and C5, making it one of the most secure data centres in the world.' },
+  { icon: iconType.LockOutlined, title: 'Data encryption', text: 'All data is stored encrypted in the data centre (AES-256) and transferred to it encrypted (TLS 1.3).' },
+  // The DS has no "no training" icon; a crossed-out eye stands in for "not used".
+  { icon: iconType.EyeSlashOutlined, title: 'No training on your data', text: 'Your chats are not used to train language models.' },
+]
+
+/** "Learn more" from the privacy note: how CoPilot keeps your data private and secure. */
+function PrivacyModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      visible={visible}
+      variant={modalVariants.DEFAULT}
+      withIcon={false}
+      title="Your data is private and secure"
+      onClose={onClose}
+      footer={{ buttons: [{ variant: buttonVariants.PRIMARY, props: { children: 'Close', onClick: onClose } }] }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(4) }}>
+        <Typography size="base" color="neutral-darken5">
+          The highest data protection standards are essential for using our AI assistant professionally. Here's an overview of our security architecture.
+        </Typography>
+        {PRIVACY_POINTS.map(point => (
+          <div key={point.title} style={{ display: 'flex', alignItems: 'flex-start', gap: spacing(4) }}>
+            <span style={{ width: 40, height: 40, borderRadius: 4, backgroundColor: colorPalette.blue.lighten5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon type={point.icon} size={20} color="blue-darken2" />
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Typography size="base-sm" color="neutral-darken5" weight={fontWeight.SEMIBOLD}>{point.title}</Typography>
+              <Typography size="base-sm" color="neutral-darken5">{point.text}</Typography>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  )
+}
+
 /** "Your data is private and secure" under the question box. `compact`: in an open chat, closer to the box above it. */
 function PrivacyNote({ compact = false }: { compact?: boolean }) {
+  const [open, setOpen] = useState(false)
   return (
     <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: compact ? `0 ${spacing(4)}px ${spacing(4)}px` : spacing(4) }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
-        <Icon type={iconType.LockFilled} size={16} color="blue-base" />
+        <Icon type={iconType.ShieldCheckFilled} size={16} color="primary-base" />
         <Typography size="base-sm" color="neutral-darken3">
-          Your data is private and secure. <span style={{ color: colorPalette.blue.base, cursor: 'pointer' }}>Learn more</span>
+          Your data is private and secure.{' '}
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => setOpen(true)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true) } }}
+            style={{ color: colorPalette.blue.base, cursor: 'pointer' }}
+          >Learn more</span>
         </Typography>
       </div>
+      <PrivacyModal visible={open} onClose={() => setOpen(false)} />
     </div>
   )
 }
@@ -843,6 +909,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
               onOpenWorkspace={ws => navigate(ws.path)}
               dsAvatars={dsAvatars}
               generic={generic}
+              move={generic ? { targets: moveTargets.filter(t => t.id !== (activeSession.workspace?.id ?? GENERAL)), onMove: id => moveChat(activeSession, id) } : undefined}
               onRename={title => setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, title } : s))}
               onDelete={() => { setSessions(prev => prev.filter(s => s.id !== activeSession.id)); setActiveId(null) }}
             />

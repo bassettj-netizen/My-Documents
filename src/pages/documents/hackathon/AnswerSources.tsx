@@ -7,19 +7,19 @@ import { MARKER, type AnswerSource, type SourceLang } from './sourceData'
  * Hackathon Oct '26 — Versions 10/11: sources on CoPilot answers in workspace chats, after the
  * "Chatseite / Quellen" design.
  * - In the answer: a small numbered marker after the sentences each source backs — click it to open that source.
- * - Under the answer: two chips, "Haufe expert knowledge 3" and "Workspace files 2", that open the panel on that kind.
+ * - Under the answer: two chips, "Haufe expert knowledge 3" and "Workspace documents 2", that open the panel on that kind.
  * - The panel: "Sources from Haufe Personal Office Platin", the same two chips as filters, and the sources
  *   as an accordion — [n] title, then the cited passage and "Open full source" when expanded.
  */
 
 const TEXT = {
   en: {
-    haufe: 'Haufe expert knowledge', files: 'Workspace files',
+    haufe: 'Haufe expert knowledge', files: 'Workspace documents',
     title: 'Sources from Haufe Personal Office Platin', subtitle: 'Legally sound and up to date',
     open: 'Open full source', close: 'Close sources', source: 'Source',
   },
   de: {
-    haufe: 'Haufe Fachwissen', files: 'Dateien im Arbeitsbereich',
+    haufe: 'Haufe Fachwissen', files: 'Dokumente im Arbeitsbereich',
     title: 'Quellen aus Haufe Personal Office Platin', subtitle: 'Rechtssicher und aktuell',
     open: 'Vollständige Quelle öffnen', close: 'Quellen schließen', source: 'Quelle',
   },

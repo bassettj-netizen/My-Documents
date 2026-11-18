@@ -1,0 +1,440 @@
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import {
+  Avatar,
+  avatarShapeEnum,
+  avatarSizeEnum,
+  ButtonGhost,
+  ButtonPrimary,
+  ButtonSecondary,
+  ButtonTertiary,
+  buttonShapes,
+  buttonSizes,
+  buttonVariants,
+  Chip,
+  chipSizes,
+  chipStyles,
+  chipVariants,
+  Dropdown,
+  dropdownPlacement,
+  dropdownTriggers,
+  Icon,
+  iconType,
+  Modal,
+  modalVariants,
+  SearchBar,
+  searchbarWidth,
+  Tabs,
+  Tooltip,
+  tooltipPlacements,
+  Typography,
+} from '@goat-ui/goat-ui-core'
+import {
+  colorPalette,
+  computeDocSourceMap,
+  fontWeight,
+  getInitials,
+  SpaceFormModal,
+  sourceIcon,
+  spaceConnectorLabel,
+  spacing,
+  VisibilityIcon,
+  type DocSource,
+  type MetadataDocument,
+  type Space,
+  type SpaceFormValues,
+} from '../workspaces/shared'
+import { CopilotIcon } from '../workspaces/WorkspacesBasic'
+import { KnowledgePage, KnowledgePageHeader, KnowledgeToolbar } from './knowledgeLayout'
+import { defineText, usePrototype, useText } from './context'
+
+/**
+ * Workspaces 2.0 Version 2 — the Workspaces list as compact cards (Figma "B · Compact cards", 30:8017).
+ *
+ * - Tabs filter by type (All, Clients, Projects, Internal) and by Private, with counts; "Recently used"
+ *   sorts, and the search matches name and description.
+ * - Each card: the workspace's initials, name and access icon, its type as a neutral chip, Ask CoPilot
+ *   (when the version passes onAskCopilot) and the row menu (edit, delete) on a filled three-dot button; two lines of description; then a divider and a
+ *   footer with where it's been used, the document count and the document sources.
+ */
+
+/** A card's colour by workspace type: the type chip's DS accent style and a soft tint across the card's top. */
+// `tint` is optional: Version 4 colours only the type chip, Version 6 also tints the card.
+export type CardTone = { chipStyle: (typeof chipStyles)[keyof typeof chipStyles]; tint?: string }
+
+type Filter = 'all' | 'Client' | 'Project' | 'Internal' | 'private' | 'organisation'
+type Sort = 'recent' | 'name' | 'documents'
+
+const SORTS: Sort[] = ['recent', 'name', 'documents']
+
+const TEXT = defineText({
+  sort: { recent: 'Recently used', name: 'Name', documents: 'Most documents' },
+  filters: { all: 'All', Client: 'Clients', Project: 'Projects', Internal: 'Internal', private: 'Private', organisation: 'Organisation' },
+  editSettings: 'Edit settings',
+  delete: 'Delete',
+  cancel: 'Cancel',
+  workspaceActions: 'Workspace actions',
+  askCopilot: 'Ask CoPilot',
+  manualUpload: 'Manual upload',
+  title: 'Workspaces',
+  titleWithCount: (count: number) => `Workspaces · ${count}`,
+  newWorkspace: 'New workspace',
+  workspaceButton: 'Workspace',
+  searchPlaceholder: 'Search workspaces',
+  noMatches: 'No workspaces match.',
+  deleteTitle: 'Delete workspace',
+  deleteConfirm: (name: ReactNode) => <>Delete <strong>{name}</strong>? This cannot be undone.</>,
+}, {
+  sort: { recent: 'Zuletzt verwendet', name: 'Name', documents: 'Meiste Dokumente' },
+  filters: { all: 'Alle', Client: 'Mandanten', Project: 'Projekte', Internal: 'Intern', private: 'Privat', organisation: 'Organisation' },
+  editSettings: 'Einstellungen bearbeiten',
+  delete: 'Löschen',
+  cancel: 'Abbrechen',
+  workspaceActions: 'Aktionen für den Arbeitsbereich',
+  askCopilot: 'CoPilot fragen',
+  manualUpload: 'Manuell hochgeladen',
+  title: 'Arbeitsbereiche',
+  titleWithCount: (count: number) => `Arbeitsbereiche · ${count}`,
+  newWorkspace: 'Neuer Arbeitsbereich',
+  workspaceButton: 'Arbeitsbereich',
+  searchPlaceholder: 'Arbeitsbereiche durchsuchen',
+  noMatches: 'Keine passenden Arbeitsbereiche.',
+  deleteTitle: 'Arbeitsbereich löschen',
+  deleteConfirm: (name: ReactNode) => <>Möchten Sie <strong>{name}</strong> löschen? Dies kann nicht rückgängig gemacht werden.</>,
+})
+
+function WorkspaceCard({ space, docs, usedIn, footer, meta, tone, onOpen, onEdit, onDelete, onAskCopilot, showTypeChip = true }: {
+  space: Space
+  // Versions 19 and 21 have no workspace types, so no type chip.
+  showTypeChip?: boolean
+  docs: MetadataDocument[]
+  usedIn?: ReactNode
+  // Replaces the whole footer (used in, document count and sources).
+  footer?: ReactNode
+  // Shown beside the type chip, e.g. when the workspace was last updated.
+  meta?: ReactNode
+  tone?: CardTone
+  onOpen: () => void
+  onEdit: () => void
+  onDelete: () => void
+  // Starts a CoPilot chat about this workspace without opening it first.
+  onAskCopilot?: () => void
+}) {
+  const t = useText(TEXT)
+  const { lang } = usePrototype()
+  const [hovered, setHovered] = useState(false)
+  // Every source among the workspace's documents, connected apps first and uploads last.
+  const sources = useMemo(() => {
+    const present = new Set(computeDocSourceMap(docs, space).values())
+    const order: DocSource[] = [...space.connectors.map(c => c.type), 'local']
+    return [...new Set(order)].filter(s => present.has(s))
+  }, [docs, space])
+
+  return (
+    <div
+      onClick={onOpen}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        minHeight: 190, display: 'flex', flexDirection: 'column', gap: spacing(3), padding: `${spacing(5)}px ${spacing(5)}px ${spacing(4)}px`,
+        border: `1px solid ${hovered ? colorPalette.blue.base : colorPalette.neutral.lighten2}`, borderRadius: 12,
+        backgroundColor: colorPalette.white, cursor: 'pointer', transition: 'border-color 0.15s', minWidth: 0,
+        ...(tone?.tint ? { backgroundImage: `linear-gradient(180deg, ${tone.tint} 0, ${colorPalette.white} 96px)` } : {}),
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
+        <Avatar shape={avatarShapeEnum.SQUARE} size={avatarSizeEnum.SMALL} src={space.avatarUrl} srcPlaceholder={getInitials(space.name)} />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+            <Typography size="heading-sm" weight={fontWeight.SEMIBOLD} color="neutral-darken5" maxLines={1}>{space.name}</Typography>
+            <VisibilityIcon space={space} organisationAccess lang={lang} />
+          </div>
+          {((showTypeChip && space.type) || meta) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2), minWidth: 0 }}>
+              {showTypeChip && space.type && <Chip label={space.type} size={chipSizes.SMALL} chipStyle={tone?.chipStyle ?? chipStyles.ACCENT_NEUTRAL} variant={chipVariants.SUBTLE} uppercase={false} />}
+              {meta}
+            </div>
+          )}
+        </div>
+        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: spacing(1) }}>
+          {onAskCopilot && <AskCopilotIconButton onClick={onAskCopilot} />}
+          <Dropdown
+            items={[
+              { key: 'edit', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}><Icon type={iconType.GearOutlined} size={16} />{t.editSettings}</span>, onClick: onEdit },
+              { key: 'delete', label: <span style={{ display: 'flex', alignItems: 'center', gap: spacing(2), color: colorPalette.danger.darken2 }}><Icon type={iconType.TrashOutlined} size={16} color="danger-darken2" />{t.delete}</span>, onClick: onDelete },
+            ]}
+            trigger={dropdownTriggers.CLICK}
+            placement={dropdownPlacement.BOTTOM_RIGHT}
+          >
+            <ButtonGhost shape={buttonShapes.SQUARE} size={buttonSizes.SMALL} leftIcon={iconType.ThreeDotsHorFilled} ariaLabel={t.workspaceActions} />
+          </Dropdown>
+        </div>
+      </div>
+      <Typography size="base" color="neutral-darken3" maxLines={2}>{space.description}</Typography>
+      <div style={{ flex: 1 }} />
+      <div style={{ height: 1, backgroundColor: colorPalette.neutral.lighten3 }} />
+      {footer ?? <div style={{ display: 'flex', alignItems: 'center', gap: spacing(2) }}>
+        {usedIn}
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: colorPalette.neutral.darken3 }}>{docs.length}</span>
+        {sources.length > 0 && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {sources.map(source => <span key={source} style={{ display: 'inline-flex' }}>{source === 'local' ? <ManualUploadIcon label={t.manualUpload} /> : sourceIcon(source, 16, spaceConnectorLabel(space, source))}</span>)}
+          </span>
+        )}
+      </div>}
+    </div>
+  )
+}
+
+/**
+ * Ask CoPilot as a small square icon button, sized and styled like the DS secondary small button. Built by
+ * hand because the DS square button only renders DS icons, and CoPilot's mark isn't one.
+ */
+function AskCopilotIconButton({ onClick }: { onClick: () => void }) {
+  const t = useText(TEXT)
+  const [hovered, setHovered] = useState(false)
+  return (
+    <Tooltip title={t.askCopilot} placement={tooltipPlacements.TOP}>
+      <button
+        type="button"
+        aria-label={t.askCopilot}
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          width: 24, height: 24, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 8, border: `1px solid ${hovered ? colorPalette.blue.base : colorPalette.blue.lighten3}`,
+          backgroundColor: hovered ? colorPalette.blue.lighten5 : colorPalette.white, color: colorPalette.blue.base,
+          cursor: 'pointer', transition: 'border-color 0.15s, background-color 0.15s',
+        }}
+      >
+        <CopilotIcon />
+      </button>
+    </Tooltip>
+  )
+}
+
+/** The shared sourceIcon's upload mark, with its tooltip in this prototype's language. */
+function ManualUploadIcon({ label }: { label: string }) {
+  return (
+    <Tooltip title={label} placement={tooltipPlacements.TOP}>
+      <div style={{ display: 'inline-flex' }}>
+        <Icon type={iconType.UploadFilled} size={16} color="neutral-base" />
+      </div>
+    </Tooltip>
+  )
+}
+
+export default function WorkspacesList({ spaces, getSpaceDocs, getLastUsed, renderUsedIn, renderFooter, renderMeta, getCardTone, renderCard, renderList, showSort = true, onAskCopilot, minCardWidth = 320, onOpenSpace, onCreateSpace, onUpdateSpace, onDeleteSpace, description, renderEmptyState, createInToolbar = false, aligned = false, createIntro, showType = false, accessFilters = false, showCount = false, myDocumentsToolbar = false, hideHeaderWhenEmpty = false }: {
+  // With no workspaces, leave out the page heading — the empty state has its own (Version 21).
+  hideHeaderWhenEmpty?: boolean
+  // Version 21: the toolbar laid out like My Documents' — search and Sort (tertiary, sort icon) on the left,
+  // + Workspace on the right — with the type tabs on their own row underneath.
+  myDocumentsToolbar?: boolean
+  // "Workspaces · 4" in the heading once there are some (Version 21).
+  showCount?: boolean
+  // The workspace type in the create and edit dialogs, as radio buttons (Version 21).
+  showType?: boolean
+  // Filter by access only — All, Private, Organisation — with no workspace types (Versions 19 and 21).
+  accessFilters?: boolean
+  // Shown at the top of the Create workspace dialog.
+  createIntro?: ReactNode
+  spaces: Space[]
+  getSpaceDocs: (id: string) => MetadataDocument[]
+  // When the workspace was last used (a chat or Haufe document made in it), for "Recently used".
+  getLastUsed: (id: string) => number
+  // Where the workspace has been used, for the card footer.
+  renderUsedIn: (space: Space) => ReactNode
+  // A different footer for the default card (Version 4 summarises files and apps as text).
+  renderFooter?: (space: Space, docs: MetadataDocument[]) => ReactNode
+  // Beside the default card's type chip (Version 4 says when the workspace was last updated).
+  renderMeta?: (space: Space, docs: MetadataDocument[]) => ReactNode
+  // Colours the default card by its workspace (Version 6 colours by type).
+  getCardTone?: (space: Space) => CardTone | undefined
+  // A different card for each workspace (Version 3 uses Version 1's); gets the open, edit and delete actions.
+  renderCard?: (space: Space, actions: { onOpen: () => void; onEdit: () => void; onDelete: () => void }) => ReactNode
+  // Replaces the card grid with another layout (Version 9 shows a table); gets the filtered, sorted workspaces.
+  renderList?: (spaces: Space[], actions: { onOpen: (id: string) => void; onEdit: (id: string) => void; onDelete: (id: string) => void }) => ReactNode
+  // Hides the sort dropdown, e.g. when the table's column headings sort instead (Version 9).
+  showSort?: boolean
+  // Adds Ask CoPilot to the default card (Version 2).
+  onAskCopilot?: (id: string) => void
+  // The narrowest a card may get before the grid drops a column.
+  minCardWidth?: number
+  onOpenSpace: (id: string) => void
+  onCreateSpace: (values: SpaceFormValues) => void
+  onUpdateSpace: (id: string, values: SpaceFormValues) => void
+  onDeleteSpace: (id: string) => void
+  description?: ReactNode
+  // Replaces the list when there are no workspaces; gets a callback that opens the create dialog.
+  renderEmptyState: (openCreate: () => void) => ReactNode
+  // "+ Workspace" as a primary button at the end of the toolbar, right of the search (Workspaces 2.0 Version 15),
+  // instead of a secondary button beside the title. With no workspaces yet, the empty state is the way in.
+  createInToolbar?: boolean
+  /** Version 17: the header and toolbar shared with My Documents and Connectors (knowledgeLayout.tsx) — New workspace
+   *  as the header's primary action, and sorting as a secondary button after the search. */
+  aligned?: boolean
+}) {
+  const t = useText(TEXT)
+  const { lang } = usePrototype()
+  const [filter, setFilter] = useState<Filter>('all')
+  const [sort, setSort] = useState<Sort>('recent')
+  const [search, setSearch] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const editTarget = spaces.find(s => s.id === editId) ?? null
+  const deleteTarget = spaces.find(s => s.id === deleteId) ?? null
+
+  const matches = (space: Space, f: Filter) => f === 'all'
+    || (f === 'private' ? space.visibility === 'private' : f === 'organisation' ? space.visibility !== 'private' : space.type === f)
+  const count = (f: Filter) => spaces.filter(s => matches(s, f)).length
+  const filterKeys: Filter[] = accessFilters ? ['all', 'private', 'organisation'] : ['all', 'Client', 'Project', 'Internal', 'private']
+  const tabs = filterKeys.map(key => ({ key, label: t.filters[key], count: count(key) }))
+
+  const query = search.trim().toLowerCase()
+  const shown = spaces
+    .filter(s => matches(s, filter))
+    .filter(s => !query || s.name.toLowerCase().includes(query) || s.description.toLowerCase().includes(query))
+    .sort((a, b) =>
+      sort === 'name' ? a.name.localeCompare(b.name)
+        : sort === 'documents' ? getSpaceDocs(b.id).length - getSpaceDocs(a.id).length
+          : getLastUsed(b.id) - getLastUsed(a.id))
+
+  const sortMenu = (
+    <Dropdown
+      items={SORTS.map(key => ({ key, label: t.sort[key], onClick: () => setSort(key) }))}
+      trigger={dropdownTriggers.CLICK}
+      placement={dropdownPlacement.BOTTOM_RIGHT}
+    >
+      {myDocumentsToolbar ? (
+        // Version 21: tertiary like My Documents' Filters, with the up/down arrows saying it sorts.
+        <ButtonTertiary leftIcon={iconType.ArrowSwapOutlined} rightIcon={iconType.ChevronDownOutlined}>{t.sort[sort]}</ButtonTertiary>
+      ) : aligned ? <ButtonTertiary rightIcon={iconType.ChevronDownOutlined}>{t.sort[sort]}</ButtonTertiary> : (
+        <ButtonGhost rightIcon={iconType.ChevronDownOutlined}>{t.sort[sort]}</ButtonGhost>
+      )}
+    </Dropdown>
+  )
+
+  return (
+    <KnowledgePage style={{ backgroundColor: colorPalette.white, minHeight: '100%' }}>
+      {aligned ? (
+        <KnowledgePageHeader
+          title={t.title}
+          description={description}
+          action={<ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>{t.newWorkspace}</ButtonPrimary>}
+        />
+      ) : hideHeaderWhenEmpty && spaces.length === 0 ? null : (
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing(6) }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing(1), minWidth: 0 }}>
+          <Typography size="heading-lg" weight="bold">{showCount && spaces.length > 0 ? t.titleWithCount(spaces.length) : t.title}</Typography>
+          {description && <Typography size="base" color="neutral-darken2">{description}</Typography>}
+        </div>
+        {!createInToolbar && <ButtonSecondary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>{t.workspaceButton}</ButtonSecondary>}
+      </div>
+      )}
+
+      {spaces.length === 0 ? renderEmptyState(() => setCreateOpen(true)) : (
+        <>
+          {myDocumentsToolbar ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing(4) }}>
+                <div style={{ width: 320 }}>
+                  <SearchBar placeholder={t.searchPlaceholder} value={search} onChange={setSearch} width={searchbarWidth.EXPANDED} />
+                </div>
+                {/* Sort next to the search, where My Documents has Filters. */}
+                {showSort && sortMenu}
+                <div style={{ flex: 1 }} />
+                <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>{t.workspaceButton}</ButtonPrimary>
+              </div>
+              <div style={{ marginTop: -spacing(3) }}>
+                <Tabs options={tabs.map(tab => ({ key: tab.key, label: `${tab.label} (${tab.count})`, content: null }))} activeKey={filter} onChange={key => setFilter(key as Filter)} />
+              </div>
+            </>
+          ) : aligned ? (
+            <KnowledgeToolbar tabs={tabs} activeTab={filter} onTab={setFilter} search={search} onSearch={setSearch} searchPlaceholder={t.searchPlaceholder}>
+              {showSort && sortMenu}
+            </KnowledgeToolbar>
+          ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing(3) }}>
+            <Tabs options={tabs.map(tab => ({ key: tab.key, label: `${tab.label} (${tab.count})`, content: null }))} activeKey={filter} onChange={key => setFilter(key as Filter)} />
+            <div style={{ flex: 1 }} />
+            {showSort && sortMenu}
+            <div style={{ width: 300 }}>
+              <SearchBar placeholder={t.searchPlaceholder} value={search} onChange={setSearch} width={searchbarWidth.EXPANDED} />
+            </div>
+            {createInToolbar && <ButtonPrimary leftIcon={iconType.PlusOutlined} onClick={() => setCreateOpen(true)}>{t.workspaceButton}</ButtonPrimary>}
+          </div>
+          )}
+
+          {shown.length === 0 ? (
+            <Typography size="base" color="neutral-darken2">{t.noMatches}</Typography>
+          ) : renderList ? renderList(shown, { onOpen: onOpenSpace, onEdit: setEditId, onDelete: setDeleteId }) : (
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, 1fr))`, gap: spacing(5) }}>
+              {shown.map(space => renderCard ? (
+                <Fragment key={space.id}>{renderCard(space, { onOpen: () => onOpenSpace(space.id), onEdit: () => setEditId(space.id), onDelete: () => setDeleteId(space.id) })}</Fragment>
+              ) : (
+                <WorkspaceCard
+                  key={space.id}
+                  space={space}
+                  docs={getSpaceDocs(space.id)}
+                  usedIn={renderUsedIn(space)}
+                  footer={renderFooter?.(space, getSpaceDocs(space.id))}
+                  meta={renderMeta?.(space, getSpaceDocs(space.id))}
+                  tone={getCardTone?.(space)}
+                  onOpen={() => onOpenSpace(space.id)}
+                  onEdit={() => setEditId(space.id)}
+                  onDelete={() => setDeleteId(space.id)}
+                  onAskCopilot={onAskCopilot && (() => onAskCopilot(space.id))}
+                  showTypeChip={!accessFilters}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <SpaceFormModal
+        open={createOpen}
+        mode="create"
+        noun="Workspace"
+        showPhotoUpload={false}
+        showType={showType}
+        typeRadios={showType}
+        defaultType={showType ? 'Client' : undefined}
+        organisationAccess
+        accessRadios
+        lang={lang}
+        intro={createIntro}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={values => { onCreateSpace(values); setCreateOpen(false) }}
+      />
+      <SpaceFormModal
+        open={!!editTarget}
+        mode="edit"
+        noun="Workspace"
+        initialValues={editTarget ?? undefined}
+        showPhotoUpload={false}
+        showType={showType}
+        typeRadios={showType}
+        organisationAccess
+        accessRadios
+        lang={lang}
+        onClose={() => setEditId(null)}
+        onSubmit={values => { if (editTarget) onUpdateSpace(editTarget.id, values); setEditId(null) }}
+      />
+      <Modal
+        visible={!!deleteTarget}
+        variant={modalVariants.DANGER}
+        title={t.deleteTitle}
+        onClose={() => setDeleteId(null)}
+        footer={{ buttons: [
+          { variant: buttonVariants.GHOST, props: { children: t.cancel, onClick: () => setDeleteId(null) } },
+          { variant: buttonVariants.DANGER, props: { children: t.delete, onClick: () => { if (deleteTarget) onDeleteSpace(deleteTarget.id); setDeleteId(null) } } },
+        ]}}
+      >
+        <Typography size="base" color="neutral-darken5">{t.deleteConfirm(deleteTarget?.name)}</Typography>
+      </Modal>
+    </KnowledgePage>
+  )
+}

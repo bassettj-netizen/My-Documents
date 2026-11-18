@@ -1,5 +1,21 @@
 const groups = [
   {
+    // Workspaces 2.0 Version 21 for five subject areas, each in English and German (src/pages/documents/user-testing-nov-26).
+    title: "Workspaces User Testing Nov '26",
+    items: [
+      { label: 'HR (English)', path: '/projects/user-testing-nov-26/hr-en' },
+      { label: 'HR (Deutsch)', path: '/projects/user-testing-nov-26/hr-de' },
+      { label: 'Law (English)', path: '/projects/user-testing-nov-26/law-en' },
+      { label: 'Law (Deutsch)', path: '/projects/user-testing-nov-26/law-de' },
+      { label: 'Finance (English)', path: '/projects/user-testing-nov-26/finance-en' },
+      { label: 'Finance (Deutsch)', path: '/projects/user-testing-nov-26/finance-de' },
+      { label: 'oD (English)', path: '/projects/user-testing-nov-26/od-en' },
+      { label: 'oD (Deutsch)', path: '/projects/user-testing-nov-26/od-de' },
+      { label: 'Real estate (English)', path: '/projects/user-testing-nov-26/real-estate-en' },
+      { label: 'Real estate (Deutsch)', path: '/projects/user-testing-nov-26/real-estate-de' },
+    ],
+  },
+  {
     title: 'Documents',
     items: [
       { label: 'V1', path: '/projects/documents/version-1' },
@@ -77,6 +93,18 @@ const groups = [
       { label: 'Version 19 (Version 21 with sample workspaces)', path: '/projects/workspaces-2/version-19' },
       { label: 'Version 20 (no workspaces yet, illustrated empty workspace)', path: '/projects/workspaces-2/version-20' },
       { label: 'Version 21 (no workspaces yet, empty containers)', path: '/projects/workspaces-2/version-21' },
+    ],
+  },
+  {
+    title: 'Upload limits',
+    items: [
+      { label: 'Version 1 (50 files at a time)', path: '/projects/upload-limits/version-1/my-documents' },
+      { label: 'Version 2 (numbered batches)', path: '/projects/upload-limits/version-2/my-documents' },
+      { label: 'Version 3 (buttons in the banner)', path: '/projects/upload-limits/version-3/my-documents' },
+      { label: 'Version 4 (buttons under the banner, no upload area)', path: '/projects/upload-limits/version-4/my-documents' },
+      { label: 'Version 5 (banner title only, roomier)', path: '/projects/upload-limits/version-5/my-documents' },
+      { label: 'Version 6 (Figma: File upload limit)', path: '/projects/upload-limits/version-6/my-documents' },
+      { label: 'Version 7 (Version 3 without the uploader)', path: '/projects/upload-limits/version-7/my-documents' },
     ],
   },
   {
