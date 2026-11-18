@@ -145,6 +145,9 @@ import PreviewScreenV2 from './pages/documents/document-preview/PreviewScreenV2'
 import PreviewScreenV3 from './pages/documents/document-preview/PreviewScreenV3'
 import PreviewScreenV4 from './pages/documents/document-preview/PreviewScreenV4'
 
+/** User Testing Nov '26: the open sidebar's width in German, wide enough for "Arbeitsbereiche" and its "Neu" chip. */
+const UT_DE_SIDEBAR_WIDTH = 280
+
 // Custom sidebar icons — not available in the DS icon library, sourced from
 // screenshots/CoPilot-icon.svg and screenshots/connector-icon.svg. `currentColor`
 // lets them pick up the same active/inactive tint the DS `Icon` component gets
@@ -699,6 +702,8 @@ function AppShell() {
           where the long product menu only just fits it flips between the two every frame and the bottom items
           jump. Giving both layouts the same rules — scroll if needed, bottom items pushed to the foot — makes
           the flip invisible. */}
+      {/* User Testing Nov '26, German: "Arbeitsbereiche" is long, so the open sidebar is widened to fit its "Neu" chip. */}
+      {userTesting?.lang === 'de' && <style>{`aside.goat-layout-sider:not(.goat-layout-sider-collapsed) { flex: 0 0 ${UT_DE_SIDEBAR_WIDTH}px !important; max-width: ${UT_DE_SIDEBAR_WIDTH}px !important; min-width: ${UT_DE_SIDEBAR_WIDTH}px !important; width: ${UT_DE_SIDEBAR_WIDTH}px !important; }`}</style>}
       {productMenu && <style>{`aside.goat-layout-sider div:has(> ul.goat-menu-root) { overflow-y: auto !important; overflow-x: hidden !important; justify-content: space-between !important; }`}</style>}
       {/* Workspaces 2.0 Versions 2 and 3: the pages are white, so the Layout's own tinted background (seen while a page
           loads, or below a short one) is white too. */}
