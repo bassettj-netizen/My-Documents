@@ -1,6 +1,7 @@
 import type { AreaContent, AreaDocument } from './types'
 import { syncFilesFor } from './types'
 import { REAL_ESTATE_OFFICE } from './office/realEstate'
+import { MUSTERFIRMA } from './musterfirma'
 
 /**
  * Real estate: a property manager at Rheinblick Hausverwaltung GmbH in Cologne, doing both owners' association
@@ -288,6 +289,7 @@ function build(lang: Lang): Omit<AreaContent, 'profile' | 'syncFiles'> {
           general: true,
         },
       ],
+      fixedReply: MUSTERFIRMA.realEstate[lang],
       fileExcerpts: [
         t('Section 4 of the lease lists the operating costs agreed to be passed on and the advance payment.', '§ 4 des Mietvertrags nennt die vereinbarten umlagefähigen Betriebskosten und die Vorauszahlung.'),
         t('Item 5 of the minutes records the resolution, the votes cast and the agreed cost split.', 'TOP 5 des Protokolls hält den Beschluss, die abgegebenen Stimmen und den vereinbarten Kostenschlüssel fest.'),

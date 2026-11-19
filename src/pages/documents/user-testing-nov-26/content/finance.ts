@@ -1,6 +1,7 @@
 import type { AreaArticle, AreaChat, AreaContent, AreaDocument, AreaGuardrailExample, AreaUploads } from './types'
 import { syncFilesFor } from './types'
 import { FINANCE_OFFICE } from './office/finance'
+import { MUSTERFIRMA } from './musterfirma'
 
 /**
  * Finance: a head of accounting / financial controller at Brenner Maschinenbau GmbH, a mid-sized machine builder in
@@ -528,6 +529,7 @@ export const FINANCE: { en: AreaContent; de: AreaContent } = {
       genericAdvice: 'I’d check the relevant provisions in the UStG, EStG, KStG or HGB and any internal accounting policy on file, then confirm the figures against your bookkeeping before you finalise anything.',
       simulatedNote: 'Simulated response for prototyping — connect a real assistant to answer from your actual accounts.',
       articles: articles(0),
+      fixedReply: MUSTERFIRMA.finance.en,
       fileExcerpts: [
         'Section 2 lists the accounts concerned and the amounts booked at the reporting date.',
         'The relevant paragraph records what was agreed with the tax adviser and from which period it applies.',
@@ -561,6 +563,7 @@ export const FINANCE: { en: AreaContent; de: AreaContent } = {
       genericAdvice: 'Ich würde die einschlägigen Vorschriften in UStG, EStG, KStG oder HGB sowie Ihre internen Bilanzierungsrichtlinien prüfen und die Zahlen mit Ihrer Buchhaltung abgleichen, bevor Sie etwas abschließen.',
       simulatedNote: 'Simulierte Antwort für den Prototyp – verbinden Sie einen echten Assistenten, um aus Ihren tatsächlichen Buchhaltungsdaten zu antworten.',
       articles: articles(1),
+      fixedReply: MUSTERFIRMA.finance.de,
       fileExcerpts: [
         'Abschnitt 2 führt die betroffenen Konten und die zum Stichtag gebuchten Beträge auf.',
         'Der einschlägige Absatz hält fest, was mit dem Steuerberater vereinbart wurde und ab welchem Zeitraum es gilt.',

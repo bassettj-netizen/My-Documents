@@ -1,6 +1,7 @@
 import type { AreaArticle, AreaChat, AreaContent, AreaDocument, AreaGuardrailExample } from './types'
 import { syncFilesFor } from './types'
 import { HR_OFFICE } from './office/hr'
+import { MUSTERFIRMA } from './musterfirma'
 
 /**
  * HR: an HR generalist / HR business partner at Brenner Maschinenbau GmbH, a mid-sized mechanical engineering
@@ -224,83 +225,6 @@ const ARTICLES: Lang<AreaArticle>[] = [
     ['Personalakte: Inhalt, Aufbewahrung und Datenschutz | Fachbeitrag', 'In die Personalakte gehören nur Daten, die für das Beschäftigungsverhältnis erforderlich sind (§ 26 BDSG). Beschäftigte können jederzeit Einsicht nehmen (§ 83 BetrVG). Gesundheitsdaten wie Diagnosen sind gesondert und mit eingeschränktem Zugriff aufzubewahren; die meisten Unterlagen werden nach Ablauf der Aufbewahrungsfristen gelöscht.'], true),
 ]
 
-/**
- * The answer to every question asked in a Musterfirma workspace (special leave for one's own wedding at Musterfirma
- * GmbH). ⟦F⟧ cites the workspace's latest Musterfirma document; ⟦1⟧–⟦3⟧ the Haufe articles below.
- */
-const FIXED_REPLY: Lang<NonNullable<AreaContent['copilot']['fixedReply']>> = {
-  en: {
-    match: /musterfirma/i,
-    intro: workspace => `Based on **Haufe expert knowledge** and the **documents in the ${workspace} workspace**.`,
-    text: [
-      '**1. Legal basis in this case**',
-      'For Musterfirma GmbH, the issue is governed by the company collective bargaining agreement, not (only) by Section 616 of the German Civil Code (BGB). The collective bargaining agreement contains an explicit, exhaustive provision regarding special leave.',
-      '',
-      'Relevant is Section 10 of the framework collective bargaining agreement, “Leave with Continued Pay”:',
-      '',
-      '“Employees are granted leave with continued pay for the duration of the unavoidably necessary absence from work in the following cases:',
-      '1. In the event of their own marriage, 3 workdays …”⟦F⟧',
-      '',
-      'Thus, there is a collective bargaining entitlement to paid leave.',
-      '',
-      '**2. Content of the collective bargaining provision**',
-      '• Occasion: one’s own marriage.',
-      '• Duration: 3 working days.',
-      '• Compensation: continued payment of wages (no deductions, no offset against annual leave pursuant to § 9 of the collective bargaining agreement).⟦F⟧',
-      '• Purpose: “absolutely necessary absence,” i.e., the days must be taken in connection with the wedding ceremony (civil registry office/church, preparation/follow-up), not at any arbitrary time during the year.⟦3⟧',
-      '',
-      '**3. Relationship to Section 616 of the German Civil Code (BGB) and Other Provisions**',
-      'Since the collective bargaining agreement provides for a specific, positively defined leave entitlement, this collective bargaining entitlement is decisive for marriage.⟦1⟧ Further claims under Section 616 of the German Civil Code (BGB) are typically specified or, to that extent, superseded by this provision; the documents provided do not indicate any additional days of special leave for marriage beyond this.⟦2⟧',
-      '',
-      'In practice, this means: Employees at Musterfirma GmbH are entitled to 3 paid working days of special leave for marriage, the timing of which must be scheduled in accordance with company operations.',
-      '',
-      '**Sources from your Haufe Personal Office Gold**',
-      'legally compliant and up-to-date',
-    ].join('\n'),
-    articles: [
-      { title: 'Special leave: occasions, duration and pay | Lexicon', excerpt: 'Employees keep their pay if, through no fault of their own, they are prevented from working for a relatively short time for a personal reason (§ 616 BGB), such as their own wedding. Collective agreements and employment contracts often list the occasions and the number of days conclusively.' },
-      { title: '§ 616 BGB: temporary prevention from work | Commentary', excerpt: '§ 616 BGB is not mandatory: it can be restricted or excluded by collective agreement. Where a collective agreement lists the occasions for paid leave conclusively, employees cannot claim further days under § 616 BGB for the same occasion.' },
-      { title: 'Leave for personal reasons: when the days are taken | Work aid', excerpt: 'Paid leave for a family event is tied to the occasion: the days must be taken in direct connection with it, for example on the wedding day itself. They cannot be saved up or added to annual leave, and they do not count against it.' },
-    ],
-    fileExcerpt: '“§ 10 Leave with continued pay: Employees are granted leave with continued pay for the duration of the unavoidably necessary absence from work in the following cases: 1. In the event of their own marriage, 3 workdays …”',
-  },
-  de: {
-    match: /musterfirma/i,
-    intro: workspace => `Auf Basis von **Haufe Fachwissen** und den **Dokumenten im Arbeitsbereich ${workspace}**.`,
-    text: [
-      '**1. Rechtsgrundlage in diesem Fall**',
-      'Für die Musterfirma GmbH richtet sich die Frage nach dem Haustarifvertrag und nicht (nur) nach § 616 BGB. Der Tarifvertrag enthält eine ausdrückliche, abschließende Regelung zur Arbeitsbefreiung.',
-      '',
-      'Maßgeblich ist § 10 des Manteltarifvertrags „Arbeitsbefreiung unter Fortzahlung des Entgelts“:',
-      '',
-      '„Beschäftigte werden unter Fortzahlung des Entgelts für die Dauer der unumgänglich notwendigen Abwesenheit von der Arbeit in folgenden Fällen freigestellt:',
-      '1. bei eigener Eheschließung 3 Arbeitstage …“⟦F⟧',
-      '',
-      'Es besteht also ein tariflicher Anspruch auf bezahlte Freistellung.',
-      '',
-      '**2. Inhalt der tariflichen Regelung**',
-      '• Anlass: eigene Eheschließung.',
-      '• Dauer: 3 Arbeitstage.',
-      '• Vergütung: Fortzahlung des Entgelts (keine Kürzung, keine Anrechnung auf den Erholungsurlaub nach § 9 des Tarifvertrags).⟦F⟧',
-      '• Zweck: „unumgänglich notwendige Abwesenheit“, d. h. die Tage sind im Zusammenhang mit der Trauung (Standesamt/Kirche, Vor- und Nachbereitung) zu nehmen, nicht zu einem beliebigen Zeitpunkt im Jahr.⟦3⟧',
-      '',
-      '**3. Verhältnis zu § 616 BGB und anderen Regelungen**',
-      'Da der Tarifvertrag einen konkreten, positiv geregelten Freistellungsanspruch vorsieht, ist für die Eheschließung dieser tarifliche Anspruch maßgeblich.⟦1⟧ Weitergehende Ansprüche aus § 616 BGB werden durch diese Regelung typischerweise konkretisiert bzw. insoweit verdrängt; den vorliegenden Unterlagen sind keine zusätzlichen Tage Sonderurlaub für die Eheschließung zu entnehmen.⟦2⟧',
-      '',
-      'In der Praxis bedeutet das: Beschäftigte der Musterfirma GmbH haben bei Eheschließung Anspruch auf 3 bezahlte Arbeitstage Sonderurlaub, deren Lage betriebsverträglich abzustimmen ist.',
-      '',
-      '**Quellen aus Ihrem Haufe Personal Office Gold**',
-      'rechtssicher und aktuell',
-    ].join('\n'),
-    articles: [
-      { title: 'Sonderurlaub: Anlässe, Dauer und Vergütung | Lexikon', excerpt: 'Beschäftigte behalten ihren Entgeltanspruch, wenn sie für eine verhältnismäßig nicht erhebliche Zeit aus einem in ihrer Person liegenden Grund ohne Verschulden an der Arbeitsleistung verhindert sind (§ 616 BGB), etwa bei der eigenen Hochzeit. Tarifverträge und Arbeitsverträge legen die Anlässe und die Zahl der Tage oft abschließend fest.' },
-      { title: '§ 616 BGB: Vorübergehende Verhinderung | Kommentar', excerpt: '§ 616 BGB ist dispositiv: Die Vorschrift kann durch Tarifvertrag eingeschränkt oder ausgeschlossen werden. Zählt ein Tarifvertrag die Anlässe für eine bezahlte Freistellung abschließend auf, können Beschäftigte für denselben Anlass keine weiteren Tage nach § 616 BGB verlangen.' },
-      { title: 'Freistellung aus persönlichen Gründen: Lage der Tage | Arbeitshilfe', excerpt: 'Die bezahlte Freistellung für ein familiäres Ereignis ist an den Anlass gebunden: Die Tage sind in unmittelbarem Zusammenhang damit zu nehmen, etwa am Hochzeitstag selbst. Sie können nicht angespart oder an den Jahresurlaub angehängt werden und werden nicht auf ihn angerechnet.' },
-    ],
-    fileExcerpt: '„§ 10 Arbeitsbefreiung unter Fortzahlung des Entgelts: Beschäftigte werden unter Fortzahlung des Entgelts für die Dauer der unumgänglich notwendigen Abwesenheit von der Arbeit in folgenden Fällen freigestellt: 1. bei eigener Eheschließung 3 Arbeitstage …“',
-  },
-}
-
 // ─── Uploads ──────────────────────────────────────────────────────────────────
 
 const TYPE_RULES: [RegExp, string, string][] = [
@@ -417,7 +341,7 @@ function build(lang: 'en' | 'de'): Omit<AreaContent, 'profile' | 'syncFiles'> {
             '„Mobiles Arbeiten ist nach Absprache mit der Führungskraft an bis zu zwei Tagen pro Woche möglich. Es gilt eine Kernarbeitszeit von 9:00 bis 15:00 Uhr.“',
             '„Urlaubsanträge für den Zeitraum vom 22. Dezember bis 2. Januar sind bis zum 15. Oktober einzureichen.“',
           ],
-      fixedReply: FIXED_REPLY[lang],
+      fixedReply: MUSTERFIRMA.hr[lang],
     },
 
     office: HR_OFFICE[lang],

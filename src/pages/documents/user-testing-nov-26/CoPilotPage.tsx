@@ -126,6 +126,7 @@ const TEXT = defineText({
   templates: (n: number) => `${n} template${n === 1 ? '' : 's'}`,
   // The canned reply
   answeringFrom: (workspace: string, summary: string) => `Answering from the **${workspace}** workspace (${summary}).`,
+  basedOn: (workspace: string, profile: string | undefined) => `Based on **Haufe expert knowledge** and the **documents in the ${workspace} workspace**${profile ? `, taking its **profile** into account (${profile})` : ''}.`,
   followingGuardrails: (rules: string) => ` Following this workspace's guardrails: ${rules}.`,
   basedOnQuestion: (question: string, advice: string) => `Based on your question — "${question}" — here's a starting point: ${advice}`,
 }, {
@@ -177,6 +178,7 @@ const TEXT = defineText({
   bookmarks: (n: number) => `${n} Lesezeichen`,
   templates: (n: number) => `${n} ${n === 1 ? 'Vorlage' : 'Vorlagen'}`,
   answeringFrom: (workspace: string, summary: string) => `Antwort aus dem Arbeitsbereich **${workspace}** (${summary}).`,
+  basedOn: (workspace: string, profile: string | undefined) => `Auf Basis von **Haufe Fachwissen** und den **Dokumenten im Arbeitsbereich ${workspace}**${profile ? ` unter Berücksichtigung seines **Profils** (${profile})` : ''}.`,
   followingGuardrails: (rules: string) => ` Unter Beachtung der Leitplanken dieses Arbeitsbereichs: ${rules}.`,
   basedOnQuestion: (question: string, advice: string) => `Zu Ihrer Frage – „${question}“ – ein erster Ansatz: ${advice}`,
 })
@@ -220,8 +222,9 @@ function fixedReplyDocument(ws: WorkspaceReference | null | undefined, fixed: Ar
 }
 
 function makeCannedReply(question: string, ws: WorkspaceReference | undefined, t: Text, copilot: AreaContent['copilot']): string {
-  // HR, in a Musterfirma workspace: the same, fully cited answer to every question.
-  if (ws && copilot.fixedReply && fixedReplyDocument(ws, copilot.fixedReply)) return `${copilot.fixedReply.intro(ws.name)}\n\n${copilot.fixedReply.text}`
+  // In a Musterfirma workspace (the test task): the area's fully cited answer to every question, opening with what it's
+  // based on — Haufe knowledge, the workspace's documents and the profile facts the tester entered.
+  if (ws && copilot.fixedReply && fixedReplyDocument(ws, copilot.fixedReply)) return `${t.basedOn(ws.name, ws.profile)}\n\n${copilot.fixedReply.text}`
   if (ws) {
     const rules = ws.guardrails.length ? t.followingGuardrails(ws.guardrails.map(g => `*${g}*`).join('; ')) : ''
     return `${t.answeringFrom(ws.name, workspaceSummary(ws, t))}${rules}\n\n${makeCannedReply(question, undefined, t, copilot)}`
@@ -883,7 +886,7 @@ export default function HackathonCoPilotPageV10({ workspaces, onCreateWorkspace,
     return ws ? buildSources(message.id, question, ws.documentNames ?? [], copilot.articles, copilot.fileExcerpts) : undefined
   }
   /**
-   * HR's fixed answer: its Haufe articles, then the workspace document it cites (fixedReplyDocument), with ⟦F⟧ in the
+   * The area's fixed (Musterfirma) answer: its Haufe articles, then the workspace document it cites (fixedReplyDocument), with ⟦F⟧ in the
    * text pointing at that document — or dropped if the workspace no longer has one.
    */
   function fixedAnswer(message: ChatMsg, ws: WorkspaceReference | null): { sources: AnswerSource[]; cited: string } | null {

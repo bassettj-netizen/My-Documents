@@ -1200,6 +1200,18 @@ type ExtrasStore = {
   update: (spaceId: string, patch: Partial<WorkspaceExtras>) => void
 }
 
+/** A workspace profile as one line for CoPilot: its details as "Label: value" pairs, or else its background (shortened). */
+function profileLine(details: WorkspaceDetail[], background: string | undefined): string | undefined {
+  const pairs = details
+    .map(d => [d.label.trim(), d.value.trim()])
+    .filter(([label, value]) => label || value)
+    .map(([label, value]) => label && value ? `${label}: ${value}` : label || value)
+  if (pairs.length) return pairs.join(' · ')
+  const text = background?.trim().replace(/\s+/g, ' ')
+  if (!text) return undefined
+  return text.length > 120 ? `${text.slice(0, 120)}…` : text
+}
+
 /** Everything CoPilot is handed about one workspace. */
 /** `base`: this prototype's URL (usePrototype().base). */
 function workspaceReference(space: Space, workspace: WorkspaceState, extras: ExtrasStore, base: string): WorkspaceReference {
@@ -1214,6 +1226,7 @@ function workspaceReference(space: Space, workspace: WorkspaceState, extras: Ext
     documents: workspace.getSpaceDocs(space.id).length,
     hasBackground: !!space.context?.trim(),
     details: e.details.filter(d => d.label.trim() && d.value.trim()).length,
+    profile: profileLine(e.details, space.context),
     guardrails: e.guardrails.filter(g => g.enabled).map(g => g.text),
     bookmarks: e.bookmarks.length,
     templates: e.templates.length,

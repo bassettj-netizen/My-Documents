@@ -1,6 +1,7 @@
 import type { AreaContent, AreaDocument } from './types'
 import { syncFilesFor } from './types'
 import { LAW_OFFICE } from './office/law'
+import { MUSTERFIRMA } from './musterfirma'
 
 /**
  * Law: in-house counsel (Syndikusrechtsanwältin) in the legal department of Brandner Maschinenbau GmbH, a
@@ -298,6 +299,7 @@ function build(lang: Lang): Omit<AreaContent, 'profile' | 'syncFiles'> {
           general: true,
         },
       ],
+      fixedReply: MUSTERFIRMA.law[lang],
       fileExcerpts: [
         t('Clause 11.2 sets out the agreed liability cap and the cases it does not cover.', 'Ziffer 11.2 regelt die vereinbarte Haftungshöchstgrenze und die Fälle, für die sie nicht gilt.'),
         t('The relevant paragraph records the deadline set by the court and what has to be submitted by then.', 'Der einschlägige Absatz hält die vom Gericht gesetzte Frist fest und was bis dahin vorzutragen ist.'),

@@ -38,6 +38,8 @@ export type WorkspaceReference = {
   documents: number
   hasBackground: boolean
   details: number
+  // User Testing Nov '26: the profile as one line — its details as "Label: value" pairs, or else its background.
+  profile?: string
   guardrails: string[]
   bookmarks: number
   templates: number

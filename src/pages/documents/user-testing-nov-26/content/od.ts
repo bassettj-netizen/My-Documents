@@ -1,6 +1,7 @@
 import type { AreaArticle, AreaChat, AreaContent, AreaDocument, AreaGuardrailExample } from './types'
 import { syncFilesFor } from './types'
 import { OD_OFFICE } from './office/od'
+import { MUSTERFIRMA } from './musterfirma'
 
 /**
  * öD (öffentlicher Dienst, public sector): an HR officer (Personalsachbearbeiterin) in the Personalamt of the
@@ -330,6 +331,7 @@ function build(lang: 'en' | 'de'): Omit<AreaContent, 'profile' | 'syncFiles'> {
         ? 'Simulated response for prototyping — connect a real assistant to answer from actual TVöD content and personnel data.'
         : 'Simulierte Antwort für den Prototyp – für echte Antworten aus TVöD-Inhalten und Ihren Personaldaten muss ein echter Assistent angebunden werden.',
       articles: pick(ARTICLES, lang),
+      fixedReply: MUSTERFIRMA.od[lang],
       fileExcerpts: en
         ? [
             '“The performance pay budget is distributed on the basis of target agreements and systematic performance assessment; a joint committee deals with complaints.”',
