@@ -14,6 +14,7 @@ import type { FixedReply } from './types'
  * | Law         | Gesellschaftsvertrag Musterfirma GmbH           | Alleingesellschafterin: Brandner Maschinenbau GmbH · Mitarbeitende: 450 | Welche Geschäfte der Geschäftsführung brauchen die Zustimmung der Gesellschafterin? |
  * | Finance     | Ergebnisabführungsvertrag Musterfirma GmbH      | Rechtsform: GmbH, 100 % Tochter der Brenner Maschinenbau GmbH · Geschäftsjahr: Kalenderjahr | Welche Voraussetzungen gelten für die Organschaft mit der Musterfirma? |
  * | Real estate | Gewerbemietvertrag Musterfirma GmbH             | Objektadresse: Sülzgürtel 48, Köln (Gewerbeeinheit EG) · Verwaltungsart: Mietverwaltung | Welche Regeln gelten für eine Mieterhöhung bei der Musterfirma? |
+ * | Tax         | Prüfungsanordnung Musterfirma GmbH              | Mandantennummer: 10452 · Größenklasse: Mittelbetrieb            | Was müssen wir bei der Betriebsprüfung der Musterfirma beachten? |
  */
 
 const MATCH = /musterfirma/i
@@ -375,4 +376,73 @@ const REAL_ESTATE: Both = {
   },
 }
 
-export const MUSTERFIRMA = { hr: HR, od: OD, law: LAW, finance: FINANCE, realEstate: REAL_ESTATE }
+// ─── Tax: a client's tax audit (audit order) ──────────────────────────────────
+
+const TAX: Both = {
+  en: {
+    match: MATCH,
+    text: lines(
+      '**1. Legal basis**',
+      'On 9 November 2026, Finanzamt Freiburg-Stadt issued an audit order for your client Musterfirma GmbH (§§ 193, 196 AO). It covers corporate tax, trade tax and VAT for 2022 to 2024.⟦F⟧⟦1⟧',
+      '',
+      '**2. What the audit order sets out**',
+      '• Start: 12 January 2027, 9:00 am, at the company’s premises.⟦F⟧',
+      '• Data access: the bookkeeping data for 2022–2024 must be provided on a data carrier in a machine-readable format (§ 147 (6) AO).⟦F⟧⟦2⟧',
+      '• Contact person: the company must name a person to provide information by 15 December 2026.⟦F⟧',
+      '• Focus areas: the managing director’s pay, provisions and intra-Community supplies.⟦F⟧',
+      '',
+      '**3. Rights and duties**',
+      '• Postponement: the start can be postponed on request for important reasons, e.g. year-end work (§ 197 (2) AO).⟦1⟧',
+      '• Cooperation: Musterfirma must provide documents and information (§ 200 AO). Since 2025, if it doesn’t respond to a request to cooperate in time, a cooperation delay penalty of € 75 per day can be imposed (§ 200a AO).⟦3⟧',
+      '• Voluntary disclosure: now that the audit order has been issued, a voluntary disclosure for these taxes and years no longer gives immunity from prosecution (§ 371 (2) sentence 1 no. 1 (a) AO).⟦4⟧',
+      '',
+      '**4. Note for Musterfirma (client no. 10452, medium-sized business)**',
+      'For a medium-sized business, the audit period should usually cover no more than three consecutive years (§ 4 (3) BpO) – the order is within that. Check the managing director’s pay against the 2022–2024 bonus agreements before the audit starts.⟦1⟧',
+      '',
+      'In practice, this means: Name the contact person by 15 December 2026, prepare the data export and go through the focus areas – especially the managing director’s pay – with the client before 12 January.',
+      '',
+      SOURCES_EN('Haufe Steuer Office Premium'),
+    ),
+    articles: [
+      { title: 'Audit order: content, notification and postponement | Lexicon', excerpt: 'The audit order sets out the taxes, periods and start of the audit and must be notified a reasonable time in advance – two weeks for medium-sized businesses (§ 196, § 197 AO; § 5 (4) BpO). For medium-sized businesses, the audit period should not usually exceed three years (§ 4 (3) BpO).' },
+      { title: 'Data access in a tax audit | Work aid', excerpt: 'During an audit, the tax office may inspect electronic records directly, have them evaluated or ask for them on a data carrier (§ 147 (6) AO). The data must be machine-readable and complete for the whole retention period under the GoBD.' },
+      { title: 'Duty to cooperate and cooperation delay penalty | Commentary', excerpt: 'The taxpayer must provide information and documents and give access to data (§ 200 AO). Since 2025, if a request to cooperate is not met in time, the tax office can impose a cooperation delay penalty of € 75 for each day, for up to 150 days (§ 200a AO).' },
+      { title: 'Voluntary disclosure: blocked by the audit order | Lexicon', excerpt: 'A voluntary disclosure does not give immunity from prosecution once an audit order has been notified to the taxpayer or their adviser – for the taxes and periods it covers (§ 371 (2) sentence 1 no. 1 (a) AO). Corrections should therefore be made before the order is issued.' },
+    ],
+    fileExcerpt: '“Audit order under §§ 193, 196 AO: Taxpayer: Musterfirma GmbH, Freiburg. Taxes and periods: corporate tax, trade tax and VAT 2022 to 2024. Start of the audit: 12 January 2027, 9:00 am, at your business premises. … Please name a person to provide information by 15 December 2026.”',
+  },
+  de: {
+    match: MATCH,
+    text: lines(
+      '**1. Rechtsgrundlage**',
+      'Das Finanzamt Freiburg-Stadt hat am 9.11.2026 für Ihre Mandantin Musterfirma GmbH eine Außenprüfung angeordnet (§§ 193, 196 AO). Geprüft werden Körperschaftsteuer, Gewerbesteuer und Umsatzsteuer 2022 bis 2024.⟦F⟧⟦1⟧',
+      '',
+      '**2. Was die Prüfungsanordnung vorgibt**',
+      '• Beginn: 12. Januar 2027, 9:00 Uhr, in den Geschäftsräumen.⟦F⟧',
+      '• Datenzugriff: Die Buchhaltungsdaten 2022–2024 sind auf einem Datenträger in maschinell auswertbarer Form bereitzustellen (§ 147 Abs. 6 AO).⟦F⟧⟦2⟧',
+      '• Auskunftsperson: Sie ist bis 15. Dezember 2026 zu benennen.⟦F⟧',
+      '• Prüfungsschwerpunkte: Geschäftsführervergütung, Rückstellungen und innergemeinschaftliche Lieferungen.⟦F⟧',
+      '',
+      '**3. Rechte und Pflichten**',
+      '• Verlegung: Auf Antrag kann der Prüfungsbeginn aus wichtigen Gründen verschoben werden, etwa wegen Jahresabschlussarbeiten (§ 197 Abs. 2 AO).⟦1⟧',
+      '• Mitwirkung: Die Musterfirma muss Unterlagen vorlegen und Auskünfte erteilen (§ 200 AO). Seit 2025 kann bei Verzug nach einem Mitwirkungsverlangen ein Mitwirkungsverzögerungsgeld von 75 € je Tag festgesetzt werden (§ 200a AO).⟦3⟧',
+      '• Selbstanzeige: Mit Bekanntgabe der Prüfungsanordnung ist eine strafbefreiende Selbstanzeige für diese Steuern und Jahre gesperrt (§ 371 Abs. 2 Satz 1 Nr. 1 Buchst. a AO).⟦4⟧',
+      '',
+      '**4. Hinweis für die Musterfirma (Mandantennummer 10452, Mittelbetrieb)**',
+      'Bei Mittelbetrieben soll der Prüfungszeitraum in der Regel nicht mehr als drei zusammenhängende Jahre umfassen (§ 4 Abs. 3 BpO) – die Anordnung hält das ein. Gleichen Sie die Geschäftsführervergütung vor Prüfungsbeginn mit den Tantiemevereinbarungen 2022–2024 ab.⟦1⟧',
+      '',
+      'In der Praxis bedeutet das: Benennen Sie bis 15.12.2026 die Auskunftsperson, bereiten Sie den Datenexport vor und gehen Sie die Prüfungsschwerpunkte – vor allem die Geschäftsführervergütung – vor dem 12. Januar mit der Mandantin durch.',
+      '',
+      SOURCES_DE('Haufe Steuer Office Premium'),
+    ),
+    articles: [
+      { title: 'Prüfungsanordnung: Inhalt, Bekanntgabe und Verlegung | Lexikon', excerpt: 'Die Prüfungsanordnung legt Steuerarten, Zeiträume und Prüfungsbeginn fest und ist angemessene Zeit vorher bekannt zu geben – bei Mittelbetrieben zwei Wochen (§§ 196, 197 AO; § 5 Abs. 4 BpO). Bei Mittelbetrieben soll der Prüfungszeitraum in der Regel nicht über drei Jahre hinausgehen (§ 4 Abs. 3 BpO).' },
+      { title: 'Datenzugriff in der Betriebsprüfung | Arbeitshilfe', excerpt: 'Das Finanzamt kann bei einer Außenprüfung elektronische Aufzeichnungen unmittelbar einsehen, auswerten lassen oder auf einem Datenträger anfordern (§ 147 Abs. 6 AO). Die Daten müssen nach den GoBD für die gesamte Aufbewahrungsfrist vollständig und maschinell auswertbar vorgehalten werden.' },
+      { title: 'Mitwirkungspflichten und Mitwirkungsverzögerungsgeld | Kommentar', excerpt: 'Der Steuerpflichtige muss Auskünfte erteilen, Unterlagen vorlegen und Datenzugriff gewähren (§ 200 AO). Seit 2025 kann das Finanzamt nach einem nicht fristgerecht erfüllten Mitwirkungsverlangen ein Mitwirkungsverzögerungsgeld von 75 € je Tag festsetzen, höchstens für 150 Tage (§ 200a AO).' },
+      { title: 'Selbstanzeige: Sperrwirkung der Prüfungsanordnung | Lexikon', excerpt: 'Eine strafbefreiende Selbstanzeige ist ausgeschlossen, sobald dem Steuerpflichtigen oder seiner Beraterin eine Prüfungsanordnung bekannt gegeben wurde – für die darin genannten Steuern und Zeiträume (§ 371 Abs. 2 Satz 1 Nr. 1 Buchst. a AO). Berichtigungen sollten daher vor der Anordnung erfolgen.' },
+    ],
+    fileExcerpt: '„Prüfungsanordnung nach §§ 193, 196 AO: Steuerpflichtige: Musterfirma GmbH, Freiburg. Steuerarten und Zeiträume: Körperschaftsteuer, Gewerbesteuer und Umsatzsteuer 2022 bis 2024. Beginn der Prüfung: 12. Januar 2027, 9:00 Uhr, in Ihren Geschäftsräumen. … Bitte benennen Sie bis zum 15. Dezember 2026 eine Auskunftsperson.“',
+  },
+}
+
+export const MUSTERFIRMA = { hr: HR, od: OD, law: LAW, finance: FINANCE, realEstate: REAL_ESTATE, tax: TAX }

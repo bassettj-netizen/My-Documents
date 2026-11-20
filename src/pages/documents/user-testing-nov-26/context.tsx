@@ -5,10 +5,11 @@ import { LAW } from './content/law'
 import { FINANCE } from './content/finance'
 import { OD } from './content/od'
 import { REAL_ESTATE } from './content/realEstate'
+import { TAX } from './content/tax'
 
 /**
- * Workspaces User Testing Nov '26: Workspaces 2.0 Version 21 as ten prototypes — five subject areas, each in English
- * and German. All ten are the same code; the area and language come from the URL (/projects/user-testing-nov-26/hr-en).
+ * Workspaces User Testing Nov '26: Workspaces 2.0 Version 21 as twelve prototypes — six subject areas, each in English
+ * and German. All twelve are the same code; the area and language come from the URL (/projects/user-testing-nov-26/hr-en).
  *
  * Keeping English and German in step:
  * - Every on-screen string sits in a `defineText(en, de)` pair. `de` must have exactly the keys of `en`, so a string
@@ -18,9 +19,9 @@ import { REAL_ESTATE } from './content/realEstate'
  */
 
 export type Lang = 'en' | 'de'
-export type Area = 'hr' | 'law' | 'finance' | 'od' | 'real-estate'
+export type Area = 'hr' | 'law' | 'finance' | 'od' | 'real-estate' | 'tax'
 
-export const AREAS: Area[] = ['hr', 'law', 'finance', 'od', 'real-estate']
+export const AREAS: Area[] = ['hr', 'law', 'finance', 'od', 'real-estate', 'tax']
 export const LANGS: Lang[] = ['en', 'de']
 export const USER_TESTING_ROOT = '/projects/user-testing-nov-26'
 export const prototypeBase = (area: Area, lang: Lang) => `${USER_TESTING_ROOT}/${area}-${lang}`
@@ -31,6 +32,7 @@ export const AREA_CONTENT: Record<Area, Record<Lang, AreaContent>> = {
   finance: FINANCE,
   od: OD,
   'real-estate': REAL_ESTATE,
+  tax: TAX,
 }
 
 /** Which prototype a path is in, if any. */

@@ -1,5 +1,5 @@
 /**
- * What changes between the user-testing prototypes' subject areas (HR, Law, Finance, OD, Real estate). Each area
+ * What changes between the user-testing prototypes' subject areas (HR, Law, Finance, OD, Real estate, Tax). Each area
  * file exports `{ en: AreaContent, de: AreaContent }`; the German side is the same content written for German users
  * (German names, documents and sources), not a word-for-word translation.
  *

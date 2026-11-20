@@ -1,6 +1,6 @@
 const groups = [
   {
-    // Workspaces 2.0 Version 21 for five subject areas, each in English and German (src/pages/documents/user-testing-nov-26).
+    // Workspaces 2.0 Version 21 for six subject areas, each in English and German (src/pages/documents/user-testing-nov-26).
     title: "Workspaces User Testing Nov '26",
     items: [
       { label: 'HR (English)', path: '/projects/user-testing-nov-26/hr-en' },
@@ -13,6 +13,8 @@ const groups = [
       { label: 'oD (Deutsch)', path: '/projects/user-testing-nov-26/od-de' },
       { label: 'Real estate (English)', path: '/projects/user-testing-nov-26/real-estate-en' },
       { label: 'Real estate (Deutsch)', path: '/projects/user-testing-nov-26/real-estate-de' },
+      { label: 'Tax (English)', path: '/projects/user-testing-nov-26/tax-en' },
+      { label: 'Tax (Deutsch)', path: '/projects/user-testing-nov-26/tax-de' },
     ],
   },
   {
